@@ -1,0 +1,72 @@
+{
+  "sections": {
+    "rich_text_hero": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_hero": {
+          "type": "heading",
+          "settings": {
+            "heading": "What Makes a Good Golf Glove",
+            "heading_size": "h1"
+          }
+        },
+        "text_hero": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Most golf gloves look like they came out of the same factory. White, plain, forgettable. But the glove is one of the few pieces of gear you wear every single round — so it's worth knowing what actually separates a good one from a mediocre one.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "heading_hero",
+        "text_hero"
+      ],
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "scheme-1",
+        "full_width": true,
+        "padding_top": 52,
+        "padding_bottom": 20
+      }
+    },
+    "rich_text_body": {
+      "type": "rich-text",
+      "blocks": {
+        "text_body": {
+          "type": "text",
+          "settings": {
+            "text": "<h2>Grip</h2><p>Grip is the most important thing a golf glove does. A glove that slips mid-swing — or that wears out after a few rounds — is worse than no glove at all. Look for consistent grip across the palm and fingers, especially in the lead hand. Materials matter, but construction matters more. A thin, well-fitted glove with solid grip beats a thick glove with an unreliable surface.</p><h2>Fit</h2><p>A golf glove should fit like a second skin. If there's bunching at the fingers or slack across the palm, the glove is too big. If it cuts into your knuckles or feels tight across the back of the hand, it's too small. Most golfers wear a size down from what they'd expect. When in doubt, size down — gloves stretch slightly with wear.</p><h2>Durability</h2><p>Cheap gloves fall apart fast. The palm tears, the velcro stops holding, and the fingers wear through after a handful of rounds. A quality glove holds its shape and grip through a full season of regular play. That durability comes from how the glove is constructed, not just what it's made from.</p><h2>Design</h2><p>This one doesn't affect performance, but it matters more than most golfers will admit. You're wearing this thing every round. It's visible on every shot. A glove with a design you actually like is one you'll reach for automatically — and that consistency has real value in a game built on routine.</p><p>That's the thinking behind Sunday Stripe golf gloves. Original designs made for golfers who want grip, fit, and something that actually looks good on the course. Designed in Cleveland, made in small batches, and available in stock ready to ship.</p><h2>How to Make a Golf Glove Last</h2><p>Let it air dry after each round — never leave a wet glove crumpled in your bag. Rotate between two gloves if you play multiple days a week. Keep it out of direct heat. A glove that's cared for will last significantly longer than one that isn't.</p>"
+          }
+        },
+        "button_gloves": {
+          "type": "button",
+          "settings": {
+            "button_label": "Shop Golf Gloves",
+            "button_link": "shopify://collections/golf-gloves",
+            "button_style_secondary": false,
+            "button_label_2": "",
+            "button_link_2": "",
+            "button_style_secondary_2": false
+          }
+        }
+      },
+      "block_order": [
+        "text_body",
+        "button_gloves"
+      ],
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "left",
+        "color_scheme": "scheme-1",
+        "full_width": false,
+        "padding_top": 20,
+        "padding_bottom": 60
+      }
+    }
+  },
+  "order": [
+    "rich_text_hero",
+    "rich_text_body"
+  ]
+}

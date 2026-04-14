@@ -9,6 +9,48 @@
  */
 {
   "sections": {
+    "rich_text_intro": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_intro": {
+          "type": "heading",
+          "settings": {
+            "heading": "Custom Golf Bag Stands — Cleveland, Ohio",
+            "heading_size": "h1"
+          }
+        },
+        "text_intro": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Sunday Stripe builds custom golf bag stands by hand in Cleveland, Ohio. Each stand is made to order — sized for 1, 2, or 3+ bags, finished your way, and ready to hold your gear in the garage, shop, or locker room the way it deserves to be held.</p><p>Choose your configuration, add a custom logo or name, and pick it up locally or arrange delivery in the Cleveland area. Every stand is built specifically for you with a typical turnaround of about two weeks.</p>"
+          }
+        },
+        "button_intro": {
+          "type": "button",
+          "settings": {
+            "button_label": "Get a Quote",
+            "button_link": "shopify://pages/contact",
+            "button_style_secondary": false,
+            "button_label_2": "",
+            "button_link_2": "",
+            "button_style_secondary_2": false
+          }
+        }
+      },
+      "block_order": [
+        "heading_intro",
+        "text_intro",
+        "button_intro"
+      ],
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "scheme-1",
+        "full_width": true,
+        "padding_top": 40,
+        "padding_bottom": 40
+      }
+    },
     "collage_j6dLkD": {
       "type": "collage",
       "blocks": {
@@ -201,7 +243,7 @@
         "text_TWP8ik": {
           "type": "text",
           "settings": {
-            "text": "<p>Stands can be configured to your preference.  Shelving can be built in the middle or on the end(s) of stand.  Each stand is made-to-order and can be fully customized.  Inquire for customization and pricing.</p><p></p><p>Pickup or local delivery in the Cleveland area.  Shipping not available.</p>"
+            "text": "<p>Every stand is built to order and fully configurable. Shelving can be positioned in the middle or on either end to fit your space. Add a custom logo, name, or design in single or multiple colors — great for personal use, gifts, or club/team branding.</p><p>Turnaround is approximately two weeks from order confirmation. Pickup is available in Cleveland. Local delivery is available in the Cleveland area and surrounding suburbs — contact us for delivery pricing based on your location. Shipping outside the area is not available.</p><p>Have something specific in mind? Use the button below to reach out and we'll work out the details together.</p>"
           }
         },
         "button_KzKNUh": {
@@ -233,6 +275,7 @@
     }
   },
   "order": [
+    "rich_text_intro",
     "collage_j6dLkD",
     "collage_QmNtA9",
     "collage_7xTLiq",

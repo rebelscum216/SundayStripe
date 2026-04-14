@@ -30,7 +30,7 @@
         "text": {
           "type": "text",
           "settings": {
-            "text": "<p>Sunday Stripe designs unique golf gloves and apparel.  We are not associated with any political party or candidate. </p>"
+            "text": "<p>Sunday Stripe started the way most good ideas do — out of a personal need. Andrew Smith, the brand's founder and designer, wanted a golf glove with a logo worth wearing. Something that actually looked good on the course and said something about the person wearing it. He couldn't find one, so he made one.</p><p>Based in Cleveland, Ohio, Sunday Stripe designs original golf gloves, graphic tees, and hoodies for golfers who take their game seriously but don't take themselves too seriously. Every design is created in Cleveland and made to reflect the personality of the people who play the game — not just the pros.</p><p>Our golf gloves are produced in small batches and ship ready to go. Apparel is made to order, so what you're getting is made specifically for you. We also build custom golf bag stands for local customers in the Cleveland area — handcrafted, painted to order, and available for pickup or local delivery.</p><p>Sunday Stripe is an independent brand. We are not affiliated with any tour, governing body, or outside organization. Just golf, good design, and Cleveland.</p>"
           }
         },
         "button": {
@@ -67,7 +67,7 @@
           "type": "column",
           "settings": {
             "title": "Andrew Smith",
-            "text": "<p>Founder and designer.</p>",
+            "text": "<p>Founder and designer. Cleveland-based golfer, original thinker, and the reason Sunday Stripe exists.</p>",
             "link_label": "",
             "link": ""
           }

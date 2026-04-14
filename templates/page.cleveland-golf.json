@@ -1,0 +1,72 @@
+{
+  "sections": {
+    "rich_text_hero": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_hero": {
+          "type": "heading",
+          "settings": {
+            "heading": "Cleveland Golf Gear & Apparel",
+            "heading_size": "h1"
+          }
+        },
+        "text_hero": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Sunday Stripe is a Cleveland-based golf brand making original gear for golfers who want more than what the big brands are selling. Designed in Cleveland, shipped nationwide, and built locally for those who want something made close to home.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "heading_hero",
+        "text_hero"
+      ],
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "scheme-1",
+        "full_width": true,
+        "padding_top": 52,
+        "padding_bottom": 20
+      }
+    },
+    "rich_text_body": {
+      "type": "rich-text",
+      "blocks": {
+        "text_body": {
+          "type": "text",
+          "settings": {
+            "text": "<h2>A Cleveland Golf Brand</h2><p>Sunday Stripe started in Cleveland because that's where the founder, Andrew Smith, plays golf. The brand grew out of a simple idea: make gear that actually reflects the personality of the people who play the game — not just the pros on tour. Every design comes out of Cleveland, and the brand has stayed rooted here since the beginning.</p><h2>Golf Gear Designed in Cleveland</h2><p>The gloves, graphic tees, and hoodies in the Sunday Stripe lineup are all designed in Cleveland and built for real golfers. The gloves are made in small batches and ship fast. The apparel is made to order so you're not getting leftover inventory — you're getting something made specifically for you.</p><h2>Custom Golf Bag Stands — Cleveland Area</h2><p>For Cleveland-area golfers, Sunday Stripe also builds custom golf bag stands by hand. Each stand is made to order, sized for 1 to 3+ bags, and can be finished with a custom logo or name. This is a genuinely local product — available for pickup in Cleveland or delivery to surrounding suburbs. It's become a go-to gift for serious golfers in the area who want something you can't buy at a chain store.</p><h2>Cleveland Golf Gifts</h2><p>If you're shopping for a Cleveland golfer, the Sunday Stripe lineup covers the full range. Gloves and apparel ship nationwide and arrive fast. The custom golf stand is the local option — a one-of-a-kind piece that takes about two weeks to build and is available for local pickup or delivery. Either way, it's gear that comes from the same place your golfer calls home.</p>"
+          }
+        },
+        "button_shop": {
+          "type": "button",
+          "settings": {
+            "button_label": "Shop Cleveland Golf Gear",
+            "button_link": "shopify://collections/all",
+            "button_style_secondary": false,
+            "button_label_2": "Custom Golf Stands",
+            "button_link_2": "shopify://pages/golf-stands",
+            "button_style_secondary_2": true
+          }
+        }
+      },
+      "block_order": [
+        "text_body",
+        "button_shop"
+      ],
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "left",
+        "color_scheme": "scheme-1",
+        "full_width": false,
+        "padding_top": 20,
+        "padding_bottom": 60
+      }
+    }
+  },
+  "order": [
+    "rich_text_hero",
+    "rich_text_body"
+  ]
+}

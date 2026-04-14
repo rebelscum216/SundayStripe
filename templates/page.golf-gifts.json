@@ -1,0 +1,72 @@
+{
+  "sections": {
+    "rich_text_hero": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_hero": {
+          "type": "heading",
+          "settings": {
+            "heading": "Golf Gift Ideas for Him",
+            "heading_size": "h1"
+          }
+        },
+        "text_hero": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Finding a good golf gift is harder than it looks. Most options are either too generic, too expensive, or something the golfer already has. This guide covers the gift categories that actually land — from gear he'll use every round to custom pieces he won't find anywhere else.</p>"
+          }
+        }
+      },
+      "block_order": [
+        "heading_hero",
+        "text_hero"
+      ],
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "scheme-1",
+        "full_width": true,
+        "padding_top": 52,
+        "padding_bottom": 20
+      }
+    },
+    "rich_text_body": {
+      "type": "rich-text",
+      "blocks": {
+        "text_body": {
+          "type": "text",
+          "settings": {
+            "text": "<h2>Golf Gloves</h2><p>A golf glove is one of the most personal pieces of gear a golfer owns — and most of them look exactly the same. That's what makes a bold, well-designed glove such a strong gift. Sunday Stripe golf gloves are made with real grip and real personality, designed in Cleveland for golfers who want something worth wearing. They ship in 1–2 days and are also available on Amazon, making them one of the easiest same-week gifts on this list.</p><h2>Golf Graphic Tees</h2><p>A good golf tee is one he'll actually wear — on the course, at the turn, and off the course too. Sunday Stripe graphic tees are original designs made to order. They're not mass-produced catalog shirts. If you want something that reflects an actual personality rather than a golf channel logo, start here.</p><h2>Golf Hoodies</h2><p>For the golfer who plays early mornings, late fall rounds, or just likes a comfortable layer, a golf hoodie is always a solid gift. Sunday Stripe hoodies are made to order with original graphics — not the kind you'll find at a big-box sporting goods store.</p><h2>Custom Golf Bag Stand</h2><p>For the golfer who takes the garage or home setup seriously, a custom golf bag stand is a gift that genuinely stands out. Sunday Stripe builds handcrafted stands in Cleveland, sized for 1, 2, or 3+ bags, with optional custom logos or names painted on. It's a functional piece that looks like it belongs in a real golf shop. Available for pickup or local delivery in the Cleveland area — contact us to order.</p><h2>Gift Tips</h2><p>If you're not sure on sizing for apparel, gloves are the safer bet — one size fits most and they're always useful. If you're buying for a Cleveland-area golfer, the custom stand is a genuinely memorable gift that none of his other golf buddies will have. And if you need something fast, the gloves ship same or next day.</p>"
+          }
+        },
+        "button_shop": {
+          "type": "button",
+          "settings": {
+            "button_label": "Shop All Golf Gifts",
+            "button_link": "shopify://collections/all",
+            "button_style_secondary": false,
+            "button_label_2": "Custom Golf Stands",
+            "button_link_2": "shopify://pages/golf-stands",
+            "button_style_secondary_2": true
+          }
+        }
+      },
+      "block_order": [
+        "text_body",
+        "button_shop"
+      ],
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "left",
+        "color_scheme": "scheme-1",
+        "full_width": false,
+        "padding_top": 20,
+        "padding_bottom": 60
+      }
+    }
+  },
+  "order": [
+    "rich_text_hero",
+    "rich_text_body"
+  ]
+}
