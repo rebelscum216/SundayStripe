@@ -1,0 +1,167 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-page",
+      "disabled": true,
+      "settings": {
+        "padding_top": 28,
+        "padding_bottom": 28
+      }
+    },
+    "image_with_text_K9H9rg": {
+      "type": "image-with-text",
+      "blocks": {
+        "heading_YnwKRz": {
+          "type": "heading",
+          "settings": {
+            "heading": "Let Freedom Swing",
+            "heading_size": "h1"
+          }
+        },
+        "text_Kj9nCr": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Tremendous grip.  Beautiful design.  Some say it's the best golf glove ever made. </p>",
+            "text_style": "body"
+          }
+        },
+        "button_WTwVJf": {
+          "type": "button",
+          "settings": {
+            "button_label": "Buy Trump Glove",
+            "button_link": "shopify://products/sunday-stripe",
+            "button_style_secondary": false
+          }
+        }
+      },
+      "block_order": [
+        "heading_YnwKRz",
+        "text_Kj9nCr",
+        "button_WTwVJf"
+      ],
+      "disabled": true,
+      "settings": {
+        "image": "shopify://shop_images/NEW_WHITE_BG_NO_LOGO.png",
+        "height": "adapt",
+        "desktop_image_width": "medium",
+        "layout": "image_first",
+        "desktop_content_position": "top",
+        "desktop_content_alignment": "left",
+        "content_layout": "no-overlap",
+        "section_color_scheme": "",
+        "color_scheme": "",
+        "image_behavior": "none",
+        "mobile_content_alignment": "left",
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "rich_text_VUzHpF": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_nPnF6b": {
+          "type": "heading",
+          "settings": {
+            "heading": "Let Freedom Swing.",
+            "heading_size": "h1"
+          }
+        }
+      },
+      "block_order": [
+        "heading_nPnF6b"
+      ],
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "",
+        "full_width": true,
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    },
+    "featured_product_6tmL4z": {
+      "type": "featured-product",
+      "blocks": {
+        "text_UrH6zV": {
+          "type": "text",
+          "settings": {
+            "text": "{{ section.settings.product.vendor }}",
+            "text_style": "uppercase"
+          }
+        },
+        "title_gXrkf4": {
+          "type": "title",
+          "settings": {
+            "heading_size": "h2"
+          }
+        },
+        "price_A9GPfW": {
+          "type": "price",
+          "settings": {}
+        },
+        "variant_picker_pf3Wg7": {
+          "type": "variant_picker",
+          "settings": {
+            "picker_type": "button",
+            "swatch_shape": "circle"
+          }
+        },
+        "quantity_selector_HzmxpE": {
+          "type": "quantity_selector",
+          "settings": {}
+        },
+        "buy_buttons_DznVr7": {
+          "type": "buy_buttons",
+          "settings": {
+            "show_dynamic_checkout": true,
+            "show_gift_card_recipient": true
+          }
+        },
+        "share_XkKKzD": {
+          "type": "share",
+          "settings": {
+            "share_label": "Share"
+          }
+        }
+      },
+      "block_order": [
+        "text_UrH6zV",
+        "title_gXrkf4",
+        "price_A9GPfW",
+        "variant_picker_pf3Wg7",
+        "quantity_selector_HzmxpE",
+        "buy_buttons_DznVr7",
+        "share_XkKKzD"
+      ],
+      "settings": {
+        "product": "sunday-stripe",
+        "color_scheme": "",
+        "secondary_background": true,
+        "media_size": "medium",
+        "constrain_to_viewport": true,
+        "media_fit": "contain",
+        "media_position": "left",
+        "image_zoom": "lightbox",
+        "hide_variants": false,
+        "enable_video_looping": false,
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    }
+  },
+  "order": [
+    "main",
+    "image_with_text_K9H9rg",
+    "rich_text_VUzHpF",
+    "featured_product_6tmL4z"
+  ]
+}

@@ -1,0 +1,243 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "collage_j6dLkD": {
+      "type": "collage",
+      "blocks": {
+        "image_rcQj4a": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_5381.jpg"
+          }
+        },
+        "image_NWNNjF": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_5392.jpg"
+          }
+        },
+        "image_8J4gkg": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_7410.jpg"
+          }
+        }
+      },
+      "block_order": [
+        "image_rcQj4a",
+        "image_NWNNjF",
+        "image_8J4gkg"
+      ],
+      "name": "t:sections.collage.presets.name",
+      "settings": {
+        "heading": "Golf Stands",
+        "heading_size": "h1",
+        "desktop_layout": "left",
+        "mobile_layout": "column",
+        "card_styles": "product-card-wrapper",
+        "color_scheme": "",
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "collage_QmNtA9": {
+      "type": "collage",
+      "blocks": {
+        "image_7jkA69": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_6273.jpg"
+          }
+        },
+        "image_4K7yAU": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_5001.jpg"
+          }
+        },
+        "image_6Wnpbn": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_6675.jpg"
+          }
+        }
+      },
+      "block_order": [
+        "image_7jkA69",
+        "image_4K7yAU",
+        "image_6Wnpbn"
+      ],
+      "name": "t:sections.collage.presets.name",
+      "settings": {
+        "heading": "",
+        "heading_size": "h1",
+        "desktop_layout": "left",
+        "mobile_layout": "column",
+        "card_styles": "product-card-wrapper",
+        "color_scheme": "",
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "collage_7xTLiq": {
+      "type": "collage",
+      "blocks": {
+        "image_kikJ9b": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_5525.jpg"
+          }
+        },
+        "image_3jiCHa": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_5402.jpg"
+          }
+        },
+        "image_UgJgCm": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/IMG_5024.jpg"
+          }
+        }
+      },
+      "block_order": [
+        "image_kikJ9b",
+        "image_3jiCHa",
+        "image_UgJgCm"
+      ],
+      "name": "t:sections.collage.presets.name",
+      "settings": {
+        "heading": "",
+        "heading_size": "h1",
+        "desktop_layout": "left",
+        "mobile_layout": "column",
+        "card_styles": "product-card-wrapper",
+        "color_scheme": "",
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "main": {
+      "type": "main-page",
+      "disabled": true,
+      "settings": {
+        "padding_top": 28,
+        "padding_bottom": 28
+      }
+    },
+    "multicolumn_9gEPyz": {
+      "type": "multicolumn",
+      "blocks": {
+        "column_mTXRMr": {
+          "type": "column",
+          "settings": {
+            "title": "1-Bag Stand",
+            "text": "<ul><li>Base Price: $170</li><li>Stained Floor & Shelves: +$0</li><li>Turf Floor & Shelves: +$30</li><li>Single-Color Logo/Name: +$30</li><li>Multi-Color Logo/Name: +$50</li></ul>",
+            "link_label": "Order Now",
+            "link": "shopify://products/custom-golf-stand-deposit"
+          }
+        },
+        "column_Q8Jqhi": {
+          "type": "column",
+          "settings": {
+            "title": "2-Bag Stand",
+            "text": "<ul><li>Base Price: $200</li><li>Stained Floor & Shelves: +$0</li><li>Turf Floor & Shelves: +$40</li><li>Single-Color Logo/Name: +$30</li><li>Multi-Color Logo/Name: +$50</li><li>Second Set of Shelves: +$40</li></ul>",
+            "link_label": "Order Now",
+            "link": "shopify://products/custom-golf-stand-deposit"
+          }
+        },
+        "column_fnHYQX": {
+          "type": "column",
+          "settings": {
+            "title": "3+ Bag Stand",
+            "text": "<ul><li>Base Price: $230</li><li>Stained Floor & Shelves: +$0</li><li>Turf Floor & Shelves: +$50</li><li>Single-Color Logo/Name: +$30</li><li>Multi-Color Logo/Name: +$50</li><li>Second Set of Shelves: +$40</li></ul>",
+            "link_label": "Order Now",
+            "link": "shopify://products/custom-golf-stand-deposit"
+          }
+        }
+      },
+      "block_order": [
+        "column_mTXRMr",
+        "column_Q8Jqhi",
+        "column_fnHYQX"
+      ],
+      "name": "t:sections.multicolumn.presets.name",
+      "settings": {
+        "title": "Pricing",
+        "heading_size": "h1",
+        "image_width": "full",
+        "image_ratio": "adapt",
+        "columns_desktop": 3,
+        "column_alignment": "left",
+        "background_style": "primary",
+        "button_label": "",
+        "button_link": "",
+        "color_scheme": "",
+        "columns_mobile": "1",
+        "swipe_on_mobile": false,
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "rich_text_t8hzdE": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_pWTMMm": {
+          "type": "heading",
+          "settings": {
+            "heading": "Additional Info",
+            "heading_size": "h1"
+          }
+        },
+        "text_TWP8ik": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Stands can be configured to your preference.  Shelving can be built in the middle or on the end(s) of stand.  Each stand is made-to-order and can be fully customized.  Inquire for customization and pricing.</p><p></p><p>Pickup or local delivery in the Cleveland area.  Shipping not available.</p>"
+          }
+        },
+        "button_KzKNUh": {
+          "type": "button",
+          "settings": {
+            "button_label": "Inquire",
+            "button_link": "shopify://pages/contact",
+            "button_style_secondary": false,
+            "button_label_2": "",
+            "button_link_2": "",
+            "button_style_secondary_2": false
+          }
+        }
+      },
+      "block_order": [
+        "heading_pWTMMm",
+        "text_TWP8ik",
+        "button_KzKNUh"
+      ],
+      "name": "t:sections.rich-text.presets.name",
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "",
+        "full_width": true,
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    }
+  },
+  "order": [
+    "collage_j6dLkD",
+    "collage_QmNtA9",
+    "collage_7xTLiq",
+    "main",
+    "multicolumn_9gEPyz",
+    "rich_text_t8hzdE"
+  ]
+}

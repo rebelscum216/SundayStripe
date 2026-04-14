@@ -1,0 +1,71 @@
+{% doc %}
+  @prompt
+    white space between this section and the section above it
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-section-spacer-{{ ai_gen_id }} {
+    display: block;
+    width: 100%;
+    height: {{ block.settings.spacing_desktop }}px;
+  }
+
+  @media screen and (max-width: 749px) {
+    .ai-section-spacer-{{ ai_gen_id }} {
+      height: {{ block.settings.spacing_mobile }}px;
+    }
+  }
+{% endstyle %}
+
+<section-spacer-{{ ai_gen_id }}
+  class="ai-section-spacer-{{ ai_gen_id }}"
+  {{ block.shopify_attributes }}
+>
+</section-spacer-{{ ai_gen_id }}>
+
+<script>
+  (function() {
+    class SectionSpacer{{ ai_gen_id }} extends HTMLElement {
+      constructor() {
+        super();
+      }
+    }
+
+    customElements.define('section-spacer-{{ ai_gen_id }}', SectionSpacer{{ ai_gen_id }});
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Section spacer",
+  "tag": null,
+  "settings": [
+    {
+      "type": "range",
+      "id": "spacing_desktop",
+      "min": 0,
+      "max": 200,
+      "step": 4,
+      "unit": "px",
+      "label": "Desktop spacing",
+      "default": 52
+    },
+    {
+      "type": "range",
+      "id": "spacing_mobile",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Mobile spacing",
+      "default": 36
+    }
+  ],
+  "presets": [
+    {
+      "name": "Section spacer"
+    }
+  ]
+}
+{% endschema %}

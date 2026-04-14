@@ -1,0 +1,71 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-page",
+      "settings": {
+        "padding_top": 28,
+        "padding_bottom": 28
+      }
+    },
+    "image_with_text_K9H9rg": {
+      "type": "image-with-text",
+      "blocks": {
+        "heading_YnwKRz": {
+          "type": "heading",
+          "settings": {
+            "heading": "\"SEND IT\" Straight to the Hole",
+            "heading_size": "h1"
+          }
+        },
+        "text_Kj9nCr": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Whether you're driving for the fairway or putting for the win, this unique golf glove adds a touch of humor to your game.</p>",
+            "text_style": "body"
+          }
+        },
+        "button_WTwVJf": {
+          "type": "button",
+          "settings": {
+            "button_label": "Shop Funny Golf Gloves",
+            "button_link": "shopify://collections/golf-gloves",
+            "button_style_secondary": false
+          }
+        }
+      },
+      "block_order": [
+        "heading_YnwKRz",
+        "text_Kj9nCr",
+        "button_WTwVJf"
+      ],
+      "settings": {
+        "image": "shopify://shop_images/Red_Test_2.png",
+        "height": "adapt",
+        "desktop_image_width": "medium",
+        "layout": "image_first",
+        "desktop_content_position": "top",
+        "desktop_content_alignment": "left",
+        "content_layout": "no-overlap",
+        "section_color_scheme": "",
+        "color_scheme": "",
+        "image_behavior": "none",
+        "mobile_content_alignment": "left",
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    }
+  },
+  "order": [
+    "main",
+    "image_with_text_K9H9rg"
+  ]
+}

@@ -1,0 +1,94 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "main-page",
+      "settings": {
+        "padding_top": 28,
+        "padding_bottom": 28
+      }
+    },
+    "featured_product_CfcRP9": {
+      "type": "featured-product",
+      "blocks": {
+        "text_8bxRQz": {
+          "type": "text",
+          "settings": {
+            "text": "{{ section.settings.product.vendor }}",
+            "text_style": "uppercase"
+          }
+        },
+        "title_mBkymd": {
+          "type": "title",
+          "settings": {
+            "heading_size": "h1"
+          }
+        },
+        "price_DVdNPM": {
+          "type": "price",
+          "settings": {}
+        },
+        "variant_picker_jq3zq6": {
+          "type": "variant_picker",
+          "settings": {
+            "picker_type": "button",
+            "swatch_shape": "circle"
+          }
+        },
+        "quantity_selector_CNbXQQ": {
+          "type": "quantity_selector",
+          "settings": {}
+        },
+        "buy_buttons_cj6xmi": {
+          "type": "buy_buttons",
+          "settings": {
+            "show_dynamic_checkout": true,
+            "show_gift_card_recipient": true
+          }
+        },
+        "share_gLi36W": {
+          "type": "share",
+          "settings": {
+            "share_label": "Share"
+          }
+        }
+      },
+      "block_order": [
+        "text_8bxRQz",
+        "title_mBkymd",
+        "price_DVdNPM",
+        "variant_picker_jq3zq6",
+        "quantity_selector_CNbXQQ",
+        "buy_buttons_cj6xmi",
+        "share_gLi36W"
+      ],
+      "name": "t:sections.featured-product.presets.name",
+      "settings": {
+        "product": "send-it-golf-glove",
+        "color_scheme": "",
+        "secondary_background": false,
+        "media_size": "medium",
+        "constrain_to_viewport": true,
+        "media_fit": "contain",
+        "media_position": "left",
+        "image_zoom": "lightbox",
+        "hide_variants": false,
+        "enable_video_looping": false,
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    }
+  },
+  "order": [
+    "main",
+    "featured_product_CfcRP9"
+  ]
+}

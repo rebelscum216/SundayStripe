@@ -1,0 +1,143 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "image-with-text": {
+      "type": "image-with-text",
+      "blocks": {
+        "heading": {
+          "type": "heading",
+          "settings": {
+            "heading": "Skull & Tees Golf Gloves",
+            "heading_size": "h1"
+          }
+        },
+        "button": {
+          "type": "button",
+          "settings": {
+            "button_label": "ORDER",
+            "button_link": "shopify://products/sunday-stripe-pure-white-golf-glove",
+            "button_style_secondary": false
+          }
+        }
+      },
+      "block_order": [
+        "heading",
+        "button"
+      ],
+      "settings": {
+        "image": "shopify://shop_images/white_glove.png",
+        "height": "adapt",
+        "desktop_image_width": "medium",
+        "layout": "text_first",
+        "desktop_content_position": "middle",
+        "desktop_content_alignment": "left",
+        "content_layout": "no-overlap",
+        "section_color_scheme": "scheme-1",
+        "color_scheme": "scheme-1",
+        "image_behavior": "zoom-in",
+        "mobile_content_alignment": "left",
+        "padding_top": 40,
+        "padding_bottom": 0
+      }
+    },
+    "collage_fQjB3q": {
+      "type": "collage",
+      "blocks": {
+        "image_3J7UeB": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/unisex-hooded-long-sleeve-tee-white-back-69581c68c0c44.png"
+          }
+        },
+        "product_GfJyd4": {
+          "type": "product",
+          "settings": {
+            "product": "sunday-stripe-the-jjeff",
+            "second_image": false
+          }
+        },
+        "collection_GjJHP8": {
+          "type": "collection",
+          "settings": {
+            "collection": "hoodies-sweatshirts"
+          }
+        }
+      },
+      "block_order": [
+        "image_3J7UeB",
+        "product_GfJyd4",
+        "collection_GjJHP8"
+      ],
+      "name": "t:sections.collage.presets.name",
+      "settings": {
+        "heading": "Skull & Tees Hooded Shirt",
+        "heading_size": "h1",
+        "desktop_layout": "left",
+        "mobile_layout": "column",
+        "card_styles": "product-card-wrapper",
+        "color_scheme": "",
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "176738125542104a92": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_3a8b4ff_4tcVxH": {
+          "type": "ai_gen_block_3a8b4ff",
+          "settings": {
+            "spacing_desktop": 48,
+            "spacing_mobile": 36
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_3a8b4ff_4tcVxH"
+      ],
+      "settings": {}
+    },
+    "featured_collection": {
+      "type": "featured-collection",
+      "settings": {
+        "title": "New Releases",
+        "heading_size": "h1",
+        "description": "",
+        "show_description": false,
+        "description_style": "body",
+        "collection": "2026-releases",
+        "products_to_show": 7,
+        "columns_desktop": 2,
+        "full_width": false,
+        "show_view_all": true,
+        "view_all_style": "solid",
+        "enable_desktop_slider": true,
+        "color_scheme": "scheme-1",
+        "image_ratio": "adapt",
+        "image_shape": "default",
+        "show_secondary_image": true,
+        "show_vendor": false,
+        "show_rating": false,
+        "quick_add": "none",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "padding_top": 0,
+        "padding_bottom": 40
+      }
+    }
+  },
+  "order": [
+    "image-with-text",
+    "collage_fQjB3q",
+    "176738125542104a92",
+    "featured_collection"
+  ]
+}
