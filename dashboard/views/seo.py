@@ -1,0 +1,126 @@
+import streamlit as st
+import pandas as pd
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+GSC_VIEW_CACHE_VERSION = "gsc-v2-2026-04-28"
+
+
+@st.cache_data(ttl=3600)
+def _gsc_payload(days, cache_version):
+    from data.gsc import (
+        get_branded_split,
+        get_clicks_by_date,
+        get_low_ctr_pages,
+        get_pages,
+        get_queries,
+        get_quick_wins,
+        get_site_summary,
+    )
+
+    return {
+        "summary": get_site_summary(days),
+        "date_rows": get_clicks_by_date(days),
+        "pages": get_pages(days),
+        "queries": get_queries(days),
+        "quick_wins": get_quick_wins(days),
+        "low_ctr": get_low_ctr_pages(days),
+        "branded": get_branded_split(days),
+    }
+
+
+def render():
+    col_btn = st.columns([6, 1])[1]
+    with col_btn:
+        if st.button("Refresh", key="seo_refresh"):
+            st.cache_data.clear()
+            st.rerun()
+
+    days = st.radio("Date range", [30, 60, 90], horizontal=True, format_func=lambda x: f"{x} days", key="seo_days")
+
+    try:
+        payload = _gsc_payload(days, GSC_VIEW_CACHE_VERSION)
+    except Exception as e:
+        st.error(f"Could not load GSC data: {e}")
+        return
+
+    summary = payload["summary"]
+    date_rows = payload["date_rows"]
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Clicks", int(summary["clicks"]))
+    c2.metric("Impressions", int(summary["impressions"]))
+    c3.metric("CTR", f"{summary['avg_ctr']:.2f}%")
+    c4.metric("Avg position", summary["avg_position"])
+
+    if date_rows:
+        df_date = pd.DataFrame(date_rows).set_index("date")
+        st.line_chart(df_date[["clicks", "impressions"]])
+    else:
+        st.info("No date rows for this range. The account is connected, but Search Console returned an empty date series.")
+
+    st.divider()
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.subheader("Quick Wins (Position 5–20)")
+        wins = payload["quick_wins"]
+        if wins:
+            df = pd.DataFrame(wins)
+
+            def color_position(val):
+                if val <= 10:
+                    return "background-color: #d4edda"
+                elif val <= 15:
+                    return "background-color: #fff3cd"
+                return "background-color: #f8d7da"
+
+            styled = df.style.map(color_position, subset=["position"])
+            st.dataframe(styled, width="stretch", hide_index=True)
+        else:
+            st.info("No quick wins found.")
+
+    with col_right:
+        st.subheader("Low CTR Pages (500+ impressions, <3%)")
+        low = payload["low_ctr"]
+        if low:
+            df = pd.DataFrame(low)
+            st.bar_chart(df.set_index("url")["ctr"].head(15))
+        else:
+            st.info("No low-CTR pages found.")
+
+    st.divider()
+    col_brand, col_queries = st.columns(2)
+
+    with col_brand:
+        st.subheader("Branded vs Non-Branded")
+        split = payload["branded"]
+        try:
+            import plotly.graph_objects as go
+            labels = ["Branded", "Non-Branded"]
+            values = [split["branded"]["clicks"], split["nonbranded"]["clicks"]]
+            fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.4)])
+            fig.update_layout(margin=dict(t=20, b=20, l=20, r=20), height=280)
+            st.plotly_chart(fig, width="stretch")
+        except ImportError:
+            b = split["branded"]
+            nb = split["nonbranded"]
+            st.metric("Branded clicks", b["clicks"])
+            st.metric("Non-branded clicks", nb["clicks"])
+
+    with col_queries:
+        st.subheader("Top Queries")
+        queries = payload["queries"]
+        if queries:
+            df = pd.DataFrame(queries[:20])
+            st.dataframe(df, width="stretch", hide_index=True)
+        else:
+            st.info("No query data.")
+
+    st.divider()
+    st.subheader("All Pages")
+    pages = payload["pages"]
+    if pages:
+        df = pd.DataFrame(pages)
+        st.dataframe(df, width="stretch", hide_index=True)

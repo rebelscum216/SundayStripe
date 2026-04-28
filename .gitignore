@@ -1,0 +1,9 @@
+.env
+*.json.bak
+.claude/
+scripts/.shopify/
+scripts/__pycache__/
+.streamlit/secrets.toml
+dashboard/cache/
+__pycache__/
+*.pyc
