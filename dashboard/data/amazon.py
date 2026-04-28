@@ -1,4 +1,5 @@
 import time, json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import requests
 from requests_aws4auth import AWS4Auth
@@ -397,3 +398,86 @@ def get_inbound_shipments(token: str, force_refresh=False, page_size=20) -> list
     cache["inbound_shipments"] = results
     _save_cache(cache)
     return results
+
+
+def _parse_dt(value: str):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def get_orders_with_items(token: str, start_date: str, end_date: str, force_refresh=False) -> list:
+    cache = _load_cache()
+    key = f"orders_{start_date}_{end_date}"
+    if not force_refresh and _cache_valid(cache) and key in cache:
+        return cache[key]
+
+    start = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
+    end = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+    now_limit = datetime.now(timezone.utc) - timedelta(minutes=5)
+    if end > now_limit:
+        end = now_limit
+
+    orders = []
+    params = {
+        "MarketplaceIds": MARKETPLACE_ID,
+        "CreatedAfter": start.isoformat().replace("+00:00", "Z"),
+        "CreatedBefore": end.isoformat().replace("+00:00", "Z"),
+        "MaxResultsPerPage": 100,
+    }
+
+    while True:
+        r = _sp("GET", "/orders/v0/orders", token, params=params)
+        if r.status_code != 200:
+            raise RuntimeError(f"Orders API error {r.status_code}: {r.text[:1000]}")
+        payload = r.json().get("payload", {})
+        orders.extend(payload.get("Orders", []))
+        next_token = payload.get("NextToken")
+        if not next_token:
+            break
+        params = {"NextToken": next_token}
+        time.sleep(0.6)
+
+    rows = []
+    for order in orders:
+        order_id = order.get("AmazonOrderId", "")
+        if not order_id:
+            continue
+        r = _sp("GET", f"/orders/v0/orders/{order_id}/orderItems", token)
+        if r.status_code != 200:
+            rows.append(
+                {
+                    "amazon_order_id": order_id,
+                    "purchase_date": order.get("PurchaseDate", ""),
+                    "order_status": order.get("OrderStatus", ""),
+                    "seller_sku": "",
+                    "asin": "",
+                    "title": "Order item fetch failed",
+                    "quantity_ordered": 0,
+                    "quantity_shipped": 0,
+                    "item_price": 0.0,
+                }
+            )
+            continue
+        for item in r.json().get("payload", {}).get("OrderItems", []):
+            rows.append(
+                {
+                    "amazon_order_id": order_id,
+                    "purchase_date": order.get("PurchaseDate", ""),
+                    "order_status": order.get("OrderStatus", ""),
+                    "seller_sku": item.get("SellerSKU", ""),
+                    "asin": item.get("ASIN", ""),
+                    "title": item.get("Title", ""),
+                    "quantity_ordered": item.get("QuantityOrdered", 0) or 0,
+                    "quantity_shipped": item.get("QuantityShipped", 0) or 0,
+                    "item_price": float(item.get("ItemPrice", {}).get("Amount", 0) or 0),
+                }
+            )
+        time.sleep(0.4)
+
+    cache[key] = rows
+    _save_cache(cache)
+    return rows

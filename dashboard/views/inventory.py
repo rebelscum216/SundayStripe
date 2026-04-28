@@ -72,6 +72,56 @@ def render():
         st.warning(f"{unfulfillable} units are unfulfillable.")
 
     st.divider()
+    st.subheader("Ask Amazon Inventory")
+    st.caption("Ask about sales, top products, inbound shipments, current FBA inventory, and restock candidates. The AI creates a safe query plan; the app executes the Amazon API calls.")
+
+    default_question = "What was my top selling product last month?"
+    question = st.text_input(
+        "Inventory question",
+        value=st.session_state.get("inventory_ai_question", default_question),
+        key="inventory_ai_question",
+    )
+    if st.button("Ask", key="inventory_ai_ask"):
+        if not question.strip():
+            st.warning("Type a question first.")
+        else:
+            try:
+                with st.spinner("Planning query with OpenAI and checking Amazon orders..."):
+                    from data.amazon_ai import execute_inventory_query
+
+                    ai_result = execute_inventory_query(question, token, inventory, _shipments(token))
+                st.session_state["inventory_ai_result"] = ai_result
+            except Exception as e:
+                st.error(f"Could not answer inventory question: {e}")
+
+    ai_result = st.session_state.get("inventory_ai_result")
+    if ai_result:
+        st.success(ai_result["answer"])
+        metric_items = list(ai_result.get("metrics", {}).items())[:5]
+        if metric_items:
+            cols = st.columns(len(metric_items))
+            for col, (label, value) in zip(cols, metric_items):
+                col.metric(label, value)
+
+        with st.expander("Query plan", expanded=False):
+            st.json(ai_result["plan"])
+
+        tables = ai_result.get("tables", [])
+        if tables:
+            for table in tables:
+                rows = table.get("rows", [])
+                if not rows:
+                    continue
+                st.subheader(table.get("title", "Results"))
+                preview, remaining = split_preview(rows, 8)
+                st.dataframe(pd.DataFrame(preview), width="stretch", hide_index=True)
+                if remaining:
+                    with more_expander(f"Expand to view more {table.get('title', 'results').lower()}", len(remaining)):
+                        st.dataframe(pd.DataFrame(remaining), width="stretch", hide_index=True)
+        else:
+            st.info("No matching Amazon rows found for that question.")
+
+    st.divider()
     st.subheader("Inventory Detail")
 
     rows = []

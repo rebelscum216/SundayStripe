@@ -24,9 +24,22 @@
       {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
     </title>
 
-    {% if page_description %}
-      <meta name="description" content="{{ page_description | escape }}">
-    {% endif %}
+    {%- liquid
+      if page_description != blank
+        assign meta_description = page_description
+      elsif request.page_type == 'product' and product.description != blank
+        assign meta_description = product.description | strip_html | truncate: 155
+      elsif request.page_type == 'collection' and collection.description != blank
+        assign meta_description = collection.description | strip_html | truncate: 155
+      elsif request.page_type == 'article' and article.excerpt_or_content != blank
+        assign meta_description = article.excerpt_or_content | strip_html | truncate: 155
+      elsif shop.description != blank
+        assign meta_description = shop.description
+      endif
+    -%}
+    {%- if meta_description != blank -%}
+      <meta name="description" content="{{ meta_description | escape }}">
+    {%- endif -%}
 
     {% render 'meta-tags' %}
 

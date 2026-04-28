@@ -20,7 +20,7 @@ with open(ENV_FILE) as f:
             _env[k.strip()] = v.strip()
 
 TOKEN_FILE = os.path.expanduser("~/.config/gsc/token.json")
-SITE = _env.get("GSC_SITE", "sc-domain:sundaystripe.com")
+SITE = _env.get("GSC_SITE", "sc-domain:example.com")
 SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
 
 
@@ -110,7 +110,7 @@ def _bucket(data: dict, days: int) -> dict:
 def _rows_to_pages(rows):
     results = []
     for row in rows:
-        url = row["keys"][0].replace("https://sundaystripe.com", "")
+        url = row["keys"][0].replace("https://example.com", "")
         results.append(
             {
                 "url": url,
@@ -179,7 +179,7 @@ def get_branded_split(days=90, force_refresh=False) -> dict:
     nonbranded = {"clicks": 0, "impressions": 0}
     for q in queries:
         term = q["query"].lower()
-        target = branded if "sunday stripe" in term or "sundaystripe" in term else nonbranded
+        target = branded if "example brand" in term or "examplebrand" in term else nonbranded
         target["clicks"] += q["clicks"]
         target["impressions"] += q["impressions"]
     return {"branded": branded, "nonbranded": nonbranded}
@@ -190,7 +190,7 @@ def get_page_query_map(days=90, force_refresh=False) -> list:
     rows = _bucket(data, days).get("by_page_query", [])
     results = []
     for row in rows:
-        url = row["keys"][0].replace("https://sundaystripe.com", "")
+        url = row["keys"][0].replace("https://example.com", "")
         results.append(
             {
                 "url": url,

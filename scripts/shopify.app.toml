@@ -1,0 +1,19 @@
+name = "SundayStripeApp"
+client_id = "your-shopify-app-client-id"
+application_url = "https://example.com"
+embedded = false
+
+[access_scopes]
+scopes = "read_products,write_products,read_content,write_content,read_orders"
+
+[auth]
+redirect_urls = [
+  "http://localhost:3000/auth/callback"
+]
+
+[build]
+dev_command = "node server.js"
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2026-04"

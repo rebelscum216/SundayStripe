@@ -1,11 +1,11 @@
-# SundayStripe — Shopify Theme
+# Example Golf Brand — Shopify Theme
 
-Cleveland-based golf brand selling gloves, graphic apparel, and custom golf bag stands.
+A sample Shopify theme for a golf apparel and lifestyle storefront.
 
-**Live store:** [sundaystripe.com](https://sundaystripe.com)  
-**Shopify store handle:** `4bddb6-b0.myshopify.com`  
+**Live store:** [example.com](https://example.com)  
+**Shopify store handle:** `your-store.myshopify.com`  
 **Active theme:** Ride  
-**GitHub:** [rebelscum216/SundayStripe](https://github.com/rebelscum216/SundayStripe)
+**GitHub:** [owner/repo](https://github.com/owner/repo)
 
 ---
 
@@ -17,19 +17,19 @@ Cleveland-based golf brand selling gloves, graphic apparel, and custom golf bag 
 
 ### Pull latest theme from store
 ```
-shopify theme pull --store=4bddb6-b0.myshopify.com
+shopify theme pull --store=your-store.myshopify.com
 ```
 Select **Ride** (Live theme).
 
 ### Push changes to store
 ```
-shopify theme push --store=4bddb6-b0.myshopify.com
+shopify theme push --store=your-store.myshopify.com
 ```
 Select **Ride** (Live theme).
 
 ### Preview without pushing live
 ```
-shopify theme dev --store=4bddb6-b0.myshopify.com
+shopify theme dev --store=your-store.myshopify.com
 ```
 
 ---
@@ -53,10 +53,7 @@ shopify theme dev --store=4bddb6-b0.myshopify.com
 | `templates/index.json` | Homepage |
 | `templates/page.about.json` | About page |
 | `templates/page.contact.json` | Contact page |
-| `templates/page.golf-stands.json` | Golf Stands page |
-| `templates/page.golf-gifts.json` | Golf Gift Ideas (evergreen SEO) |
-| `templates/page.golf-gloves-guide.json` | Golf Gloves Guide (evergreen SEO) |
-| `templates/page.cleveland-golf.json` | Cleveland Golf Gear (evergreen SEO) |
+| `templates/page.{slug}.json` | Custom page (add as needed) |
 
 ---
 
@@ -71,11 +68,10 @@ shopify theme dev --store=4bddb6-b0.myshopify.com
 
 ---
 
-## Important Admin-Side Tasks (not in theme files)
+## Admin-Side Notes
 
-These need to be managed directly in [Shopify Admin](https://admin.shopify.com):
+Some content is managed in Shopify Admin and does not live in these theme files:
 
 - **Homepage SEO** — Online Store → Preferences → Title & meta description
 - **Collection descriptions** — Products → Collections → [each collection] → Description
-- **Evergreen page creation** — Online Store → Pages → Add page (use templates above)
-- **Trump glove page** — Delete it under Online Store → Pages
+- **Evergreen pages** — Online Store → Pages → Add page (assign templates from `templates/` above)
