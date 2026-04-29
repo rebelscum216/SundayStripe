@@ -1,10 +1,10 @@
-name = "SundayStripeApp"
+name = "ShopifySyncApp"
 client_id = "your-shopify-app-client-id"
 application_url = "https://example.com"
 embedded = false
 
 [access_scopes]
-scopes = "read_products,write_products,read_content,write_content,read_orders"
+scopes = "read_products,write_products,read_content,write_content,read_orders,read_inventory,write_inventory"
 
 [auth]
 redirect_urls = [

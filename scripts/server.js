@@ -15,7 +15,7 @@ if (!API_KEY || !API_SECRET || !SHOP) {
 const PORT = process.env.PORT || 3000
 const HOST = process.env.HOST || `http://localhost:${PORT}`
 const TOKEN_PATH = path.join(os.homedir(), '.config', 'shopify', 'token.json')
-const SCOPES = 'read_products,write_products,read_content,write_content,read_orders'
+const SCOPES = 'read_products,write_products,read_content,write_content,read_orders,read_inventory,write_inventory'
 
 const server = http.createServer((req, res) => {
   const parsed = url.parse(req.url, true)

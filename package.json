@@ -1,0 +1,14 @@
+{
+  "name": "sunday-stripe",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --filter @sunday-stripe/db build && pnpm --parallel --filter @sunday-stripe/api --filter @sunday-stripe/web dev",
+    "build": "pnpm -r --filter @sunday-stripe/db --filter @sunday-stripe/api --filter @sunday-stripe/web build",
+    "migrate": "pnpm --filter @sunday-stripe/db migrate"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
