@@ -151,6 +151,31 @@ def inject_css():
           overflow: hidden;
         }
 
+        /* main-page radio controls */
+        div[data-testid="stAppViewContainer"] [data-testid="stRadio"] > label,
+        div[data-testid="stAppViewContainer"] [data-testid="stRadio"] > label *,
+        div[data-testid="stAppViewContainer"] [data-testid="stRadio"] [role="radiogroup"] label,
+        div[data-testid="stAppViewContainer"] [data-testid="stRadio"] [role="radiogroup"] label *,
+        div[data-testid="stAppViewContainer"] [data-testid="stRadio"] [role="radiogroup"] p,
+        div[data-testid="stAppViewContainer"] [data-testid="stRadio"] [role="radiogroup"] span,
+        section.main [data-testid="stRadio"] label,
+        section.main [data-testid="stRadio"] label *,
+        section.main [data-testid="stRadio"] p,
+        div[data-testid="stAppViewContainer"] > .main [data-testid="stRadio"] label,
+        div[data-testid="stAppViewContainer"] > .main [data-testid="stRadio"] label *,
+        div[data-testid="stAppViewContainer"] > .main [data-testid="stRadio"] p {
+          color: #171923 !important;
+        }
+        div[data-testid="stSidebar"] [data-testid="stRadio"] label,
+        div[data-testid="stSidebar"] [data-testid="stRadio"] label *,
+        div[data-testid="stSidebar"] [data-testid="stRadio"] p {
+          color: #f8fafc !important;
+        }
+        div[data-testid="stAppViewContainer"] > .main [data-testid="stRadio"] [role="radiogroup"] label p {
+          color: #374151 !important;
+          font-weight: 700 !important;
+        }
+
         .ss-brand {
           display: flex;
           align-items: center;
