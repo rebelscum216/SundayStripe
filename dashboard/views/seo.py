@@ -63,8 +63,10 @@ def render():
         fig.update_layout(
             height=280, margin=dict(t=10, b=10, l=0, r=0),
             legend=dict(orientation="h", yanchor="bottom", y=1.02),
-            yaxis=dict(title="Clicks"),
-            yaxis2=dict(title="Impressions", overlaying="y", side="right"),
+            font=dict(color="#171923"),
+            yaxis=dict(title="Clicks", color="#374151", gridcolor="#e6e8ef", zerolinecolor="#d9dde7"),
+            yaxis2=dict(title="Impressions", overlaying="y", side="right", color="#374151", gridcolor="#eef1f6"),
+            xaxis=dict(color="#374151", gridcolor="#eef1f6"),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -100,14 +102,25 @@ def render():
             import plotly.express as px
 
             df_ctr = df[["url", "ctr"]].head(15)
-            fig = px.bar(df_ctr, x="ctr", y="url", orientation="h", labels={"ctr": "CTR", "url": "URL"})
-            fig.update_traces(marker_color="#f45b52")
+            chart_height = min(520, max(240, 46 * len(df_ctr) + 90))
+            fig = px.bar(
+                df_ctr,
+                x="ctr",
+                y="url",
+                orientation="h",
+                text=df_ctr["ctr"].map(lambda value: f"{value:.2f}%"),
+                labels={"ctr": "CTR", "url": "URL"},
+            )
+            fig.update_traces(marker_color="#f45b52", opacity=0.82, width=0.42, textposition="outside", cliponaxis=False)
             fig.update_layout(
-                height=360,
-                margin=dict(t=10, b=10, l=0, r=0),
+                height=chart_height,
+                margin=dict(t=10, b=40, l=180, r=70),
+                bargap=0.55,
+                font=dict(color="#171923"),
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
-                yaxis=dict(autorange="reversed"),
+                xaxis=dict(title="CTR", color="#374151", gridcolor="#e6e8ef", zerolinecolor="#d9dde7"),
+                yaxis=dict(title="", autorange="reversed", color="#374151"),
             )
             st.plotly_chart(fig, use_container_width=True)
         else:

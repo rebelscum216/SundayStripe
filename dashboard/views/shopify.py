@@ -74,14 +74,25 @@ def render():
             df_rev = pd.DataFrame(rev[:15])
             import plotly.express as px
 
-            fig = px.bar(df_rev, x="revenue", y="title", orientation="h", labels={"revenue": "Revenue", "title": "Product"})
-            fig.update_traces(marker_color="#f45b52")
+            chart_height = min(520, max(240, 54 * len(df_rev) + 90))
+            fig = px.bar(
+                df_rev,
+                x="revenue",
+                y="title",
+                orientation="h",
+                text=df_rev["revenue"].map(lambda value: f"${value:,.2f}"),
+                labels={"revenue": "Revenue", "title": "Product"},
+            )
+            fig.update_traces(marker_color="#f45b52", opacity=0.82, width=0.42, textposition="outside", cliponaxis=False)
             fig.update_layout(
-                height=420,
-                margin=dict(t=10, b=10, l=0, r=0),
+                height=chart_height,
+                margin=dict(t=10, b=40, l=220, r=90),
+                bargap=0.55,
+                font=dict(color="#171923"),
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
-                yaxis=dict(autorange="reversed"),
+                xaxis=dict(title="Revenue", color="#374151", gridcolor="#e6e8ef", zerolinecolor="#d9dde7"),
+                yaxis=dict(title="", autorange="reversed", color="#374151"),
             )
             st.plotly_chart(fig, use_container_width=True)
             df_rev["revenue"] = df_rev["revenue"].apply(lambda x: f"${x:,.2f}")
