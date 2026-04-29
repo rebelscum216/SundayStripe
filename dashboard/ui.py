@@ -166,14 +166,20 @@ def inject_css():
         div[data-testid="stAppViewContainer"] > .main [data-testid="stRadio"] p {
           color: #171923 !important;
         }
-        div[data-testid="stSidebar"] [data-testid="stRadio"] label,
-        div[data-testid="stSidebar"] [data-testid="stRadio"] label *,
-        div[data-testid="stSidebar"] [data-testid="stRadio"] p {
-          color: #f8fafc !important;
-        }
         div[data-testid="stAppViewContainer"] > .main [data-testid="stRadio"] [role="radiogroup"] label p {
           color: #374151 !important;
           font-weight: 700 !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stRadio"] label,
+        [data-testid="stSidebar"] [data-testid="stRadio"] label *,
+        [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] label,
+        [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] label *,
+        [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] p,
+        [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] span,
+        [data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"],
+        [data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"] * {
+          color: #f8fafc !important;
+          -webkit-text-fill-color: #f8fafc !important;
         }
 
         .ss-brand {
