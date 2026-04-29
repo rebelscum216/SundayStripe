@@ -139,6 +139,28 @@ def inject_css():
           border-color: var(--ss-brand);
           color: var(--ss-brand);
         }
+        [data-testid="stSidebar"] .stButton > button {
+          justify-content: flex-start;
+          background: rgba(255,255,255,.04) !important;
+          border: 1px solid rgba(255,255,255,.08) !important;
+          border-radius: 14px !important;
+          color: #f8fafc !important;
+          -webkit-text-fill-color: #f8fafc !important;
+          font-weight: 750 !important;
+          min-height: 48px;
+          margin: 4px 0;
+          padding: 8px 14px !important;
+        }
+        [data-testid="stSidebar"] .stButton > button *,
+        [data-testid="stSidebar"] .stButton > button p {
+          color: #f8fafc !important;
+          -webkit-text-fill-color: #f8fafc !important;
+        }
+        [data-testid="stSidebar"] .stButton > button:hover {
+          background: rgba(255,255,255,.10) !important;
+          color: #ffffff !important;
+          -webkit-text-fill-color: #ffffff !important;
+        }
 
         [data-testid="stAlert"] {
           border-radius: 18px;
@@ -632,14 +654,21 @@ def sidebar(selected=None):
             unsafe_allow_html=True,
         )
         page_names = list(PAGES.keys())
-        index = page_names.index(selected) if selected in page_names else 0
-        page = st.radio(
-            "Navigation",
-            page_names,
-            index=index,
-            format_func=lambda name: f"{PAGES[name]['icon']} {name}",
-            label_visibility="collapsed",
-        )
+        if "selected_page" not in st.session_state:
+            st.session_state["selected_page"] = selected if selected in page_names else page_names[0]
+        page = st.session_state["selected_page"]
+        if page not in page_names:
+            page = page_names[0]
+            st.session_state["selected_page"] = page
+
+        for page_name in page_names:
+            active = page_name == page
+            marker = "●" if active else "○"
+            label = f"{marker} {PAGES[page_name]['icon']} {page_name}"
+            if st.button(label, key=f"nav_{page_name}", use_container_width=True):
+                st.session_state["selected_page"] = page_name
+                st.rerun()
+
         st.markdown(
             """
             <div class="ss-side-card">
