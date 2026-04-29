@@ -72,7 +72,18 @@ def render():
         rev = _revenue(days)
         if rev:
             df_rev = pd.DataFrame(rev[:15])
-            st.bar_chart(df_rev.set_index("title")["revenue"])
+            import plotly.express as px
+
+            fig = px.bar(df_rev, x="revenue", y="title", orientation="h", labels={"revenue": "Revenue", "title": "Product"})
+            fig.update_traces(marker_color="#f45b52")
+            fig.update_layout(
+                height=420,
+                margin=dict(t=10, b=10, l=0, r=0),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                yaxis=dict(autorange="reversed"),
+            )
+            st.plotly_chart(fig, use_container_width=True)
             df_rev["revenue"] = df_rev["revenue"].apply(lambda x: f"${x:,.2f}")
             st.dataframe(df_rev[["title", "units_sold", "revenue"]], width="stretch", hide_index=True)
         else:

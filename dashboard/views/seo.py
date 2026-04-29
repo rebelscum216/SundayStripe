@@ -55,8 +55,19 @@ def render():
     c4.metric("Avg position", summary["avg_position"])
 
     if date_rows:
-        df_date = pd.DataFrame(date_rows).set_index("date")
-        st.line_chart(df_date[["clicks", "impressions"]])
+        import plotly.graph_objects as go
+        df_date = pd.DataFrame(date_rows)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df_date["date"], y=df_date["clicks"], name="Clicks", line=dict(color="#f45b52", width=2)))
+        fig.add_trace(go.Scatter(x=df_date["date"], y=df_date["impressions"], name="Impressions", line=dict(color="#818cf8", width=2), yaxis="y2"))
+        fig.update_layout(
+            height=280, margin=dict(t=10, b=10, l=0, r=0),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            yaxis=dict(title="Clicks"),
+            yaxis2=dict(title="Impressions", overlaying="y", side="right"),
+            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No date rows for this range. The account is connected, but Search Console returned an empty date series.")
 
@@ -86,7 +97,19 @@ def render():
         low = payload["low_ctr"]
         if low:
             df = pd.DataFrame(low)
-            st.bar_chart(df.set_index("url")["ctr"].head(15))
+            import plotly.express as px
+
+            df_ctr = df[["url", "ctr"]].head(15)
+            fig = px.bar(df_ctr, x="ctr", y="url", orientation="h", labels={"ctr": "CTR", "url": "URL"})
+            fig.update_traces(marker_color="#f45b52")
+            fig.update_layout(
+                height=360,
+                margin=dict(t=10, b=10, l=0, r=0),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                yaxis=dict(autorange="reversed"),
+            )
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No low-CTR pages found.")
 
@@ -102,7 +125,7 @@ def render():
             values = [split["branded"]["clicks"], split["nonbranded"]["clicks"]]
             fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.4)])
             fig.update_layout(margin=dict(t=20, b=20, l=20, r=20), height=280)
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, use_container_width=True)
         except ImportError:
             b = split["branded"]
             nb = split["nonbranded"]

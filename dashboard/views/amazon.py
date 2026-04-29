@@ -30,10 +30,10 @@ def _mkt_status(token):
 
 def _score_color(score):
     if score >= 80:
-        return "background-color: #d4edda"
+        return "background-color: #d4edda; color: #111827"
     elif score >= 60:
-        return "background-color: #fff3cd"
-    return "background-color: #f8d7da"
+        return "background-color: #fff3cd; color: #111827"
+    return "background-color: #f8d7da; color: #111827"
 
 
 def render():

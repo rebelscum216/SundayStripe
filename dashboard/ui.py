@@ -286,6 +286,23 @@ def inject_css():
           margin: 8px 0 5px;
           color: var(--ss-ink);
         }
+
+        /* segmented controls and tabs */
+        [data-testid="stSegmentedControl"] label {
+          color: #374151 !important;
+        }
+        [data-testid="stSegmentedControl"] label[data-checked="true"],
+        [data-testid="stSegmentedControl"] input:checked + label {
+          color: #111827 !important;
+        }
+        [data-baseweb="tab-list"] button,
+        [data-baseweb="tab-list"] button p {
+          color: #e5e7eb !important;
+        }
+        [data-baseweb="tab-list"] button[aria-selected="true"],
+        [data-baseweb="tab-list"] button[aria-selected="true"] p {
+          color: #111827 !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -572,7 +589,7 @@ def require_password() -> bool:
 def sidebar(selected=None):
     with st.sidebar:
         st.markdown(
-            """
+            f"""
             <div class="ss-brand">
               <div class="ss-logo">⛳</div>
               <div>

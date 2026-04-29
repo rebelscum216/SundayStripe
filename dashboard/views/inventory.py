@@ -25,7 +25,7 @@ def _inventory(token):
     return get_fba_inventory(token)
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=False)
 def _shipments(token):
     from data.amazon import get_inbound_shipments
 
