@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.insert(0, str(Path(__file__).parent))
 from data._config import cfg
@@ -299,6 +300,166 @@ def _secret(name: str, default: str = "") -> str:
     return os.environ.get(name) or value or default
 
 
+_PREVIEW_HTML = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    overflow: hidden;
+  }
+  .wrap { width: 100%; max-width: 480px; }
+  .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .10em;
+    text-transform: uppercase; color: #f45b52; margin-bottom: 8px;
+  }
+  .heading {
+    font-size: 22px; font-weight: 800; color: #f8fafc; margin-bottom: 22px;
+  }
+  /* metrics */
+  .metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
+  .metric {
+    background: #161b27; border: 1px solid #1f2937; border-radius: 12px;
+    padding: 14px; animation: fadeUp .5s ease both;
+  }
+  .metric:nth-child(2) { animation-delay:.1s; }
+  .metric:nth-child(3) { animation-delay:.2s; }
+  .m-label { font-size:10px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px; }
+  .m-value { font-size:20px; font-weight:800; color:#f8fafc; font-variant-numeric:tabular-nums; }
+  .m-delta { font-size:10px; color:#22c55e; font-weight:600; margin-top:3px; }
+  /* chart */
+  .chart-wrap {
+    background:#161b27; border:1px solid #1f2937; border-radius:12px;
+    padding:16px 18px 10px; margin-bottom:12px; animation:fadeUp .5s ease .3s both;
+  }
+  .chart-label { font-size:11px; color:#9ca3af; font-weight:600; margin-bottom:10px; }
+  .chart-path {
+    stroke-dasharray:700; stroke-dashoffset:700;
+    animation:drawLine 2s ease .5s forwards;
+  }
+  .chart-path-2 {
+    stroke-dasharray:700; stroke-dashoffset:700;
+    animation:drawLine 2s ease .8s forwards;
+  }
+  /* bars */
+  .bars {
+    background:#161b27; border:1px solid #1f2937; border-radius:12px;
+    padding:14px 18px; animation:fadeUp .5s ease .5s both;
+  }
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+  .bar-row:last-child { margin-bottom:0; }
+  .bar-name { font-size:10px; color:#9ca3af; font-weight:600; width:52px; flex-shrink:0; }
+  .bar-track { flex:1; height:7px; background:#1f2937; border-radius:99px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:99px; width:0; transition:width 1.4s cubic-bezier(.16,1,.3,1); }
+  .bar-val { font-size:10px; color:#6b7280; width:32px; text-align:right; flex-shrink:0; }
+  /* glow */
+  .glow {
+    position:fixed; top:-120px; right:-120px; width:360px; height:360px; border-radius:50%;
+    background:radial-gradient(circle,rgba(244,91,82,.15) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  @keyframes drawLine { to { stroke-dashoffset:0; } }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="wrap">
+  <div class="eyebrow">Live dashboard preview</div>
+  <div class="heading">Everything in one view.</div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="m-label">Revenue</div>
+      <div class="m-value" id="rev">$0</div>
+      <div class="m-delta">↑ 18% vs last mo.</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">GSC Clicks</div>
+      <div class="m-value" id="clicks">0</div>
+      <div class="m-delta">↑ 34% vs last mo.</div>
+    </div>
+    <div class="metric">
+      <div class="m-label">Amazon Orders</div>
+      <div class="m-value" id="orders">0</div>
+      <div class="m-delta">↑ 12% vs last mo.</div>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-label">GSC Clicks — last 90 days</div>
+    <svg viewBox="0 0 460 80" fill="none" style="width:100%;display:block;">
+      <defs>
+        <linearGradient id="gfill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f45b52" stop-opacity=".20"/>
+          <stop offset="100%" stop-color="#f45b52" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="M0,65 C28,60 56,54 90,46 S160,30 200,26 S270,14 320,18 S400,8 460,4 L460,80 L0,80 Z" fill="url(#gfill)"/>
+      <path class="chart-path"
+            d="M0,65 C28,60 56,54 90,46 S160,30 200,26 S270,14 320,18 S400,8 460,4"
+            stroke="#f45b52" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path class="chart-path-2"
+            d="M0,72 C28,70 56,68 90,64 S160,58 200,56 S270,50 320,48 S400,44 460,40"
+            stroke="#ffb454" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".5"/>
+    </svg>
+  </div>
+
+  <div class="bars">
+    <div class="bar-row">
+      <div class="bar-name">Shopify</div>
+      <div class="bar-track"><div class="bar-fill" id="b1" style="background:#f45b52"></div></div>
+      <div class="bar-val">$8.2k</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-name">Amazon</div>
+      <div class="bar-track"><div class="bar-fill" id="b2" style="background:#ffb454"></div></div>
+      <div class="bar-val">$4.6k</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-name">Organic</div>
+      <div class="bar-track"><div class="bar-fill" id="b3" style="background:#818cf8"></div></div>
+      <div class="bar-val">3.2k</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function countUp(id, target, prefix, dur) {
+  var el = document.getElementById(id), start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    var p = Math.min((ts - start) / dur, 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = prefix + Math.floor(ease * target).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+setTimeout(function() {
+  countUp('rev', 12840, '$', 1800);
+  countUp('clicks', 3241, '', 1800);
+  countUp('orders', 284, '', 1800);
+}, 400);
+setTimeout(function() {
+  [['b1',72],['b2',40],['b3',28]].forEach(function(b) {
+    var el = document.getElementById(b[0]);
+    if (el) el.style.width = b[1] + '%';
+  });
+}, 600);
+</script>
+</body>
+</html>"""
+
+
 def require_password() -> bool:
     password = _secret("DASHBOARD_PASSWORD")
     if not password:
@@ -310,367 +471,85 @@ def require_password() -> bool:
 
     store = _store_name()
 
-    st.markdown(
-        f"""
-        <style>
-        /* ── full-page login layout ── */
-        .stApp {{ background: #0d1117 !important; }}
-        .block-container {{ max-width: 100% !important; padding: 0 !important; }}
-        [data-testid="stAppViewContainer"] > .main > .block-container {{ padding: 0 !important; }}
+    st.markdown(f"""<style>
+    .stApp {{ background: #0d1117 !important; }}
+    [data-testid="stHeader"], footer, [data-testid="stToolbar"] {{ display: none !important; }}
+    .block-container {{ max-width: 100% !important; padding: 0 !important; }}
+    /* stretch columns to full viewport height */
+    [data-testid="stHorizontalBlock"] {{
+        gap: 0 !important;
+        min-height: 100vh;
+        align-items: stretch !important;
+    }}
+    /* left column — white panel */
+    [data-testid="stHorizontalBlock"] > div:first-child {{
+        background: #ffffff !important;
+        padding: 0 48px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+    }}
+    /* right column — keep dark, no padding so iframe fills it */
+    [data-testid="stHorizontalBlock"] > div:last-child {{
+        background: #0d1117 !important;
+        padding: 0 !important;
+    }}
+    /* form widget styling scoped to the login page */
+    [data-testid="stHorizontalBlock"] > div:first-child .stTextInput input {{
+        border-radius: 10px !important;
+        border: 1.5px solid #e5e7eb !important;
+        padding: 10px 13px !important;
+        font-size: 14px !important;
+        background: #f9fafb !important;
+        color: #111827 !important;
+    }}
+    [data-testid="stHorizontalBlock"] > div:first-child .stTextInput input:focus {{
+        border-color: #f45b52 !important;
+        box-shadow: 0 0 0 3px rgba(244,91,82,.12) !important;
+        background: #fff !important;
+    }}
+    [data-testid="stHorizontalBlock"] > div:first-child .stButton > button {{
+        width: 100% !important;
+        background: #f45b52 !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        padding: 11px !important;
+        margin-top: 4px !important;
+    }}
+    [data-testid="stHorizontalBlock"] > div:first-child .stButton > button:hover {{
+        background: #d94840 !important;
+    }}
+    [data-testid="stHorizontalBlock"] > div:first-child .stTextInput label {{
+        display: none !important;
+    }}
+    /* remove iframe border */
+    [data-testid="stHorizontalBlock"] > div:last-child iframe {{
+        border: none !important;
+        display: block !important;
+    }}
+    </style>""", unsafe_allow_html=True)
 
-        /* hide header/footer on login */
-        [data-testid="stHeader"], footer {{ display: none !important; }}
+    col_left, col_right = st.columns([2, 3])
 
-        /* column layout */
-        .ss-login-root {{
-            display: flex;
-            min-height: 100vh;
-        }}
+    with col_left:
+        st.markdown(f"""
+        <div style="width:52px;height:52px;border-radius:14px;
+             background:linear-gradient(135deg,#f45b52,#ffb454);
+             display:grid;place-items:center;font-size:26px;
+             box-shadow:0 12px 28px rgba(244,91,82,.30);margin-bottom:20px;">⛳</div>
+        <div style="font-size:24px;font-weight:800;color:#0d1117;
+             margin-bottom:8px;">{store} Analytics</div>
+        <div style="font-size:14px;color:#6b7280;line-height:1.6;
+             margin-bottom:28px;">Your unified Shopify, Amazon &amp; Search<br>
+             command center. Private access only.</div>
+        <div style="font-size:11px;font-weight:700;color:#374151;
+             letter-spacing:.05em;text-transform:uppercase;
+             margin-bottom:6px;">Password</div>
+        """, unsafe_allow_html=True)
 
-        /* ── LEFT PANEL ── */
-        .ss-login-left {{
-            flex: 0 0 400px;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: 56px 48px;
-        }}
-        .ss-login-logo {{
-            width: 52px; height: 52px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #f45b52, #ffb454);
-            display: grid; place-items: center;
-            font-size: 26px;
-            box-shadow: 0 12px 28px rgba(244,91,82,.30);
-            margin-bottom: 24px;
-        }}
-        .ss-login-title {{
-            font-size: 24px;
-            font-weight: 860;
-            color: #0d1117;
-            margin-bottom: 6px;
-        }}
-        .ss-login-sub {{
-            font-size: 14px;
-            color: #70798b;
-            line-height: 1.55;
-            margin-bottom: 36px;
-        }}
-        .ss-login-label {{
-            font-size: 12px;
-            font-weight: 700;
-            color: #374151;
-            letter-spacing: .04em;
-            text-transform: uppercase;
-            margin-bottom: 6px;
-        }}
-        .ss-input-hint {{
-            font-size: 12px;
-            color: #9ca3af;
-            margin-top: 20px;
-            text-align: center;
-        }}
-
-        /* style the Streamlit input & button within left panel */
-        .ss-form .stTextInput input {{
-            border-radius: 10px !important;
-            border: 1.5px solid #e5e7eb !important;
-            padding: 10px 13px !important;
-            font-size: 14px !important;
-            background: #f9fafb !important;
-        }}
-        .ss-form .stTextInput input:focus {{
-            border-color: #f45b52 !important;
-            box-shadow: 0 0 0 3px rgba(244,91,82,.12) !important;
-            background: #fff !important;
-        }}
-        .ss-form .stButton > button {{
-            width: 100% !important;
-            background: #f45b52 !important;
-            color: #fff !important;
-            border: none !important;
-            border-radius: 10px !important;
-            font-size: 14px !important;
-            font-weight: 700 !important;
-            padding: 11px !important;
-            margin-top: 4px !important;
-        }}
-        .ss-form .stButton > button:hover {{
-            background: #d94840 !important;
-        }}
-        /* hide the text input label (we render our own) */
-        .ss-form .stTextInput label {{ display: none !important; }}
-
-        /* ── RIGHT PANEL ── */
-        .ss-preview-panel {{
-            flex: 1;
-            background: #0d1117;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 48px;
-            position: relative;
-            overflow: hidden;
-        }}
-        .ss-preview-panel::before {{
-            content: '';
-            position: absolute;
-            top: -200px; right: -200px;
-            width: 500px; height: 500px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(244,91,82,.18) 0%, transparent 70%);
-            pointer-events: none;
-        }}
-        .ss-preview-inner {{
-            width: 100%;
-            max-width: 520px;
-        }}
-        .ss-preview-eyebrow {{
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            color: #f45b52;
-            margin-bottom: 10px;
-        }}
-        .ss-preview-heading {{
-            font-size: 20px;
-            font-weight: 800;
-            color: #f8fafc;
-            margin-bottom: 24px;
-        }}
-
-        /* metric cards */
-        .ss-prev-metrics {{
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }}
-        .ss-prev-metric {{
-            background: #161b27;
-            border: 1px solid #1f2937;
-            border-radius: 14px;
-            padding: 16px;
-            animation: fadeUp .6s ease both;
-        }}
-        .ss-prev-metric:nth-child(2) {{ animation-delay: .1s; }}
-        .ss-prev-metric:nth-child(3) {{ animation-delay: .2s; }}
-        .ss-prev-m-label {{
-            font-size: 11px;
-            color: #6b7280;
-            font-weight: 600;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-        }}
-        .ss-prev-m-value {{
-            font-size: 22px;
-            font-weight: 800;
-            color: #f8fafc;
-            font-variant-numeric: tabular-nums;
-        }}
-        .ss-prev-m-delta {{
-            font-size: 11px;
-            color: #22c55e;
-            font-weight: 600;
-            margin-top: 4px;
-        }}
-
-        /* line chart */
-        .ss-chart-wrap {{
-            background: #161b27;
-            border: 1px solid #1f2937;
-            border-radius: 14px;
-            padding: 18px 20px 12px;
-            margin-bottom: 14px;
-            animation: fadeUp .6s ease .3s both;
-        }}
-        .ss-chart-title {{
-            font-size: 12px;
-            color: #9ca3af;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }}
-        .chart-path {{
-            stroke-dasharray: 700;
-            stroke-dashoffset: 700;
-            animation: drawLine 2.2s ease .5s forwards;
-        }}
-        .chart-path-2 {{
-            stroke-dasharray: 700;
-            stroke-dashoffset: 700;
-            animation: drawLine 2.2s ease .8s forwards;
-        }}
-
-        /* bar chart */
-        .ss-bars {{
-            background: #161b27;
-            border: 1px solid #1f2937;
-            border-radius: 14px;
-            padding: 16px 20px;
-            animation: fadeUp .6s ease .5s both;
-        }}
-        .ss-bar-row {{
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }}
-        .ss-bar-row:last-child {{ margin-bottom: 0; }}
-        .ss-bar-name {{
-            font-size: 11px;
-            color: #9ca3af;
-            font-weight: 600;
-            width: 58px;
-            flex-shrink: 0;
-        }}
-        .ss-bar-track {{
-            flex: 1;
-            height: 8px;
-            background: #1f2937;
-            border-radius: 99px;
-            overflow: hidden;
-        }}
-        .ss-bar-fill {{
-            height: 100%;
-            border-radius: 99px;
-            width: 0;
-            transition: width 1.4s cubic-bezier(.16,1,.3,1);
-        }}
-        .ss-bar-val {{
-            font-size: 11px;
-            color: #6b7280;
-            width: 32px;
-            text-align: right;
-            flex-shrink: 0;
-        }}
-
-        @keyframes drawLine {{
-            to {{ stroke-dashoffset: 0; }}
-        }}
-        @keyframes fadeUp {{
-            from {{ opacity: 0; transform: translateY(16px); }}
-            to   {{ opacity: 1; transform: translateY(0); }}
-        }}
-        </style>
-
-        <div class="ss-login-root">
-
-          <!-- LEFT: login -->
-          <div class="ss-login-left">
-            <div class="ss-login-logo">⛳</div>
-            <div class="ss-login-title">{store} Analytics</div>
-            <div class="ss-login-sub">Your unified Shopify, Amazon &amp; Search<br>command center. Private access only.</div>
-            <div class="ss-login-label">Password</div>
-          </div>
-
-          <!-- RIGHT: animated preview -->
-          <div class="ss-preview-panel">
-            <div class="ss-preview-inner">
-              <div class="ss-preview-eyebrow">Live dashboard preview</div>
-              <div class="ss-preview-heading">Everything in one view.</div>
-
-              <div class="ss-prev-metrics">
-                <div class="ss-prev-metric">
-                  <div class="ss-prev-m-label">Revenue</div>
-                  <div class="ss-prev-m-value" id="rev">$0</div>
-                  <div class="ss-prev-m-delta">↑ 18% vs last mo.</div>
-                </div>
-                <div class="ss-prev-metric">
-                  <div class="ss-prev-m-label">GSC Clicks</div>
-                  <div class="ss-prev-m-value" id="clicks">0</div>
-                  <div class="ss-prev-m-delta">↑ 34% vs last mo.</div>
-                </div>
-                <div class="ss-prev-metric">
-                  <div class="ss-prev-m-label">Amazon Orders</div>
-                  <div class="ss-prev-m-value" id="orders">0</div>
-                  <div class="ss-prev-m-delta">↑ 12% vs last mo.</div>
-                </div>
-              </div>
-
-              <div class="ss-chart-wrap">
-                <div class="ss-chart-title">GSC Clicks — last 90 days</div>
-                <svg viewBox="0 0 480 90" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
-                  <defs>
-                    <linearGradient id="gfill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="#f45b52" stop-opacity=".18"/>
-                      <stop offset="100%" stop-color="#f45b52" stop-opacity="0"/>
-                    </linearGradient>
-                  </defs>
-                  <path d="M0,72 C30,68 60,62 90,55 S150,38 190,34 S260,20 310,24 S390,14 480,8 L480,90 L0,90 Z"
-                        fill="url(#gfill)"/>
-                  <path class="chart-path"
-                        d="M0,72 C30,68 60,62 90,55 S150,38 190,34 S260,20 310,24 S390,14 480,8"
-                        stroke="#f45b52" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-                  <path class="chart-path-2"
-                        d="M0,80 C30,76 60,74 90,70 S150,64 190,62 S260,56 310,54 S390,50 480,46"
-                        stroke="#ffb454" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".5"/>
-                </svg>
-              </div>
-
-              <div class="ss-bars">
-                <div class="ss-bar-row">
-                  <div class="ss-bar-name">Shopify</div>
-                  <div class="ss-bar-track"><div class="ss-bar-fill" id="b1" style="background:#f45b52;"></div></div>
-                  <div class="ss-bar-val">$8.2k</div>
-                </div>
-                <div class="ss-bar-row">
-                  <div class="ss-bar-name">Amazon</div>
-                  <div class="ss-bar-track"><div class="ss-bar-fill" id="b2" style="background:#ffb454;"></div></div>
-                  <div class="ss-bar-val">$4.6k</div>
-                </div>
-                <div class="ss-bar-row">
-                  <div class="ss-bar-name">Organic</div>
-                  <div class="ss-bar-track"><div class="ss-bar-fill" id="b3" style="background:#818cf8;"></div></div>
-                  <div class="ss-bar-val">3.2k</div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-
-        <script>
-        (function() {{
-          function countUp(id, target, prefix, duration) {{
-            var el = document.getElementById(id);
-            if (!el) return;
-            var start = null;
-            function step(ts) {{
-              if (!start) start = ts;
-              var p = Math.min((ts - start) / duration, 1);
-              var ease = 1 - Math.pow(1 - p, 3);
-              var val = Math.floor(ease * target);
-              el.textContent = prefix + val.toLocaleString();
-              if (p < 1) requestAnimationFrame(step);
-            }}
-            requestAnimationFrame(step);
-          }}
-          setTimeout(function() {{
-            countUp('rev',    12840, '$', 1800);
-            countUp('clicks',  3241, '',  1800);
-            countUp('orders',   284, '',  1800);
-          }}, 400);
-
-          setTimeout(function() {{
-            var bars = [['b1', 72], ['b2', 40], ['b3', 28]];
-            bars.forEach(function(b) {{
-              var el = document.getElementById(b[0]);
-              if (el) el.style.width = b[1] + '%';
-            }});
-          }}, 600);
-        }})();
-        </script>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Streamlit form widgets — CSS above positions them inside the left panel visually
-    with st.container():
-        st.markdown('<div class="ss-form">', unsafe_allow_html=True)
         entered = st.text_input("pw", type="password", placeholder="Enter password…", label_visibility="collapsed")
         if st.button("Sign in →", type="primary", use_container_width=True):
             if hmac.compare_digest(entered, password):
@@ -678,8 +557,14 @@ def require_password() -> bool:
                 st.rerun()
             else:
                 st.error("Incorrect password.")
-        st.markdown('<p class="ss-input-hint">🔒 Private dashboard — authorized access only</p>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            '<p style="font-size:12px;color:#9ca3af;margin-top:16px;text-align:center;">'
+            "🔒 Private dashboard — authorized access only</p>",
+            unsafe_allow_html=True,
+        )
+
+    with col_right:
+        components.html(_PREVIEW_HTML, height=700, scrolling=False)
 
     return False
 
