@@ -215,7 +215,9 @@ export class ShopifyOAuthService {
   private async registerWebhooks(shop: string, accessToken: string): Promise<void> {
     const appUrl = this.config.getOrThrow<string>('SHOPIFY_APP_URL');
     const apiVersion = this.config.get<string>('SHOPIFY_API_VERSION', '2025-10');
-    const callbackUrl = `${appUrl}/api/shopify/webhooks`;
+    const callbackUrl =
+      this.config.get<string>('SHOPIFY_WEBHOOK_CALLBACK_URL') ??
+      `${appUrl}/api/shopify/webhooks`;
 
     const topics = ['PRODUCTS_UPDATE', 'PRODUCTS_DELETE', 'INVENTORY_LEVELS_UPDATE'] as const;
 
@@ -228,9 +230,20 @@ export class ShopifyOAuthService {
       }
     `;
 
+    const existingWebhooks = await this.listWebhooks(shop, accessToken);
+
     await Promise.all(
       topics.map(async (topic) => {
         try {
+          const alreadyRegistered = existingWebhooks.some(
+            (webhook) => webhook.topic === topic && webhook.callbackUrl === callbackUrl,
+          );
+
+          if (alreadyRegistered) {
+            this.logger.debug(`Webhook already registered: ${topic} → ${callbackUrl}`);
+            return;
+          }
+
           const res = await fetch(
             `https://${shop}/admin/api/${apiVersion}/graphql.json`,
             {
@@ -244,12 +257,19 @@ export class ShopifyOAuthService {
           );
 
           const data = await res.json() as {
+            errors?: { message: string }[] | string;
             data?: { webhookSubscriptionCreate?: { userErrors?: { message: string }[] } };
           };
 
+          if (!res.ok || data.errors) {
+            const message = Array.isArray(data.errors)
+              ? data.errors.map((error) => error.message).join(', ')
+              : data.errors || res.statusText;
+            throw new Error(`Shopify GraphQL error (${res.status}): ${message}`);
+          }
+
           const errors = data.data?.webhookSubscriptionCreate?.userErrors ?? [];
           if (errors.length > 0) {
-            // "already exists" is not a real error — log at debug level
             this.logger.debug(`Webhook ${topic} registration note: ${errors.map(e => e.message).join(', ')}`);
           } else {
             this.logger.log(`Webhook registered: ${topic} → ${callbackUrl}`);
@@ -260,6 +280,63 @@ export class ShopifyOAuthService {
         }
       }),
     );
+  }
+
+  private async listWebhooks(
+    shop: string,
+    accessToken: string,
+  ): Promise<Array<{ topic: string; callbackUrl: string | null }>> {
+    const apiVersion = this.config.get<string>('SHOPIFY_API_VERSION', '2025-10');
+    const query = `
+      query ExistingWebhooks {
+        webhookSubscriptions(first: 100) {
+          edges {
+            node {
+              topic
+              endpoint {
+                __typename
+                ... on WebhookHttpEndpoint {
+                  callbackUrl
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const res = await fetch(`https://${shop}/admin/api/${apiVersion}/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': accessToken,
+        },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json() as {
+        data?: {
+          webhookSubscriptions?: {
+            edges: Array<{
+              node: {
+                topic: string;
+                endpoint?: {
+                  callbackUrl?: string;
+                };
+              };
+            }>;
+          };
+        };
+      };
+
+      return data.data?.webhookSubscriptions?.edges.map((edge) => ({
+        topic: edge.node.topic,
+        callbackUrl: edge.node.endpoint?.callbackUrl ?? null,
+      })) ?? [];
+    } catch (error) {
+      this.logger.warn(`Could not list existing Shopify webhooks for ${shop}`);
+      return [];
+    }
   }
 
   private validateShopDomain(shop: string): void {

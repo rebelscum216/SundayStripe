@@ -17,6 +17,7 @@
     "@sunday-stripe/db": "workspace:*",
     "bullmq": "^5.34.2",
     "drizzle-orm": "^0.38.4",
+    "google-auth-library": "^10.6.2",
     "ioredis": "^5.4.2",
     "postgres": "^3.4.5",
     "reflect-metadata": "^0.2.2",

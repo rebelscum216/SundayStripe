@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AppController } from "./app.controller.js";
 import { DatabaseModule } from "./database/database.module.js";
+import { MerchantModule } from "./merchant/merchant.module.js";
 import { ShopifyModule } from "./shopify/shopify.module.js";
 
 @Module({
@@ -20,6 +21,7 @@ import { ShopifyModule } from "./shopify/shopify.module.js";
       })
     }),
     DatabaseModule,
+    MerchantModule,
     ShopifyModule,
   ],
   controllers: [AppController]
