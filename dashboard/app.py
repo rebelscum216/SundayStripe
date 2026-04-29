@@ -4,10 +4,11 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from data._config import cfg
 from ui import chrome, inject_css, require_password, sidebar
 
 st.set_page_config(
-    page_title="Sunday Stripe Analytics",
+    page_title=f"{cfg('STORE_NAME', 'My Store')} Analytics",
     page_icon="⛳",
     layout="wide",
 )

@@ -1,14 +1,23 @@
 import hmac
 import os
+import sys
+from pathlib import Path
 
 import streamlit as st
+
+sys.path.insert(0, str(Path(__file__).parent))
+from data._config import cfg
+
+
+def _store_name() -> str:
+    return cfg("STORE_NAME", "My Store")
 
 
 PAGES = {
     "Overview": {
         "icon": "📊",
         "eyebrow": "Unified commerce visibility",
-        "title": "Sunday Stripe Analytics",
+        "title": f"{_store_name()} Analytics",
         "subtitle": "Search, store, marketplace, inventory, and feed health in one operating view.",
     },
     "Action Center": {
@@ -306,7 +315,7 @@ def require_password() -> bool:
             <div class="ss-brand" style="margin-bottom:14px;">
               <div class="ss-logo">⛳</div>
               <div>
-                <div style="font-size:24px;font-weight:850;color:#171923;">Sunday Stripe Analytics</div>
+                <div style="font-size:24px;font-weight:850;color:#171923;">{_store_name()} Analytics</div>
                 <div class="ss-muted">Enter the dashboard password to continue.</div>
               </div>
             </div>
@@ -331,7 +340,7 @@ def sidebar(selected=None):
             <div class="ss-brand">
               <div class="ss-logo">⛳</div>
               <div>
-                <div class="ss-brand-title">Sunday Stripe</div>
+                <div class="ss-brand-title">{_store_name()}</div>
                 <div class="ss-brand-sub">Analytics Command</div>
               </div>
             </div>
