@@ -2,19 +2,11 @@ import json, time, requests
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from ._config import cfg
+
 _DIR = Path(__file__).parent.parent
 _CACHE_FILE = _DIR / "cache" / "shopify_cache.json"
 _CACHE_TTL = 3600  # 1 hour
-ENV_FILE = _DIR.parent / ".env"
-
-_env = {}
-if ENV_FILE.exists():
-    with open(ENV_FILE) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                _env[k.strip()] = v.strip().strip('"').strip("'")
 
 try:
     with open(Path.home() / ".config" / "shopify" / "token.json") as f:
@@ -22,11 +14,11 @@ try:
 except FileNotFoundError:
     _creds = {}
 
-SHOP = _env.get("SHOPIFY_SHOP") or _creds["shop"]
+SHOP = cfg("SHOPIFY_SHOP") or _creds.get("shop", "")
 TOKEN = (
-    _env.get("SHOPIFY_ADMIN_ACCESS_TOKEN")
-    or _env.get("SHOPIFY_ACCESS_TOKEN")
-    or _creds["access_token"]
+    cfg("SHOPIFY_ADMIN_ACCESS_TOKEN")
+    or cfg("SHOPIFY_ACCESS_TOKEN")
+    or _creds.get("access_token", "")
 )
 VERSION = "2026-04"
 BASE = f"https://{SHOP}/admin/api/{VERSION}"

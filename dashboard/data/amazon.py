@@ -4,26 +4,19 @@ from pathlib import Path
 import requests
 from requests_aws4auth import AWS4Auth
 
+from ._config import cfg
+
 _DIR = Path(__file__).parent.parent
 _CACHE_FILE = _DIR / "cache" / "amazon_cache.json"
 _CACHE_TTL = 21600  # 6 hours
 
-ENV_FILE = _DIR.parent / ".env"
-_env = {}
-with open(ENV_FILE) as f:
-    for line in f:
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            _env[k.strip()] = v.strip()
-
-CLIENT_ID = _env.get("AMAZON_CLIENT_ID_PROD") or _env["AMAZON_CLIENT_ID"]
-CLIENT_SECRET = _env.get("AMAZON_SECRET_PROD") or _env["AMAZON_CLIENT_SECRET"]
-REFRESH_TOKEN = _env.get("AMAZON_REFRESH_TOKEN_PROD") or _env["AMAZON_REFRESH_TOKEN"]
-MARKETPLACE_ID = _env["AMAZON_MARKETPLACE_ID"]
-REGION = _env["AMAZON_REGION"]
-AWS_KEY = _env["AWS_ACCESS_KEY_ID"]
-AWS_SECRET = _env["AWS_SECRET_ACCESS_KEY"]
+CLIENT_ID = cfg("AMAZON_CLIENT_ID_PROD") or cfg("AMAZON_CLIENT_ID", "")
+CLIENT_SECRET = cfg("AMAZON_SECRET_PROD") or cfg("AMAZON_CLIENT_SECRET", "")
+REFRESH_TOKEN = cfg("AMAZON_REFRESH_TOKEN_PROD") or cfg("AMAZON_REFRESH_TOKEN", "")
+MARKETPLACE_ID = cfg("AMAZON_MARKETPLACE_ID", "ATVPDKIKX0DER")
+REGION = cfg("AMAZON_REGION", "us-east-1")
+AWS_KEY = cfg("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET = cfg("AWS_SECRET_ACCESS_KEY", "")
 BASE_URL = "https://sellingpartnerapi-na.amazon.com"
 
 KNOWN_ASINS = [

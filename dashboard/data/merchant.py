@@ -6,54 +6,28 @@ import requests
 from google.auth.transport.requests import AuthorizedSession
 from google.oauth2 import service_account
 
-_DIR = Path(__file__).parent.parent
-ENV_FILE = _DIR.parent / ".env"
+from ._config import cfg
 
 SCOPE = "https://www.googleapis.com/auth/content"
 BASE_URL = "https://merchantapi.googleapis.com"
 
 
-def _load_env() -> dict:
-    env = {}
-    if ENV_FILE.exists():
-        with open(ENV_FILE) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    key, value = line.split("=", 1)
-                    env[key.strip()] = value.strip().strip('"').strip("'")
-    return env
-
-
-def _credential_path(env: dict) -> str:
-    path = (
-        os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-        or os.environ.get("GOOGLE_MERCHANT_CREDENTIALS")
-        or env.get("GOOGLE_APPLICATION_CREDENTIALS")
-        or env.get("GOOGLE_MERCHANT_CREDENTIALS")
-        or env.get("GSC_CREDENTIALS")
-    )
-    if not path:
-        raise RuntimeError(
-            "Set GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_MERCHANT_CREDENTIALS, "
-            "or GSC_CREDENTIALS in .env to your service account JSON path."
-        )
-    return os.path.expanduser(path)
-
-
 def _session() -> AuthorizedSession:
-    env = _load_env()
-    info_json = os.environ.get("GOOGLE_MERCHANT_CREDENTIALS_JSON") or env.get(
-        "GOOGLE_MERCHANT_CREDENTIALS_JSON"
-    )
+    info_json = cfg("GOOGLE_MERCHANT_CREDENTIALS_JSON")
     if info_json:
         creds = service_account.Credentials.from_service_account_info(
             json.loads(info_json),
             scopes=[SCOPE],
         )
     else:
+        path = cfg("GOOGLE_APPLICATION_CREDENTIALS") or cfg("GOOGLE_MERCHANT_CREDENTIALS")
+        if not path:
+            raise RuntimeError(
+                "Set GOOGLE_MERCHANT_CREDENTIALS_JSON (preferred) or "
+                "GOOGLE_MERCHANT_CREDENTIALS in secrets."
+            )
         creds = service_account.Credentials.from_service_account_file(
-            _credential_path(env),
+            os.path.expanduser(path),
             scopes=[SCOPE],
         )
     return AuthorizedSession(creds)
@@ -75,8 +49,7 @@ def list_accounts(page_size=50) -> list:
 
 
 def get_configured_account_id() -> str:
-    env = _load_env()
-    return os.environ.get("GOOGLE_MERCHANT_ID") or env.get("GOOGLE_MERCHANT_ID", "")
+    return cfg("GOOGLE_MERCHANT_ID", "")
 
 
 def list_products(account_id=None, page_size=250, max_pages=10) -> list:

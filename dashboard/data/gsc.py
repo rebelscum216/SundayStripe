@@ -1,4 +1,4 @@
-import os, json, time
+import json, time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -6,31 +6,27 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
+from ._config import cfg
+
 _DIR = Path(__file__).parent.parent
 _CACHE_FILE = _DIR / "cache" / "gsc_cache.json"
 _CACHE_TTL = 86400  # 24 hours
 
-ENV_FILE = _DIR.parent / ".env"
-_env = {}
-with open(ENV_FILE) as f:
-    for line in f:
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            _env[k.strip()] = v.strip()
-
-TOKEN_FILE = os.path.expanduser("~/.config/gsc/token.json")
-SITE = _env.get("GSC_SITE", "sc-domain:example.com")
+_DEFAULT_TOKEN_FILE = str(Path.home() / ".config" / "gsc" / "token.json")
 SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
 
 
+def _site():
+    return cfg("GSC_SITE", "sc-domain:your-domain.com")
+
+
 def _get_service():
-    token_json = os.environ.get("GSC_TOKEN_JSON") or _env.get("GSC_TOKEN_JSON")
+    token_json = cfg("GSC_TOKEN_JSON")
     if token_json:
         creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
     else:
-        token_file = os.environ.get("GSC_TOKEN") or _env.get("GSC_TOKEN") or TOKEN_FILE
-        creds = Credentials.from_authorized_user_file(os.path.expanduser(token_file), SCOPES)
+        token_file = cfg("GSC_TOKEN") or _DEFAULT_TOKEN_FILE
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
     return build("searchconsole", "v1", credentials=creds)
@@ -66,7 +62,7 @@ def _query(service, dimensions, days, row_limit=500):
     return (
         service.searchanalytics()
         .query(
-            siteUrl=SITE,
+            siteUrl=_site(),
             body={
                 "startDate": start,
                 "endDate": end,
@@ -107,10 +103,15 @@ def _bucket(data: dict, days: int) -> dict:
     return data.get(str(days), data.get(days, {}))
 
 
+def _domain():
+    site = _site()
+    return "https://" + site.replace("sc-domain:", "")
+
+
 def _rows_to_pages(rows):
     results = []
     for row in rows:
-        url = row["keys"][0].replace("https://example.com", "")
+        url = row["keys"][0].replace(_domain(), "")
         results.append(
             {
                 "url": url,
@@ -177,9 +178,10 @@ def get_branded_split(days=90, force_refresh=False) -> dict:
     queries = get_queries(days, force_refresh)
     branded = {"clicks": 0, "impressions": 0}
     nonbranded = {"clicks": 0, "impressions": 0}
+    brand = (cfg("BRAND_NAME") or "").lower()
     for q in queries:
         term = q["query"].lower()
-        target = branded if "example brand" in term or "examplebrand" in term else nonbranded
+        target = branded if (brand and brand in term) else nonbranded
         target["clicks"] += q["clicks"]
         target["impressions"] += q["impressions"]
     return {"branded": branded, "nonbranded": nonbranded}
@@ -190,7 +192,7 @@ def get_page_query_map(days=90, force_refresh=False) -> list:
     rows = _bucket(data, days).get("by_page_query", [])
     results = []
     for row in rows:
-        url = row["keys"][0].replace("https://example.com", "")
+        url = row["keys"][0].replace(_domain(), "")
         results.append(
             {
                 "url": url,
