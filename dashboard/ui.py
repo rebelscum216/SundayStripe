@@ -361,12 +361,26 @@ def inject_css():
         }
 
         /* segmented controls and tabs */
-        [data-testid="stSegmentedControl"] label {
-          color: #374151 !important;
+        [data-testid="stSegmentedControl"] > label,
+        [data-testid="stSegmentedControl"] > label *,
+        [data-testid="stSegmentedControl"] [data-testid="stMarkdownContainer"],
+        [data-testid="stSegmentedControl"] [data-testid="stMarkdownContainer"] * {
+          color: #f8fafc !important;
+          -webkit-text-fill-color: #f8fafc !important;
+        }
+        [data-testid="stSegmentedControl"] [role="radiogroup"] label,
+        [data-testid="stSegmentedControl"] [role="radiogroup"] label *,
+        [data-testid="stSegmentedControl"] [role="radiogroup"] p,
+        [data-testid="stSegmentedControl"] [role="radiogroup"] span {
+          color: #e5e7eb !important;
+          -webkit-text-fill-color: #e5e7eb !important;
         }
         [data-testid="stSegmentedControl"] label[data-checked="true"],
-        [data-testid="stSegmentedControl"] input:checked + label {
+        [data-testid="stSegmentedControl"] label[data-checked="true"] *,
+        [data-testid="stSegmentedControl"] input:checked + label,
+        [data-testid="stSegmentedControl"] input:checked + label * {
           color: #111827 !important;
+          -webkit-text-fill-color: #111827 !important;
         }
         [data-baseweb="tab-list"] button,
         [data-baseweb="tab-list"] button p {
