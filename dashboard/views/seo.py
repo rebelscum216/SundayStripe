@@ -119,8 +119,20 @@ def render():
                 font=dict(color="#171923"),
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
-                xaxis=dict(title="CTR", color="#374151", gridcolor="#e6e8ef", zerolinecolor="#d9dde7"),
-                yaxis=dict(title="", autorange="reversed", color="#374151"),
+                xaxis=dict(
+                    title="CTR",
+                    color="#374151",
+                    tickfont=dict(color="#6b7280"),
+                    titlefont=dict(color="#374151"),
+                    gridcolor="#e6e8ef",
+                    zerolinecolor="#d9dde7",
+                ),
+                yaxis=dict(
+                    title="",
+                    autorange="reversed",
+                    color="#374151",
+                    tickfont=dict(color="#6b7280"),
+                ),
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
