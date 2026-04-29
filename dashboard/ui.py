@@ -309,27 +309,90 @@ def require_password() -> bool:
         return True
 
     st.markdown(
-        """
-        <div style="max-width:520px;margin:12vh auto 24px;">
-          <div class="ss-card">
-            <div class="ss-brand" style="margin-bottom:14px;">
-              <div class="ss-logo">⛳</div>
-              <div>
-                <div style="font-size:24px;font-weight:850;color:#171923;">{_store_name()} Analytics</div>
-                <div class="ss-muted">Enter the dashboard password to continue.</div>
-              </div>
-            </div>
+        f"""
+        <style>
+        .ss-login-wrap {{
+            max-width: 420px;
+            margin: 14vh auto 0;
+        }}
+        .ss-login-card {{
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 24px 60px rgba(20,29,55,.10);
+            padding: 40px 40px 32px;
+        }}
+        .ss-login-logo {{
+            width: 56px; height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #f45b52, #ffb454);
+            display: grid; place-items: center;
+            font-size: 28px;
+            box-shadow: 0 14px 30px rgba(244,91,82,.28);
+            margin: 0 auto 20px;
+        }}
+        .ss-login-title {{
+            font-size: 22px;
+            font-weight: 850;
+            color: #171923;
+            text-align: center;
+            margin-bottom: 6px;
+        }}
+        .ss-login-sub {{
+            font-size: 14px;
+            color: #70798b;
+            text-align: center;
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }}
+        .ss-login-wrap .stTextInput input {{
+            border-radius: 12px;
+            border: 1.5px solid #e6e8ef;
+            padding: 12px 14px;
+            font-size: 15px;
+        }}
+        .ss-login-wrap .stTextInput input:focus {{
+            border-color: #f45b52;
+            box-shadow: 0 0 0 3px rgba(244,91,82,.12);
+        }}
+        .ss-login-wrap .stButton > button {{
+            width: 100%;
+            background: #f45b52;
+            color: #fff !important;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            padding: 12px;
+            margin-top: 8px;
+            cursor: pointer;
+        }}
+        .ss-login-wrap .stButton > button:hover {{
+            background: #d94840;
+            color: #fff !important;
+        }}
+        </style>
+        <div class="ss-login-wrap">
+          <div class="ss-login-card">
+            <div class="ss-login-logo">⛳</div>
+            <div class="ss-login-title">{_store_name()} Analytics</div>
+            <div class="ss-login-sub">Enter your dashboard password to access<br>your store's analytics.</div>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    entered = st.text_input("Password", type="password", label_visibility="collapsed")
-    if st.button("Sign in", type="primary"):
-        if hmac.compare_digest(entered, password):
-            st.session_state["authenticated"] = True
-            st.rerun()
-        st.error("Incorrect password.")
+
+    with st.container():
+        st.markdown('<div class="ss-login-wrap">', unsafe_allow_html=True)
+        entered = st.text_input("Password", type="password", placeholder="Enter password…")
+        if st.button("Sign in →", type="primary", use_container_width=True):
+            if hmac.compare_digest(entered, password):
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("Incorrect password — try again.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
     return False
 
 
