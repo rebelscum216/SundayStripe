@@ -166,6 +166,26 @@ def inject_css():
           border-radius: 18px;
           border: 0;
         }
+        [data-testid="stAlert"],
+        [data-testid="stAlert"] *,
+        [data-testid="stAlert"] p,
+        [data-testid="stAlert"] div {
+          color: #171923 !important;
+          -webkit-text-fill-color: #171923 !important;
+        }
+        [data-testid="stAlert"][kind="warning"],
+        [data-testid="stAlert"][data-baseweb*="warning"] {
+          background: #fff6db !important;
+        }
+        [data-testid="stAlert"][kind="error"] {
+          background: #feeceb !important;
+        }
+        [data-testid="stAlert"][kind="info"] {
+          background: #eaf3ff !important;
+        }
+        [data-testid="stAlert"][kind="success"] {
+          background: #e8f8ef !important;
+        }
         .stDataFrame {
           border: 1px solid var(--ss-line);
           border-radius: 18px;
