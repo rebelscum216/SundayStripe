@@ -18,6 +18,16 @@ export type MerchantProduct = {
     link?: string;
     availability?: string;
     brand?: string;
+    price?: MerchantPrice;
+    salePrice?: MerchantPrice;
+  };
+  attributes?: {
+    title?: string;
+    link?: string;
+    availability?: string;
+    brand?: string;
+    price?: MerchantPrice;
+    salePrice?: MerchantPrice;
   };
   productStatus?: {
     destinationStatuses?: MerchantDestinationStatus[];
@@ -28,6 +38,11 @@ export type MerchantProduct = {
     name?: string;
     value?: string;
   }>;
+};
+
+export type MerchantPrice = {
+  amountMicros?: string | number;
+  currencyCode?: string;
 };
 
 type MerchantProductsResponse = {
@@ -64,6 +79,10 @@ export class MerchantApiService {
     }
 
     return products;
+  }
+
+  async getProduct(resourceName: string): Promise<MerchantProduct> {
+    return this.get<MerchantProduct>(`/products/v1/${resourceName}`);
   }
 
   private async get<T>(path: string): Promise<T> {

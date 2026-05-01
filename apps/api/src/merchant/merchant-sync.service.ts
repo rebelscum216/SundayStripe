@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import {
   alerts,
@@ -121,6 +121,7 @@ export class MerchantSyncService {
     workspaceId: string,
     merchantProduct: MerchantProduct,
   ): Promise<string | null> {
+    // Try SKU candidates first
     const candidates = this.getSkuCandidates(merchantProduct);
 
     for (const sku of candidates) {
@@ -131,9 +132,28 @@ export class MerchantSyncService {
         .where(and(eq(products.workspaceId, workspaceId), eq(variants.sku, sku)))
         .limit(1);
 
-      if (match) {
-        return match.id;
-      }
+      if (match) return match.id;
+    }
+
+    // Fallback: offer IDs like shopify_US_{productId}_{variantLegacyId} encode the
+    // Shopify variant GID. Match against option_values_json->>'shopifyVariantId'.
+    const offerId = merchantProduct.offerId ?? '';
+    const shopifyMatch = offerId.match(/^shopify_[A-Z]+_\d+_(\d+)$/);
+    if (shopifyMatch) {
+      const gid = `gid://shopify/ProductVariant/${shopifyMatch[1]}`;
+      const [match] = await this.db
+        .select({ id: variants.id })
+        .from(variants)
+        .innerJoin(products, eq(variants.productId, products.id))
+        .where(
+          and(
+            eq(products.workspaceId, workspaceId),
+            sql`${variants.optionValuesJson}->>'shopifyVariantId' = ${gid}`,
+          ),
+        )
+        .limit(1);
+
+      if (match) return match.id;
     }
 
     return null;

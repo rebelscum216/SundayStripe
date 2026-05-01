@@ -61,6 +61,8 @@ type ShopifyProduct = {
   publishedAt: string | null;
   updatedAt: string | null;
   descriptionHtml: string | null;
+  seoTitleMetafield: { value: string } | null;
+  seoDescriptionMetafield: { value: string } | null;
   variants: {
     edges: Array<{
       node: ShopifyVariant;
@@ -72,6 +74,10 @@ type ShopifyVariant = {
   id: string;
   sku: string | null;
   barcode: string | null;
+  selectedOptions?: Array<{
+    name: string;
+    value: string;
+  }>;
   inventoryItem: {
     id: string;
     inventoryLevels: {
@@ -106,12 +112,19 @@ const PRODUCT_SYNC_WITH_INVENTORY_QUERY = `#graphql
           publishedAt
           updatedAt
           descriptionHtml
+          seoTitleMetafield: metafield(namespace: "global", key: "title_tag") {
+            value
+          }
+          seoDescriptionMetafield: metafield(namespace: "global", key: "description_tag") {
+            value
+          }
           variants(first: 100) {
             edges {
               node {
                 id
                 sku
                 barcode
+                selectedOptions { name value }
                 inventoryItem {
                   id
                   inventoryLevels(first: 20) {
@@ -148,12 +161,19 @@ const PRODUCT_SYNC_WITHOUT_INVENTORY_QUERY = `#graphql
           publishedAt
           updatedAt
           descriptionHtml
+          seoTitleMetafield: metafield(namespace: "global", key: "title_tag") {
+            value
+          }
+          seoDescriptionMetafield: metafield(namespace: "global", key: "description_tag") {
+            value
+          }
           variants(first: 100) {
             edges {
               node {
                 id
                 sku
                 barcode
+                selectedOptions { name value }
                 inventoryItem { id }
               }
             }
@@ -370,6 +390,8 @@ export class ShopifyInitialSyncService {
     product: ShopifyProduct,
   ): Promise<void> {
     const canonicalSku = this.getCanonicalSku(product);
+    const seoTitle = product.seoTitleMetafield?.value ?? null;
+    const seoDescription = product.seoDescriptionMetafield?.value ?? null;
     const [storedProduct] = await this.db
       .insert(products)
       .values({
@@ -377,6 +399,8 @@ export class ShopifyInitialSyncService {
         canonicalSku,
         title: product.title,
         descriptionHtml: product.descriptionHtml,
+        seoTitle,
+        seoDescription,
         sourceOfTruth: 'shopify',
         sourceUpdatedAt: product.updatedAt ? new Date(product.updatedAt) : null,
         updatedAt: new Date(),
@@ -386,6 +410,8 @@ export class ShopifyInitialSyncService {
         set: {
           title: product.title,
           descriptionHtml: product.descriptionHtml,
+          seoTitle,
+          seoDescription,
           sourceUpdatedAt: product.updatedAt ? new Date(product.updatedAt) : null,
           updatedAt: new Date(),
         },
@@ -405,7 +431,10 @@ export class ShopifyInitialSyncService {
       productId,
       sku,
       barcode: variant.barcode,
-      optionValuesJson: { shopifyVariantId: variant.id },
+      optionValuesJson: {
+        shopifyVariantId: variant.id,
+        selectedOptions: variant.selectedOptions ?? [],
+      },
       updatedAt: new Date(),
     };
 

@@ -33,6 +33,8 @@ type ShopifyProduct = {
   publishedAt: string | null;
   updatedAt: string | null;
   descriptionHtml: string | null;
+  seoTitleMetafield: { value: string } | null;
+  seoDescriptionMetafield: { value: string } | null;
   variants: {
     edges: Array<{
       node: ShopifyVariant;
@@ -44,6 +46,10 @@ type ShopifyVariant = {
   id: string;
   sku: string | null;
   barcode: string | null;
+  selectedOptions?: Array<{
+    name: string;
+    value: string;
+  }>;
   inventoryItem: {
     id: string;
     inventoryLevels?: {
@@ -73,12 +79,19 @@ const PRODUCT_BY_ID_QUERY = `#graphql
         publishedAt
         updatedAt
         descriptionHtml
+        seoTitleMetafield: metafield(namespace: "global", key: "title_tag") {
+          value
+        }
+        seoDescriptionMetafield: metafield(namespace: "global", key: "description_tag") {
+          value
+        }
         variants(first: 100) {
           edges {
             node {
               id
               sku
               barcode
+              selectedOptions { name value }
               inventoryItem {
                 id
                 inventoryLevels(first: 20) {
@@ -115,12 +128,19 @@ const PRODUCT_BY_INVENTORY_ITEM_QUERY = `#graphql
             publishedAt
             updatedAt
             descriptionHtml
+            seoTitleMetafield: metafield(namespace: "global", key: "title_tag") {
+              value
+            }
+            seoDescriptionMetafield: metafield(namespace: "global", key: "description_tag") {
+              value
+            }
             variants(first: 100) {
               edges {
                 node {
                   id
                   sku
                   barcode
+                  selectedOptions { name value }
                   inventoryItem {
                     id
                     inventoryLevels(first: 20) {
@@ -337,6 +357,8 @@ export class ShopifyWebhookProcessor extends WorkerHost {
     product: ShopifyProduct,
   ): Promise<void> {
     const canonicalSku = this.getCanonicalSku(product);
+    const seoTitle = product.seoTitleMetafield?.value ?? null;
+    const seoDescription = product.seoDescriptionMetafield?.value ?? null;
     const [storedProduct] = await this.db
       .insert(products)
       .values({
@@ -344,6 +366,8 @@ export class ShopifyWebhookProcessor extends WorkerHost {
         canonicalSku,
         title: product.title,
         descriptionHtml: product.descriptionHtml,
+        seoTitle,
+        seoDescription,
         sourceOfTruth: 'shopify',
         sourceUpdatedAt: product.updatedAt ? new Date(product.updatedAt) : null,
         updatedAt: new Date(),
@@ -353,6 +377,8 @@ export class ShopifyWebhookProcessor extends WorkerHost {
         set: {
           title: product.title,
           descriptionHtml: product.descriptionHtml,
+          seoTitle,
+          seoDescription,
           sourceUpdatedAt: product.updatedAt ? new Date(product.updatedAt) : null,
           updatedAt: new Date(),
         },
@@ -375,6 +401,7 @@ export class ShopifyWebhookProcessor extends WorkerHost {
       optionValuesJson: {
         shopifyVariantId: variant.id,
         shopifyInventoryItemId: variant.inventoryItem?.id ?? null,
+        selectedOptions: variant.selectedOptions ?? [],
       },
       updatedAt: new Date(),
     };

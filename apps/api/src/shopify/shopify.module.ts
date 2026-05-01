@@ -12,11 +12,14 @@ import { SHOPIFY_WEBHOOK_QUEUE } from './shopify-webhook.types.js';
 // Task 4 — added by Codex, files landing in sync/
 import { ShopifyInitialSyncProcessor } from './sync/shopify-initial-sync.processor.js';
 import { ShopifyInitialSyncService } from './sync/shopify-initial-sync.service.js';
+import { ShopifyOrdersSyncProcessor } from './sync/shopify-orders-sync.processor.js';
+import { ShopifyOrdersSyncService } from './sync/shopify-orders-sync.service.js';
 
 @Module({
   imports: [
     DatabaseModule,
     BullModule.registerQueue({ name: 'shopify-sync' }),
+    BullModule.registerQueue({ name: 'shopify-orders-sync' }),
     BullModule.registerQueue({ name: SHOPIFY_WEBHOOK_QUEUE }),
   ],
   controllers: [
@@ -27,8 +30,10 @@ import { ShopifyInitialSyncService } from './sync/shopify-initial-sync.service.j
     ShopifyOAuthService,
     ShopifyInitialSyncService,
     ShopifyInitialSyncProcessor,
+    ShopifyOrdersSyncService,
+    ShopifyOrdersSyncProcessor,
     ShopifyWebhookProcessor,
   ],
-  exports: [ShopifyOAuthService, ShopifyInitialSyncService],
+  exports: [ShopifyOAuthService, ShopifyInitialSyncService, ShopifyOrdersSyncService],
 })
 export class ShopifyModule {}

@@ -1,8 +1,11 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
+import { AmazonModule } from "./amazon/amazon.module.js";
 import { AppController } from "./app.controller.js";
 import { DatabaseModule } from "./database/database.module.js";
+import { GscModule } from "./gsc/gsc.module.js";
 import { MerchantModule } from "./merchant/merchant.module.js";
 import { ShopifyModule } from "./shopify/shopify.module.js";
 
@@ -20,7 +23,17 @@ import { ShopifyModule } from "./shopify/shopify.module.js";
         }
       })
     }),
+    ScheduleModule.forRoot(),
+    BullModule.registerQueue(
+      { name: "shopify-sync" },
+      { name: "shopify-orders-sync" },
+      { name: "merchant-sync" },
+      { name: "gsc-sync" },
+      { name: "amazon-sync" },
+    ),
     DatabaseModule,
+    AmazonModule,
+    GscModule,
     MerchantModule,
     ShopifyModule,
   ],

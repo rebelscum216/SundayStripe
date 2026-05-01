@@ -6,7 +6,14 @@ import postgres from "postgres";
 const databaseUrl =
   process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/hub";
 
-const migrations = ["drizzle/0000_initial.sql"];
+const migrations = [
+  "drizzle/0000_initial.sql",
+  "drizzle/0001_search_performance.sql",
+  "drizzle/0002_orders.sql",
+  "drizzle/0003_seo_metafields.sql",
+  "drizzle/0004_listing_quality_score.sql",
+  "drizzle/0005_ai_recommendations.sql",
+];
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const sql = postgres(databaseUrl, { max: 1 });
 

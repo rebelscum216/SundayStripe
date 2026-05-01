@@ -13,3 +13,16 @@ node_modules/
 dist/
 coverage/
 .turbo/
+
+# Local session notes and planning docs
+SESSIONS.md
+CODEX_HANDOFF.md
+BUILD_PLAN.md
+DEPLOY.md
+CONNECTION_CAPABILITIES_REPORT.md
+MOCKUP_IMPLEMENTATION_PLAN.md
+deep-research-report-3.md
+sunday_stripe_ecommerce_hub_html_prototype/
+
+# Build artifacts
+apps/web/tsconfig.tsbuildinfo
