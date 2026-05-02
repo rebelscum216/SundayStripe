@@ -30,7 +30,6 @@ const ATTR_LABELS: Record<string, string> = {
   brand: "Brand",
   barcode: "Barcode / GTIN",
   description: "Description",
-  seo_title: "SEO Title",
 };
 
 function formatDate(value: string | null) {
@@ -63,7 +62,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 ];
 
 const COVERAGE_PLATFORMS = ["merchant", "amazon_sp"];
-const TRACKED_ATTRS = ["title", "brand", "barcode", "description", "seo_title"] as const;
+const TRACKED_ATTRS = ["title", "brand", "barcode", "description"] as const;
 
 type GapChip =
   | { kind: "channel"; platform: string; missing: number }

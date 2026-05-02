@@ -35,36 +35,50 @@ export class AmazonSyncService {
       .where(eq(syncJobs.id, syncJobId));
 
     try {
-      const listings = await this.amazonApi.listListingsItems();
+      let nextToken: string | undefined = syncJob.cursor ?? undefined;
       let syncedListings = 0;
       let issueCount = 0;
+      let totalListings = 0;
 
-      for (const listing of listings) {
-        const variantId = await this.findLocalVariantId(integration.workspaceId, listing.sku);
-        if (!variantId) {
-          this.logger.warn(`Skipping Amazon listing without local SKU match: ${listing.sku}`);
-          continue;
+      // Paginate one page at a time, persisting cursor after each so retries resume correctly
+      do {
+        const { items, nextToken: pageNextToken } = await this.amazonApi.fetchListingsPage(nextToken);
+        nextToken = pageNextToken;
+        totalListings += items.length;
+
+        // Persist cursor immediately so a timeout on the next page can resume
+        await this.db
+          .update(syncJobs)
+          .set({ cursor: nextToken ?? null })
+          .where(eq(syncJobs.id, syncJobId));
+
+        for (const listing of items) {
+          const variantId = await this.findLocalVariantId(integration.workspaceId, listing.sku);
+          if (!variantId) {
+            this.logger.warn(`Skipping Amazon listing without local SKU match: ${listing.sku}`);
+            continue;
+          }
+
+          const { attributes, issues } = await this.amazonApi.getListingDetail(listing.sku);
+          if (attributes) listing.qualityScore = this.amazonApi.computeQualityScore(attributes);
+          if (issues) listing.issues = issues;
+          await new Promise((r) => setTimeout(r, 500));
+
+          await this.upsertChannelListing(integration, variantId, listing);
+          issueCount += await this.upsertAlerts(integration, listing);
+          syncedListings += 1;
         }
 
-        // Fetch attributes individually for matched SKUs to compute quality score
-        const attributes = await this.amazonApi.getListingAttributes(listing.sku);
-        if (attributes) {
-          listing.qualityScore = this.amazonApi.computeQualityScore(attributes);
-        }
-        // Pace attribute fetches to avoid throttling
-        await new Promise((r) => setTimeout(r, 500));
-
-        await this.upsertChannelListing(integration, variantId, listing);
-        issueCount += await this.upsertAlerts(integration, listing);
-        syncedListings += 1;
-      }
+        if (nextToken) await new Promise((r) => setTimeout(r, 1000));
+      } while (nextToken);
 
       await this.db
         .update(syncJobs)
         .set({
           state: 'done',
+          cursor: null,
           payloadJson: {
-            amazon_listing_count: listings.length,
+            amazon_listing_count: totalListings,
             synced_listing_count: syncedListings,
             issue_count: issueCount,
           },

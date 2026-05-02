@@ -61,49 +61,43 @@ export class AmazonApiService {
 
   constructor(private readonly config: ConfigService) {}
 
-  async listListingsItems(): Promise<AmazonListing[]> {
+  async fetchListingsPage(pageToken?: string): Promise<{ items: AmazonListing[]; nextToken?: string }> {
     const sellerId = this.config.getOrThrow<string>('AMAZON_SELLER_ID');
     const marketplaceId = this.config.getOrThrow<string>('AMAZON_MARKETPLACE_ID');
-    const listings: AmazonListing[] = [];
-    let nextToken: string | undefined;
 
-    // Phase 1: paginate with summaries+issues only (attributes are too large for bulk pages)
-    do {
-      const params = new URLSearchParams({
-        marketplaceIds: marketplaceId,
-        includedData: 'summaries,issues',
-      });
-      if (nextToken) params.set('nextToken', nextToken);
+    const params = new URLSearchParams({
+      marketplaceIds: marketplaceId,
+      includedData: 'summaries', // issues fetched per-SKU to keep page payload small
+    });
+    if (pageToken) params.set('pageToken', pageToken);
 
-      const data = await this.get<AmazonListingsResponse>(
-        `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}?${params.toString()}`,
-      );
+    const data = await this.get<AmazonListingsResponse>(
+      `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}?${params.toString()}`,
+    );
 
-      listings.push(...(data.items ?? []).map((item) => this.toListing(item)));
-      nextToken = data.pagination?.nextToken ?? data.nextToken;
-      if (nextToken) await new Promise((r) => setTimeout(r, 1000));
-    } while (nextToken);
-
-    return listings;
+    return {
+      items: (data.items ?? []).map((item) => this.toListing(item)),
+      nextToken: data.pagination?.nextToken ?? data.nextToken,
+    };
   }
 
-  async getListingAttributes(sku: string): Promise<AmazonListingAttributes | undefined> {
+  async getListingDetail(sku: string): Promise<{ attributes?: AmazonListingAttributes; issues?: unknown[] }> {
     const sellerId = this.config.getOrThrow<string>('AMAZON_SELLER_ID');
     const marketplaceId = this.config.getOrThrow<string>('AMAZON_MARKETPLACE_ID');
-    const params = new URLSearchParams({ marketplaceIds: marketplaceId, includedData: 'attributes' });
+    const params = new URLSearchParams({ marketplaceIds: marketplaceId, includedData: 'attributes,issues' });
     try {
-      const data = await this.get<{ attributes?: AmazonListingAttributes }>(
+      const data = await this.get<{ attributes?: AmazonListingAttributes; issues?: unknown[] }>(
         `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`,
       );
-      return data.attributes;
+      return { attributes: data.attributes, issues: data.issues };
     } catch {
-      return undefined;
+      return {};
     }
   }
 
-  private async get<T>(path: string): Promise<T> {
+  private async get<T>(path: string, attempt = 1): Promise<T> {
     const accessToken = await this.getAccessToken();
-    const signal = AbortSignal.timeout(60_000);
+    const signal = AbortSignal.timeout(120_000);
     let response: Response;
     try {
       response = await fetch(`${AMAZON_SP_API_BASE_URL}${path}`, {
@@ -116,10 +110,24 @@ export class AmazonApiService {
       });
     } catch (err) {
       const cause = err instanceof Error ? err.message : String(err);
+      const isTransient =
+        cause.includes('timeout') ||
+        cause.toLowerCase().includes('fetch failed') ||
+        cause.includes('ECONNRESET') ||
+        cause.includes('ENOTFOUND') ||
+        cause.includes('ECONNREFUSED');
+      if (attempt === 1 && isTransient) {
+        await new Promise((r) => setTimeout(r, 10_000));
+        return this.get<T>(path, 2);
+      }
       throw new Error(`Amazon SP-API fetch error (${path}): ${cause}`);
     }
 
     if (response.status === 429) {
+      if (attempt === 1) {
+        await new Promise((r) => setTimeout(r, 10_000));
+        return this.get<T>(path, 2);
+      }
       throw new Error(`Amazon SP-API rate limited request: ${path}`);
     }
 

@@ -13,6 +13,7 @@ const migrations = [
   "drizzle/0003_seo_metafields.sql",
   "drizzle/0004_listing_quality_score.sql",
   "drizzle/0005_ai_recommendations.sql",
+  "drizzle/0006_gtin_exempt.sql",
 ];
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const sql = postgres(databaseUrl, { max: 1 });

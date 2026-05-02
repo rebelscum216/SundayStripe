@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   jsonb,
   pgTable,
@@ -49,6 +50,7 @@ export const products = pgTable(
     descriptionHtml: text("description_html"),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
+    gtinExempt: boolean("gtin_exempt").notNull().default(false),
     sourceOfTruth: text("source_of_truth").notNull().default("shopify"),
     sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

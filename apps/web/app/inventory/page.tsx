@@ -23,6 +23,7 @@ type InventoryVariant = {
   updatedAt: string | null;
   locations: Array<{
     locationKey: string;
+    name: string;
     available: number;
     onHand: number;
     committed: number;
@@ -47,6 +48,7 @@ type InventoryResponse = {
   };
   locations: Array<{
     locationKey: string;
+    name: string;
     available: number;
     onHand: number;
     committed: number;
@@ -96,12 +98,6 @@ function formatCurrency(cents: number) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(cents / 100);
-}
-
-function formatLocationKey(key: string) {
-  const match = key.match(/\/([^/]+)\/(\d+)$/);
-  if (match) return `${match[1]} ${match[2]}`;
-  return key;
 }
 
 function formatDays(value: number | null) {
@@ -283,7 +279,7 @@ export default async function InventoryPage() {
                 <tbody>
                   {locations.map((location) => (
                     <tr key={location.locationKey} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                      <td className="px-4 py-3 font-mono text-xs text-zinc-400">{formatLocationKey(location.locationKey)}</td>
+                      <td className="px-4 py-3 text-sm text-zinc-300">{location.name}</td>
                       <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(location.available)}</td>
                       <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(location.onHand)}</td>
                       <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(location.committed)}</td>

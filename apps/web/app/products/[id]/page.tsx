@@ -63,6 +63,7 @@ type ProductDetail = {
     descriptionHtml: string | null;
     seoTitle: string | null;
     seoDescription: string | null;
+    gtinExempt: boolean;
     sourceOfTruth: string;
     sourceUpdatedAt: string | null;
     updatedAt: string | null;
@@ -213,13 +214,13 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   );
   const platforms = [...new Set(variants.flatMap((v) => v.listings.map((l) => l.platform)))];
 
-  const missingAttributes: { attr: string; label: string; detail: string; platforms: string[]; variants?: { id: string; sku: string; title: string }[] }[] = [];
+  const missingAttributes: { attr: string; label: string; detail: string; platforms: string[]; variants?: { id: string; sku: string; title: string }[]; currentSeoTitle?: string | null; currentSeoDescription?: string | null }[] = [];
   if (!product.title?.trim())
     missingAttributes.push({ attr: "title", label: "Title", detail: "Required by all channels.", platforms: ["shopify", "merchant", "amazon_sp"] });
   if (!product.brand?.trim())
     missingAttributes.push({ attr: "brand", label: "Brand", detail: "Required by Google Merchant Center and Amazon.", platforms: ["shopify", "merchant", "amazon_sp"] });
   const variantsMissingBarcode = variants.filter((v) => !v.barcode?.trim());
-  if (variantsMissingBarcode.length > 0)
+  if (!product.gtinExempt && variantsMissingBarcode.length > 0)
     missingAttributes.push({ attr: "barcode", label: "Barcode / GTIN", detail: "Required for Merchant Center and Amazon catalog matching.", platforms: ["shopify", "merchant", "amazon_sp"], variants: variantsMissingBarcode.map((v) => ({ id: v.id, sku: v.sku, title: v.title })) });
   if (!product.descriptionHtml || product.descriptionHtml.trim().length < 10)
     missingAttributes.push({ attr: "description", label: "Description", detail: "Improves search ranking and listing quality.", platforms: ["shopify", "merchant", "amazon_sp"] });
@@ -295,6 +296,8 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   label={item.label}
                   platforms={item.platforms}
                   variants={item.variants}
+                  currentSeoTitle={item.currentSeoTitle}
+                  currentSeoDescription={item.currentSeoDescription}
                 />
               </li>
             ))}

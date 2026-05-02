@@ -299,7 +299,7 @@ export class AppController {
         availableInventory: sql<number>`coalesce(sum(case when ${inventoryPositions.quantityName} = 'available' then ${inventoryPositions.quantityValue} else 0 end), 0)::int`,
         hasBarcode: sql<boolean>`bool_or(${variants.barcode} is not null and ${variants.barcode} != '')`,
         hasDescription: sql<boolean>`(${products.descriptionHtml} is not null and length(trim(${products.descriptionHtml})) > 10)`,
-        hasSeoTitle: sql<boolean>`(${products.seoTitle} is not null and length(trim(${products.seoTitle})) > 0)`,
+        gtinExempt: products.gtinExempt,
       })
       .from(products)
       .leftJoin(variants, eq(variants.productId, products.id))
@@ -350,9 +350,8 @@ export class AppController {
       const missing: string[] = [];
       if (!p.title?.trim()) missing.push("title");
       if (!p.brand?.trim()) missing.push("brand");
-      if (!p.hasBarcode) missing.push("barcode");
+      if (!p.hasBarcode && !p.gtinExempt) missing.push("barcode");
       if (!p.hasDescription) missing.push("description");
-      if (!p.hasSeoTitle) missing.push("seo_title");
 
       return {
         id: p.id,
@@ -732,17 +731,77 @@ export class AppController {
       ok: 3,
     };
 
+    // Resolve location GIDs to names from Shopify
+    let locationNameMap: Record<string, string> = {};
+    try {
+      const account = await this.getShopifyAccount();
+      const accessToken = decryptToken(account.encryptedAccessToken!);
+      const locData = await this.shopifyGraphql<{
+        locations: { nodes: Array<{ id: string; name: string }> };
+      }>(
+        account.shopDomain!,
+        accessToken,
+        `#graphql query GetLocations { locations(first: 30, includeInactive: true) { nodes { id name } } }`,
+        {},
+      );
+      locationNameMap = Object.fromEntries(
+        locData.locations.nodes.map((loc) => [loc.id, loc.name]),
+      );
+    } catch { /* non-fatal — fall back to formatted GID */ }
+
+    const resolveLocationName = (key: string): string => {
+      if (locationNameMap[key]) return locationNameMap[key];
+      const numericId = key.split("/").pop();
+      if (numericId && locationNameMap[`gid://shopify/Location/${numericId}`]) {
+        return locationNameMap[`gid://shopify/Location/${numericId}`];
+      }
+      return numericId ? `Location ${numericId}` : key;
+    };
+
     return {
       periodDays: 90,
       totals,
       locations: Array.from(locations.entries())
-        .map(([locationKey, values]) => ({ locationKey, ...values }))
+        .map(([locationKey, values]) => ({ locationKey, name: resolveLocationName(locationKey), ...values }))
         .sort((a, b) => b.available - a.available),
-      variants: variantsPayload.sort((a, b) => {
-        const statusDelta = riskPriority[a.status] - riskPriority[b.status];
-        return statusDelta || b.revenueCents - a.revenueCents || a.sku.localeCompare(b.sku);
-      }),
+      variants: variantsPayload
+        .map((v) => ({
+          ...v,
+          locations: v.locations.map((loc) => ({ ...loc, name: resolveLocationName(loc.locationKey) })),
+        }))
+        .sort((a, b) => {
+          const statusDelta = riskPriority[a.status] - riskPriority[b.status];
+          return statusDelta || b.revenueCents - a.revenueCents || a.sku.localeCompare(b.sku);
+        }),
     };
+  }
+
+  @Get("locations")
+  async listLocations() {
+    const account = await this.getShopifyAccount();
+    const accessToken = decryptToken(account.encryptedAccessToken!);
+    const data = await this.shopifyGraphql<{
+      locations: { nodes: Array<{ id: string; name: string; isActive: boolean; address: { city: string | null; countryCode: string | null } }> };
+    }>(
+      account.shopDomain!,
+      accessToken,
+      `#graphql
+        query GetLocations {
+          locations(first: 30, includeInactive: true) {
+            nodes { id name isActive address { city countryCode } }
+          }
+        }
+      `,
+      {},
+    );
+    return data.locations.nodes.map((loc) => ({
+      id: loc.id,
+      numericId: loc.id.split("/").pop() ?? loc.id,
+      name: loc.name,
+      isActive: loc.isActive,
+      city: loc.address.city,
+      countryCode: loc.address.countryCode,
+    }));
   }
 
   @Get("alerts")
@@ -1379,6 +1438,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         descriptionHtml: products.descriptionHtml,
         seoTitle: products.seoTitle,
         seoDescription: products.seoDescription,
+        gtinExempt: products.gtinExempt,
         workspaceId: products.workspaceId,
       })
       .from(products)
@@ -1496,10 +1556,8 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     const missingAttributes = [
       !product.title?.trim() ? "title" : null,
       !product.brand?.trim() ? "brand" : null,
-      !variantRows.some((variant) => variant.barcode?.trim()) ? "barcode_gtin" : null,
+      !product.gtinExempt && !variantRows.some((variant) => variant.barcode?.trim()) ? "barcode_gtin" : null,
       !product.descriptionHtml || product.descriptionHtml.trim().length < 10 ? "description" : null,
-      !product.seoTitle?.trim() ? "seo_title" : null,
-      !product.seoDescription?.trim() ? "seo_description" : null,
     ].filter(Boolean);
 
     const apiKey = this.config.get<string>("OPENAI_API_KEY");
@@ -2208,6 +2266,27 @@ Sort groups by priority (critical first). Be specific about root causes.`,
           ? `Updated barcode and queued ${queued.map((platform) => platform === "merchant" ? "Merchant" : "Amazon").join(", ")} sync.`
           : "Updated barcode.",
     };
+  }
+
+  @Patch("products/:id/gtin-exempt")
+  async setGtinExempt(
+    @Param("id") id: string,
+    @Body() body: { exempt: boolean },
+  ) {
+    const [product] = await this.db
+      .select({ id: products.id })
+      .from(products)
+      .where(eq(products.id, id))
+      .limit(1);
+
+    if (!product) throw new NotFoundException(`Product ${id} not found`);
+
+    await this.db
+      .update(products)
+      .set({ gtinExempt: body.exempt, updatedAt: new Date() })
+      .where(eq(products.id, id));
+
+    return { ok: true, gtinExempt: body.exempt };
   }
 
   @Post("integrations/:id/sync")

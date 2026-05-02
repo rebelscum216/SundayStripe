@@ -36,11 +36,10 @@ const ATTR_LABELS: Record<string, string> = {
   brand: "Brand",
   barcode: "Barcode / GTIN",
   description: "Description",
-  seo_title: "SEO title",
 };
 
 const PLATFORM_GAPS: Record<Platform, string[]> = {
-  shopify: ["title", "brand", "description", "seo_title"],
+  shopify: ["title", "brand", "description"],
   merchant: ["title", "brand", "barcode", "description"],
   amazon_sp: ["title", "brand", "barcode", "description"],
 };
@@ -103,12 +102,9 @@ function listingStatus(product: Product, platform: Platform) {
 
 function productHasIssue(product: Product, platform: Platform) {
   const status = listingStatus(product, platform);
-  if (status === "missing" || status === "issue" || status === "disapproved" || status === "unlisted") {
-    return true;
-  }
-  if (platform === "amazon_sp" && product.amazonQualityScore !== null && product.amazonQualityScore < 50) {
-    return true;
-  }
+  if (status === "missing") return false;
+  if (status === "issue" || status === "disapproved" || status === "unlisted") return true;
+  if (platform === "amazon_sp" && product.amazonQualityScore !== null && product.amazonQualityScore < 50) return true;
   return product.missingAttributes.some((attr) => PLATFORM_GAPS[platform].includes(attr));
 }
 
@@ -133,9 +129,10 @@ export async function ChannelWorkspace({
   const failedJobs = integration?.failedJobs ?? integration?.failed_jobs ?? 0;
   const openAlerts = integration?.openAlerts ?? integration?.open_alerts ?? 0;
   const listedProducts = products.filter((product) => listingStatus(product, platform) !== "missing");
-  const missingProducts = products.length - listedProducts.length;
-  const issueProducts = products.filter((product) => productHasIssue(product, platform));
-  const rows = issueProducts.length > 0 ? issueProducts : listedProducts.slice(0, 20);
+  const notListedProducts = products.filter((product) => listingStatus(product, platform) === "missing");
+  const issueProducts = listedProducts.filter((product) => productHasIssue(product, platform));
+  const listedRows = issueProducts.length > 0 ? issueProducts : listedProducts.slice(0, 20);
+  const listedTitle = issueProducts.length > 0 ? "Listings to Fix" : "Listed Products";
 
   return (
     <div className="flex flex-col gap-6">
@@ -144,7 +141,7 @@ export async function ChannelWorkspace({
       <div className="grid gap-3 md:grid-cols-4">
         <MetricCard label="Listed products" value={formatNumber(listedProducts.length)} sub={`${formatNumber(products.length)} total products`} />
         <MetricCard label="Needs attention" value={formatNumber(issueProducts.length)} accent={issueProducts.length > 0 ? "warn" : "good"} sub="Listings, attributes, or quality" />
-        <MetricCard label="Missing listings" value={formatNumber(missingProducts)} accent={missingProducts > 0 ? "warn" : "good"} />
+        <MetricCard label="Not listed" value={formatNumber(notListedProducts.length)} accent={notListedProducts.length > 0 ? "warn" : "good"} />
         <MetricCard label="Open alerts" value={formatNumber(openAlerts)} accent={openAlerts > 0 ? "bad" : "good"} sub={`${formatNumber(failedJobs)} failed jobs`} />
       </div>
 
@@ -177,12 +174,11 @@ export async function ChannelWorkspace({
         </div>
       </section>
 
+      {/* Listed products */}
       <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <h2 className="text-sm font-semibold text-zinc-100">
-            {issueProducts.length > 0 ? "Listings to Fix" : "Recent Listings"}
-          </h2>
-          <span className="font-mono text-xs text-zinc-500">{formatNumber(rows.length)}</span>
+          <h2 className="text-sm font-semibold text-zinc-100">{listedTitle}</h2>
+          <span className="font-mono text-xs text-zinc-500">{formatNumber(listedRows.length)}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] border-collapse text-left text-sm">
@@ -198,7 +194,7 @@ export async function ChannelWorkspace({
               </tr>
             </thead>
             <tbody>
-              {rows.map((product) => {
+              {listedRows.map((product) => {
                 const status = listingStatus(product, platform);
                 const gaps = product.missingAttributes.filter((attr) => PLATFORM_GAPS[platform].includes(attr));
                 return (
@@ -249,10 +245,10 @@ export async function ChannelWorkspace({
                   </tr>
                 );
               })}
-              {rows.length === 0 && (
+              {listedRows.length === 0 && (
                 <tr>
                   <td className="px-4 py-8 text-center text-sm text-zinc-500" colSpan={platform === "amazon_sp" ? 7 : 6}>
-                    No products found for this channel.
+                    No listed products found.
                   </td>
                 </tr>
               )}
@@ -260,6 +256,70 @@ export async function ChannelWorkspace({
           </table>
         </div>
       </section>
+
+      {/* Not listed */}
+      {notListedProducts.length > 0 && (
+        <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
+          <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-100">Not on {title}</h2>
+              <p className="mt-0.5 text-xs text-zinc-500">Products in your catalog with no {title} listing</p>
+            </div>
+            <span className="font-mono text-xs text-zinc-500">{formatNumber(notListedProducts.length)}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+              <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+                <tr>
+                  <th className="px-4 py-3">Product</th>
+                  <th className="px-4 py-3 text-right">Variants</th>
+                  <th className="px-4 py-3 text-right">Inventory</th>
+                  <th className="px-4 py-3">Gaps to fix first</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {notListedProducts.map((product) => {
+                  const gaps = product.missingAttributes.filter((attr) => PLATFORM_GAPS[platform].includes(attr));
+                  return (
+                    <tr key={product.id} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
+                      <td className="px-4 py-3">
+                        <Link href={`/products/${product.id}`} className="font-medium text-zinc-100 hover:underline">
+                          {product.title ?? product.canonicalSku}
+                        </Link>
+                        <p className="mt-1 font-mono text-xs text-zinc-500">{product.canonicalSku}</p>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(product.variantCount)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(product.availableInventory)}</td>
+                      <td className="px-4 py-3">
+                        {gaps.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {gaps.map((gap) => (
+                              <span key={gap} className="rounded border border-amber-500 bg-amber-950 px-1.5 py-0.5 text-xs text-amber-400">
+                                {ATTR_LABELS[gap] ?? gap}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-zinc-500">Ready to list</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/products/${product.id}`}
+                          className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
