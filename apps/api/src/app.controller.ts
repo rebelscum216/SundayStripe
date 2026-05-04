@@ -2269,7 +2269,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
   ) {
     const value = body.value?.trim();
     if (!value) throw new BadRequestException("Attribute value is required");
-    if (body.attribute !== "brand") {
+    if (body.attribute !== "brand" && body.attribute !== "description") {
       throw new BadRequestException(`Unsupported product attribute: ${body.attribute}`);
     }
 
@@ -2289,14 +2289,22 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     const queued: string[] = [];
 
     if (!body.platforms || body.platforms.includes("shopify")) {
-      await this.updateShopifyProductFields(product.workspaceId, id, { vendor: value });
+      if (body.attribute === "brand") {
+        await this.updateShopifyProductFields(product.workspaceId, id, { vendor: value });
+      } else {
+        // Wrap plain text in <p> tags if it doesn't look like HTML already
+        const html = value.startsWith("<") ? value : `<p>${value.replace(/\n\n+/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
+        await this.updateShopifyProductFields(product.workspaceId, id, { descriptionHtml: html });
+      }
       pushed.push("shopify");
     }
 
-    await this.db
-      .update(products)
-      .set({ brand: value, updatedAt: new Date() })
-      .where(eq(products.id, id));
+    if (body.attribute === "brand") {
+      await this.db.update(products).set({ brand: value, updatedAt: new Date() }).where(eq(products.id, id));
+    } else {
+      const html = value.startsWith("<") ? value : `<p>${value.replace(/\n\n+/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
+      await this.db.update(products).set({ descriptionHtml: html, updatedAt: new Date() }).where(eq(products.id, id));
+    }
 
     const downstreamPlatforms = (body.platforms ?? ["merchant", "amazon_sp"]).filter((platform) =>
       platform === "merchant" || platform === "amazon_sp",
@@ -2305,6 +2313,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       queued.push(...(await this.enqueueWorkspaceSyncs(product.workspaceId, downstreamPlatforms)));
     }
 
+    const attrLabel = body.attribute === "brand" ? "Brand" : "Description";
     return {
       ok: true,
       attribute: body.attribute,
@@ -2313,8 +2322,8 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       queued,
       message:
         queued.length > 0
-          ? `Updated Brand and queued ${queued.map((platform) => platform === "merchant" ? "Merchant" : "Amazon").join(", ")} sync.`
-          : "Updated Brand.",
+          ? `Updated ${attrLabel} and queued ${queued.map((p) => p === "merchant" ? "Merchant" : "Amazon").join(", ")} sync.`
+          : `Updated ${attrLabel}.`,
     };
   }
 
@@ -2840,7 +2849,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
   private async updateShopifyProductFields(
     workspaceId: string,
     productId: string,
-    fields: { vendor?: string },
+    fields: { vendor?: string; descriptionHtml?: string },
   ) {
     const [listingRow] = await this.db
       .select({ platformListingId: channelListings.platformListingId })
@@ -2863,10 +2872,11 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     const accessToken = decryptToken(account.encryptedAccessToken!);
     const input: Record<string, string> = { id: listingRow.platformListingId };
     if (fields.vendor) input.vendor = fields.vendor;
+    if (fields.descriptionHtml !== undefined) input.descriptionHtml = fields.descriptionHtml;
 
     const data = await this.shopifyGraphql<{
       productUpdate: {
-        product: { id: string; vendor?: string | null } | null;
+        product: { id: string; vendor?: string | null; descriptionHtml?: string | null } | null;
         userErrors: Array<{ field?: string[]; message: string }>;
       };
     }>(
@@ -2875,7 +2885,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       `#graphql
         mutation UpdateProductFields($input: ProductInput!) {
           productUpdate(input: $input) {
-            product { id vendor }
+            product { id vendor descriptionHtml }
             userErrors { field message }
           }
         }

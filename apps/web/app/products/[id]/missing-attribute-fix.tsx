@@ -13,6 +13,7 @@ type Props = {
   variants?: VariantForBarcode[];
   currentSeoTitle?: string | null;
   currentSeoDescription?: string | null;
+  currentDescription?: string | null;
 };
 
 type UpdateResponse = {
@@ -204,7 +205,75 @@ function SeoUpdateRow({
   );
 }
 
-export function MissingAttributeFix({ productId, attribute, label, platforms, variants, currentSeoTitle, currentSeoDescription }: Props) {
+function DescriptionRow({
+  productId,
+  currentDescription,
+  platforms,
+}: {
+  productId: string;
+  currentDescription?: string | null;
+  platforms: string[];
+}) {
+  const router = useRouter();
+  const initialText = currentDescription
+    ? currentDescription.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+    : "";
+  const [value, setValue] = useState(initialText);
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function update() {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    setState("saving");
+    setMessage(null);
+    try {
+      const res = await fetch(`/api-proxy/products/${productId}/attributes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attribute: "description", value: trimmed, platforms }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const result = (await res.json()) as UpdateResponse;
+      setMessage(result.message ?? "Description updated.");
+      setState("saved");
+      router.refresh();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Unable to update description.");
+      setState("error");
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-2 sm:mt-0 sm:min-w-[360px]">
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Write a product description (2–3 sentences about the product, materials, and use case)"
+        rows={4}
+        disabled={state === "saved"}
+        className="w-full rounded border border-amber-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-500 focus:outline-none disabled:opacity-50"
+      />
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-amber-500/70">Plain text — pushes to Shopify and queues downstream syncs.</p>
+        <span className="text-xs text-zinc-600">{value.length} chars</span>
+      </div>
+      <button
+        type="button"
+        onClick={update}
+        disabled={state === "saving" || state === "saved" || !value.trim()}
+        className="self-start rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+      >
+        {state === "saving" ? "Saving..." : state === "saved" ? "Saved ✓" : "Update & push"}
+      </button>
+      {message && (
+        <p className={`text-xs ${state === "error" ? "text-red-400" : "text-emerald-400"}`}>{message}</p>
+      )}
+    </div>
+  );
+}
+
+export function MissingAttributeFix({ productId, attribute, label, platforms, variants, currentSeoTitle, currentSeoDescription, currentDescription }: Props) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -212,6 +281,10 @@ export function MissingAttributeFix({ productId, attribute, label, platforms, va
 
   if (attribute === "seo_title") {
     return <SeoUpdateRow productId={productId} currentSeoTitle={currentSeoTitle} currentSeoDescription={currentSeoDescription} />;
+  }
+
+  if (attribute === "description") {
+    return <DescriptionRow productId={productId} currentDescription={currentDescription} platforms={platforms} />;
   }
 
   if (attribute === "barcode" && variants && variants.length > 0) {

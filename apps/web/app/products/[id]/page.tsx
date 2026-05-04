@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { resolveAlert } from "../../actions";
 import { AmazonListingRewrite } from "./amazon-listing-rewrite";
 import { AiDescribeButton } from "./ai-describe";
@@ -199,12 +200,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   ]);
 
   if (!data) {
-    return (
-      <div className="flex flex-col gap-4">
-        <a href="/products" className="text-sm text-zinc-500 hover:text-zinc-300">← Products</a>
-        <p className="text-zinc-500">Product not found.</p>
-      </div>
-    );
+    notFound();
   }
 
   const { product, variants, alerts } = data;
@@ -214,7 +210,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   );
   const platforms = [...new Set(variants.flatMap((v) => v.listings.map((l) => l.platform)))];
 
-  const missingAttributes: { attr: string; label: string; detail: string; platforms: string[]; variants?: { id: string; sku: string; title: string }[]; currentSeoTitle?: string | null; currentSeoDescription?: string | null }[] = [];
+  const missingAttributes: { attr: string; label: string; detail: string; platforms: string[]; variants?: { id: string; sku: string; title: string }[]; currentSeoTitle?: string | null; currentSeoDescription?: string | null; currentDescription?: string | null }[] = [];
   if (!product.title?.trim())
     missingAttributes.push({ attr: "title", label: "Title", detail: "Required by all channels.", platforms: ["shopify", "merchant", "amazon_sp"] });
   if (!product.brand?.trim())
@@ -223,7 +219,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   if (!product.gtinExempt && variantsMissingBarcode.length > 0)
     missingAttributes.push({ attr: "barcode", label: "Barcode / GTIN", detail: "Required for Merchant Center and Amazon catalog matching.", platforms: ["shopify", "merchant", "amazon_sp"], variants: variantsMissingBarcode.map((v) => ({ id: v.id, sku: v.sku, title: v.title })) });
   if (!product.descriptionHtml || product.descriptionHtml.trim().length < 10)
-    missingAttributes.push({ attr: "description", label: "Description", detail: "Improves search ranking and listing quality.", platforms: ["shopify", "merchant", "amazon_sp"] });
+    missingAttributes.push({ attr: "description", label: "Description", detail: "Improves search ranking and listing quality.", platforms: ["shopify", "merchant", "amazon_sp"], currentDescription: product.descriptionHtml ?? null });
 
   return (
     <div className="flex flex-col gap-6">
@@ -298,6 +294,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   variants={item.variants}
                   currentSeoTitle={item.currentSeoTitle}
                   currentSeoDescription={item.currentSeoDescription}
+                  currentDescription={item.currentDescription}
                 />
               </li>
             ))}
