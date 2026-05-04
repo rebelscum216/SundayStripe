@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Inject, NotFoundException, Param, Patch, Post } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Inject, InternalServerErrorException, NotFoundException, Param, Patch, Post } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
@@ -11,6 +11,7 @@ import { Redis } from "ioredis";
 import type { Sql } from "postgres";
 import type * as schema from "@sunday-stripe/db";
 import { DATABASE_CONNECTION, DRIZZLE_DATABASE } from "./database/database.constants.js";
+import { AmazonApiService } from "./amazon/amazon-api.service.js";
 import { MerchantApiService, type MerchantProduct } from "./merchant/merchant-api.service.js";
 import { decryptToken } from "./shopify/crypto.util.js";
 
@@ -91,6 +92,7 @@ export class AppController {
     @Inject(DATABASE_CONNECTION) private readonly sql: Sql,
     @Inject(DRIZZLE_DATABASE) private readonly db: Db,
     private readonly config: ConfigService,
+    private readonly amazonApi: AmazonApiService,
     private readonly merchantApi: MerchantApiService,
     @InjectQueue("shopify-sync") private readonly shopifyQueue: Queue,
     @InjectQueue("shopify-orders-sync") private readonly shopifyOrdersQueue: Queue,
@@ -437,6 +439,126 @@ export class AppController {
         position: r.position / 10,
       })),
     };
+  }
+
+  @Get("amazon/unmatched")
+  async getUnmatchedAmazonListings() {
+    const localSkuRows = await this.db
+      .select({ sku: variants.sku })
+      .from(variants)
+      .innerJoin(products, eq(variants.productId, products.id));
+    const localSkus = new Set(localSkuRows.map((row) => row.sku));
+
+    const items: Array<{
+      sku: string;
+      asin: string | null;
+      title: string | null;
+      status: string;
+      productType: string | null;
+      imageUrl: string | null;
+    }> = [];
+    const seenSkus = new Set<string>();
+    const seenTokens = new Set<string>();
+    let pageToken: string | undefined;
+    let fetchedListings = 0;
+
+    for (let page = 0; page < 25; page += 1) {
+      const { items: pageItems, nextToken } = await this.amazonApi.fetchListingsPage(pageToken);
+      fetchedListings += pageItems.length;
+
+      for (const listing of pageItems) {
+        if (!listing.sku || localSkus.has(listing.sku) || seenSkus.has(listing.sku)) continue;
+        seenSkus.add(listing.sku);
+        items.push({
+          sku: listing.sku,
+          asin: listing.asin,
+          title: listing.title,
+          status: listing.status,
+          productType: listing.productType,
+          imageUrl: listing.imageUrl,
+        });
+      }
+
+      if (!nextToken || seenTokens.has(nextToken)) break;
+      seenTokens.add(nextToken);
+      pageToken = nextToken;
+    }
+
+    return {
+      fetchedListings,
+      unmatchedCount: items.length,
+      items,
+    };
+  }
+
+  @Post("amazon/import-listing")
+  async importAmazonListing(
+    @Body()
+    body: {
+      sku: string;
+      asin?: string | null;
+      title?: string | null;
+      status?: string | null;
+      productType?: string | null;
+    },
+  ) {
+    const sku = body.sku?.trim();
+    if (!sku) throw new BadRequestException("Amazon seller SKU is required");
+
+    const [existingVariant] = await this.db
+      .select({ id: variants.id, productId: variants.productId })
+      .from(variants)
+      .where(eq(variants.sku, sku))
+      .limit(1);
+
+    if (existingVariant) {
+      throw new BadRequestException("A local variant already uses this seller SKU");
+    }
+
+    const [integration] = await this.db
+      .select({ id: integrationAccounts.id, workspaceId: integrationAccounts.workspaceId })
+      .from(integrationAccounts)
+      .where(and(eq(integrationAccounts.platform, "amazon_sp"), eq(integrationAccounts.status, "active")))
+      .limit(1);
+
+    if (!integration) throw new BadRequestException("No active Amazon integration found");
+
+    const title = body.title?.trim() || sku;
+    const now = new Date();
+    const [product] = await this.db
+      .insert(products)
+      .values({
+        workspaceId: integration.workspaceId,
+        canonicalSku: sku,
+        title,
+        sourceOfTruth: "amazon_sp",
+        sourceUpdatedAt: now,
+        updatedAt: now,
+      })
+      .returning({ id: products.id });
+
+    const [variant] = await this.db
+      .insert(variants)
+      .values({
+        productId: product.id,
+        sku,
+        optionValuesJson: body.productType ? { source: "amazon_sp", productType: body.productType } : { source: "amazon_sp" },
+        updatedAt: now,
+      })
+      .returning({ id: variants.id });
+
+    const listingStatus = this.getAmazonListingStatus(body.status ?? "UNKNOWN");
+    await this.db.insert(channelListings).values({
+      variantId: variant.id,
+      integrationAccountId: integration.id,
+      platformListingId: body.asin ?? sku,
+      status: listingStatus,
+      buyabilityStatus: body.status ?? "UNKNOWN",
+      lastSeenAt: now,
+      updatedAt: now,
+    });
+
+    return { ok: true, productId: product.id, variantId: variant.id };
   }
 
   @Get("products/:id")
@@ -1156,7 +1278,7 @@ export class AppController {
       gscQueries.length > 0 ? `Top search queries driving traffic to this product: ${gscQueries.map((q) => q.query).join(", ")}` : null,
     ].filter(Boolean).join("\n");
 
-    const completion = await openai.chat.completions.create({
+    const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
       messages: [
         {
@@ -1168,9 +1290,7 @@ export class AppController {
       response_format: { type: "json_object" },
       max_tokens: 600,
     });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    return JSON.parse(raw) as { description: string; seoTitle: string; seoMetaDescription: string };
+    return this.parseAiJson<{ description: string; seoTitle: string; seoMetaDescription: string }>(raw);
   }
 
   @Post("ai/explain-alert")
@@ -1272,7 +1392,7 @@ export class AppController {
       issues.length > 0 ? `Issues:\n${JSON.stringify(issues, null, 2)}` : null,
     ].filter(Boolean).join("\n");
 
-    const completion = await openai.chat.completions.create({
+    const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
       messages: [
         {
@@ -1284,9 +1404,7 @@ export class AppController {
       response_format: { type: "json_object" },
       max_tokens: 400,
     });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    const result = JSON.parse(raw) as { summary?: string; fixes?: string[] };
+    const result = this.parseAiJson<{ summary?: string; fixes?: string[] }>(raw);
     return {
       summary: result.summary ?? "This alert needs a product or channel data fix before the channel can fully trust the listing.",
       fixes: Array.isArray(result.fixes) ? result.fixes : [],
@@ -1341,7 +1459,7 @@ export class AppController {
     if (cached) return { ...cached, cached: true };
 
     const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
+    const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
       messages: [
         {
@@ -1372,9 +1490,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       response_format: { type: "json_object" },
       max_tokens: 1200,
     });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    const result = JSON.parse(raw) as {
+    const result = this.parseAiJson<{
       summary: string;
       groups: Array<{
         id: string;
@@ -1386,7 +1502,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         recommendedAction: string;
         estimatedImpact: string;
       }>;
-    };
+    }>(raw);
 
     await this.saveRecommendation(workspaceId, "triage_alerts", null, contextHash, "gpt-4o-mini", result);
     return { ...result, cached: false };
@@ -1601,7 +1717,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         : "Listings: none",
     ].join("\n");
 
-    const completion = await openai.chat.completions.create({
+    const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
       messages: [
         {
@@ -1613,9 +1729,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       response_format: { type: "json_object" },
       max_tokens: 800,
     });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    return JSON.parse(raw) as {
+    return this.parseAiJson<{
       summary: string;
       priority: "high" | "medium" | "low";
       fixes: Array<{
@@ -1625,7 +1739,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         channel: string;
         impact: string;
       }>;
-    };
+    }>(raw);
   }
 
   @Post("ai/amazon-listing-rewrite")
@@ -1749,7 +1863,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         : "Search demand: none",
     ].join("\n");
 
-    const completion = await openai.chat.completions.create({
+    const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
       messages: [
         {
@@ -1761,9 +1875,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       response_format: { type: "json_object" },
       max_tokens: 1000,
     });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    return JSON.parse(raw) as {
+    return this.parseAiJson<{
       summary: string;
       title: string;
       bullets: string[];
@@ -1774,7 +1886,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         issue: string;
         recommendation: string;
       }>;
-    };
+    }>(raw);
   }
 
   @Post("ai/cross-channel-opportunity")
@@ -1950,7 +2062,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         : "Open alerts: none",
     ].join("\n");
 
-    const completion = await openai.chat.completions.create({
+    const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
       messages: [
         {
@@ -1962,15 +2074,13 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       response_format: { type: "json_object" },
       max_tokens: 700,
     });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    return JSON.parse(raw) as {
+    return this.parseAiJson<{
       summary: string;
       likelyCause: string;
       nextBestAction: string;
       expectedUpside: string;
       fixes: Array<{ action: string; channel: string; reason: string }>;
-    };
+    }>(raw);
   }
 
   @Post("ai/optimize-page")
@@ -2041,7 +2151,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     ].filter(Boolean).join("\n");
 
     const openai = new OpenAI({ apiKey });
-    const completion = await openai.chat.completions.create({
+    const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
       messages: [
         {
@@ -2054,9 +2164,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       response_format: { type: "json_object" },
       max_tokens: 400,
     });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    const aiResult = JSON.parse(raw) as { seoTitle: string; metaDescription: string; reasoning: string };
+    const aiResult = this.parseAiJson<{ seoTitle: string; metaDescription: string; reasoning: string }>(raw);
     const output = {
       ...aiResult,
       productId: matchedProduct?.id ?? null,
@@ -2827,6 +2935,13 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     return queued;
   }
 
+  private getAmazonListingStatus(status: string): string {
+    const normalized = status.toUpperCase();
+    if (normalized === "BUYABLE") return "published";
+    if (normalized === "DISCOVERABLE") return "unlisted";
+    return "issue";
+  }
+
   private async getShopifyAccount(workspaceId?: string | null) {
     const rows = await this.db
       .select()
@@ -2870,6 +2985,25 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     }
 
     return body.data;
+  }
+
+  private parseAiJson<T>(raw: string): T {
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      throw new InternalServerErrorException('AI response could not be parsed as JSON');
+    }
+  }
+
+  private async callAi(openai: OpenAI, params: Parameters<OpenAI['chat']['completions']['create']>[0]): Promise<string> {
+    let completion: import('openai').OpenAI.Chat.ChatCompletion;
+    try {
+      completion = await openai.chat.completions.create({ ...params, stream: false });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new InternalServerErrorException(`AI service error: ${msg}`);
+    }
+    return completion.choices[0]?.message?.content ?? '{}';
   }
 
   private hashContext(input: unknown): string {
