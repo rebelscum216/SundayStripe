@@ -14,6 +14,7 @@ import { DATABASE_CONNECTION, DRIZZLE_DATABASE } from "./database/database.const
 import { AmazonApiService } from "./amazon/amazon-api.service.js";
 import { MerchantApiService, type MerchantProduct } from "./merchant/merchant-api.service.js";
 import { decryptToken } from "./shopify/crypto.util.js";
+import { ShopifyOAuthService } from "./shopify/shopify-oauth.service.js";
 
 type Db = PostgresJsDatabase<typeof schema>;
 
@@ -94,6 +95,7 @@ export class AppController {
     private readonly config: ConfigService,
     private readonly amazonApi: AmazonApiService,
     private readonly merchantApi: MerchantApiService,
+    private readonly shopifyOAuth: ShopifyOAuthService,
     @InjectQueue("shopify-sync") private readonly shopifyQueue: Queue,
     @InjectQueue("shopify-orders-sync") private readonly shopifyOrdersQueue: Queue,
     @InjectQueue("merchant-sync") private readonly merchantQueue: Queue,
@@ -181,6 +183,23 @@ export class AppController {
       ok: true,
       integrations: integrationStatuses
     };
+  }
+
+  @Post("admin/register-webhooks")
+  async registerWebhooks() {
+    const [account] = await this.db
+      .select({ id: integrationAccounts.id, shopDomain: integrationAccounts.shopDomain, encryptedAccessToken: integrationAccounts.encryptedAccessToken })
+      .from(integrationAccounts)
+      .where(eq(integrationAccounts.platform, "shopify"))
+      .limit(1);
+
+    if (!account?.encryptedAccessToken) {
+      throw new BadRequestException("No Shopify integration account with access token found");
+    }
+
+    const accessToken = decryptToken(account.encryptedAccessToken);
+    await this.shopifyOAuth.registerWebhooks(account.shopDomain!, accessToken);
+    return { ok: true, shop: account.shopDomain };
   }
 
   @Get("connections")

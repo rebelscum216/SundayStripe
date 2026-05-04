@@ -212,7 +212,7 @@ export class ShopifyOAuthService {
     return created.id;
   }
 
-  private async registerWebhooks(shop: string, accessToken: string): Promise<void> {
+  async registerWebhooks(shop: string, accessToken: string): Promise<void> {
     const appUrl = this.config.getOrThrow<string>('SHOPIFY_APP_URL');
     const apiVersion = this.config.get<string>('SHOPIFY_API_VERSION', '2025-10');
     const callbackUrl =
