@@ -13,7 +13,7 @@ type RevenueData = {
   topVariants: { sku: string; size: string | null; unitsSold: number; revenueCents: number }[];
 };
 type Quantity = { name: string; value: number };
-type InventoryLocation = { locationKey: string; quantities: Quantity[] };
+type InventoryLocation = { locationKey: string; name: string; quantities: Quantity[] };
 type Listing = {
   platform: string;
   status: string | null;
@@ -164,17 +164,18 @@ function getQuantity(quantities: Quantity[], name: string): number {
 }
 
 function buildInventorySummary(variants: Variant[]) {
-  const byLocation = new Map<string, Map<string, number>>();
+  const byLocation = new Map<string, { name: string; quantities: Map<string, number> }>();
   for (const v of variants) {
     for (const loc of v.inventory) {
-      if (!byLocation.has(loc.locationKey)) byLocation.set(loc.locationKey, new Map());
-      const qMap = byLocation.get(loc.locationKey)!;
-      for (const q of loc.quantities) qMap.set(q.name, (qMap.get(q.name) ?? 0) + q.value);
+      if (!byLocation.has(loc.locationKey)) byLocation.set(loc.locationKey, { name: loc.name, quantities: new Map() });
+      const entry = byLocation.get(loc.locationKey)!;
+      for (const q of loc.quantities) entry.quantities.set(q.name, (entry.quantities.get(q.name) ?? 0) + q.value);
     }
   }
-  return Array.from(byLocation.entries()).map(([locationKey, qMap]) => ({
+  return Array.from(byLocation.entries()).map(([locationKey, { name, quantities }]) => ({
     locationKey,
-    quantities: QUANTITY_ORDER.map((name) => ({ name, value: qMap.get(name) ?? 0 })),
+    name,
+    quantities: QUANTITY_ORDER.map((qName) => ({ name: qName, value: quantities.get(qName) ?? 0 })),
   }));
 }
 
@@ -449,8 +450,8 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                 <tbody>
                   {inventorySummary.map((loc) => (
                     <tr key={loc.locationKey} className="border-t border-zinc-800 hover:bg-zinc-800/40">
-                      <td className="px-4 py-3 font-mono text-xs text-zinc-400">
-                        {formatLocationKey(loc.locationKey)}
+                      <td className="px-4 py-3 text-sm text-zinc-300">
+                        {loc.name}
                       </td>
                       {QUANTITY_ORDER.map((qName) => (
                         <td key={qName} className="px-4 py-3 text-right font-mono text-zinc-300">

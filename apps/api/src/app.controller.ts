@@ -646,6 +646,9 @@ export class AppController {
             .orderBy(desc(alerts.createdAt))
         : [];
 
+    const locationNameMap = await this.buildLocationNameMap();
+    const resolveLocationName = (key: string) => this.resolveLocationName(key, locationNameMap);
+
     const listingsByVariant = new Map<string, typeof listingRows>();
     for (const row of listingRows) {
       const bucket = listingsByVariant.get(row.variantId) ?? [];
@@ -686,7 +689,7 @@ export class AppController {
         optionValuesJson: v.optionValuesJson,
         listings: listingsByVariant.get(v.id) ?? [],
         inventory: Array.from((inventoryByVariant.get(v.id) ?? new Map()).entries()).map(
-          ([locationKey, quantities]) => ({ locationKey, quantities }),
+          ([locationKey, quantities]) => ({ locationKey, name: resolveLocationName(locationKey), quantities }),
         ),
       })),
       alerts: alertRows,
@@ -872,32 +875,8 @@ export class AppController {
       ok: 3,
     };
 
-    // Resolve location GIDs to names from Shopify
-    let locationNameMap: Record<string, string> = {};
-    try {
-      const account = await this.getShopifyAccount();
-      const accessToken = decryptToken(account.encryptedAccessToken!);
-      const locData = await this.shopifyGraphql<{
-        locations: { nodes: Array<{ id: string; name: string }> };
-      }>(
-        account.shopDomain!,
-        accessToken,
-        `#graphql query GetLocations { locations(first: 30, includeInactive: true) { nodes { id name } } }`,
-        {},
-      );
-      locationNameMap = Object.fromEntries(
-        locData.locations.nodes.map((loc) => [loc.id, loc.name]),
-      );
-    } catch { /* non-fatal — fall back to formatted GID */ }
-
-    const resolveLocationName = (key: string): string => {
-      if (locationNameMap[key]) return locationNameMap[key];
-      const numericId = key.split("/").pop();
-      if (numericId && locationNameMap[`gid://shopify/Location/${numericId}`]) {
-        return locationNameMap[`gid://shopify/Location/${numericId}`];
-      }
-      return numericId ? `Location ${numericId}` : key;
-    };
+    const locationNameMap = await this.buildLocationNameMap();
+    const resolveLocationName = (key: string) => this.resolveLocationName(key, locationNameMap);
 
     return {
       periodDays: 90,
@@ -3014,6 +2993,33 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     }
 
     return body.data;
+  }
+
+  private async buildLocationNameMap(): Promise<Record<string, string>> {
+    try {
+      const account = await this.getShopifyAccount();
+      const accessToken = decryptToken(account.encryptedAccessToken!);
+      const data = await this.shopifyGraphql<{
+        locations: { nodes: Array<{ id: string; name: string }> };
+      }>(
+        account.shopDomain!,
+        accessToken,
+        `#graphql query GetLocations { locations(first: 30, includeInactive: true) { nodes { id name } } }`,
+        {},
+      );
+      return Object.fromEntries(data.locations.nodes.map((loc) => [loc.id, loc.name]));
+    } catch {
+      return {};
+    }
+  }
+
+  private resolveLocationName(key: string, nameMap: Record<string, string>): string {
+    if (nameMap[key]) return nameMap[key];
+    const numericId = key.split('/').pop();
+    if (numericId && nameMap[`gid://shopify/Location/${numericId}`]) {
+      return nameMap[`gid://shopify/Location/${numericId}`];
+    }
+    return numericId ? `Location ${numericId}` : key;
   }
 
   private parseAiJson<T>(raw: string): T {
