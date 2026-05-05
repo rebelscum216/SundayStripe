@@ -1,6 +1,1 @@
-{
-  "buildCommand": "pnpm --filter @sunday-stripe/web build",
-  "outputDirectory": "apps/web/.next",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "framework": "nextjs"
-}
+{}
