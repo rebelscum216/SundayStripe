@@ -16,7 +16,8 @@ const migrations = [
   "drizzle/0006_gtin_exempt.sql",
 ];
 const rootDir = dirname(fileURLToPath(import.meta.url));
-const ssl = process.env.NODE_ENV === "production" ? ("require" as const) : false;
+const dbUrl = new URL(databaseUrl);
+const ssl = (dbUrl.hostname !== "localhost" && dbUrl.hostname !== "127.0.0.1") ? ("require" as const) : false;
 const sql = postgres(databaseUrl, { max: 1, ssl });
 
 try {

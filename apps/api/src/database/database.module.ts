@@ -12,7 +12,8 @@ import { DATABASE_CONNECTION, DRIZZLE_DATABASE } from "./database.constants.js";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const url = config.get<string>("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/hub");
-        const ssl = process.env.NODE_ENV === "production" ? ("require" as const) : false;
+        const dbUrl = new URL(url);
+        const ssl = (dbUrl.hostname !== "localhost" && dbUrl.hostname !== "127.0.0.1") ? ("require" as const) : false;
         return postgres(url, { ssl });
       }
     },
