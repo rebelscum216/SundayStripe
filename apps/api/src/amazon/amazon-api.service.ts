@@ -30,6 +30,11 @@ type AmazonListingItem = {
   summaries?: Array<{
     asin?: string;
     status?: string | string[];
+    itemName?: string;
+    productType?: string;
+    mainImage?: {
+      link?: string;
+    };
   }>;
   attributes?: AmazonListingAttributes;
   issues?: unknown[];
@@ -47,6 +52,9 @@ export type AmazonListing = {
   sku: string;
   asin: string | null;
   status: string;
+  title: string | null;
+  productType: string | null;
+  imageUrl: string | null;
   issues: unknown[];
   qualityScore: number; // enriched after SKU match via getListingAttributes()
 };
@@ -169,10 +177,14 @@ export class AmazonApiService {
 
   private toListing(item: AmazonListingItem): AmazonListing {
     const statuses = this.getStatuses(item);
+    const summary = item.summaries?.[0];
     return {
       sku: item.sku ?? item.sellerSku ?? '',
       asin: item.asin ?? item.summaries?.find((summary) => summary.asin)?.asin ?? null,
       status: statuses[0] ?? 'UNKNOWN',
+      title: summary?.itemName ?? null,
+      productType: summary?.productType ?? null,
+      imageUrl: summary?.mainImage?.link ?? null,
       issues: item.issues ?? [],
       qualityScore: this.computeQualityScore(item.attributes),
     };

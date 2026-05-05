@@ -16,7 +16,8 @@ const migrations = [
   "drizzle/0006_gtin_exempt.sql",
 ];
 const rootDir = dirname(fileURLToPath(import.meta.url));
-const sql = postgres(databaseUrl, { max: 1 });
+const ssl = process.env.NODE_ENV === "production" ? ("require" as const) : false;
+const sql = postgres(databaseUrl, { max: 1, ssl });
 
 try {
   await sql`CREATE TABLE IF NOT EXISTS drizzle_migrations (

@@ -139,6 +139,18 @@ async function getInventory(): Promise<InventoryResponse | null> {
   }
 }
 
+type RevenueTrend = { current: number; prior: number; trend: "up" | "down" | "flat"; deltaPercent: number };
+
+async function getRevenueTrend(): Promise<RevenueTrend | null> {
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/revenue-trend`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as RevenueTrend;
+  } catch {
+    return null;
+  }
+}
+
 const PLATFORM_LABELS: Record<string, string> = {
   shopify: "Shopify",
   merchant: "Merchant",
@@ -249,12 +261,13 @@ function getAiNextBestAction(priorityItems: PriorityItem[]) {
 }
 
 export default async function CommandCenterPage() {
-  const [status, alerts, crossChannel, gsc, inventory] = await Promise.all([
+  const [status, alerts, crossChannel, gsc, inventory, revenueTrend] = await Promise.all([
     getStatus(),
     getAlerts(),
     getCrossChannel(),
     getGsc(),
     getInventory(),
+    getRevenueTrend(),
   ]);
 
   const integrations = status?.integrations ?? [];
@@ -342,7 +355,12 @@ export default async function CommandCenterPage() {
           <MetricCard
             label="Revenue tracked"
             value={currency(inventoryTotals?.revenueCents ?? 0)}
-            sub={`${fmt(inventoryTotals?.unitsSold ?? 0)} units / 90d`}
+            sub={
+              revenueTrend && revenueTrend.prior > 0
+                ? `${revenueTrend.deltaPercent > 0 ? "+" : ""}${revenueTrend.deltaPercent}% vs prior 45d · ${fmt(inventoryTotals?.unitsSold ?? 0)} units`
+                : `${fmt(inventoryTotals?.unitsSold ?? 0)} units / 90d`
+            }
+            trend={revenueTrend?.trend}
             accent={(inventoryTotals?.revenueCents ?? 0) > 0 ? "good" : "default"}
           />
           <MetricCard
@@ -468,32 +486,84 @@ export default async function CommandCenterPage() {
 
             <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
               <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-                <h2 className="text-sm font-semibold text-zinc-100">Cross-Channel Opportunity Preview</h2>
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-100">Cross-Channel Opportunities</h2>
+                  <p className="mt-0.5 text-xs text-zinc-500">Top products needing channel action</p>
+                </div>
                 <Link href="/cross-channel" className="text-xs text-zinc-400 hover:text-zinc-200">
-                  View board
+                  View all
                 </Link>
               </div>
-              <div className="grid gap-3 p-4 md:grid-cols-4">
-                {(["no_revenue", "opportunity", "no_listing", "ok"] as const).map((flag) => {
-                  const meta = FLAG_META[flag];
-                  return (
-                    <Link key={flag} href={meta.href} className={`rounded border px-3 py-3 ${meta.className}`}>
-                      <p className="text-xs font-medium">{meta.label}</p>
-                      <p className="mt-2 font-mono text-2xl font-semibold">{fmt(flagCounts[flag])}</p>
+
+              {actionableOps.length === 0 ? (
+                <p className="px-4 py-6 text-sm text-zinc-500">No actionable opportunities found.</p>
+              ) : (
+                <div className="divide-y divide-zinc-800/60">
+                  {actionableOps
+                    .slice()
+                    .sort((a, b) => (b.revenueCents + b.gscImpressions * 10) - (a.revenueCents + a.gscImpressions * 10))
+                    .slice(0, 3)
+                    .map((row) => {
+                      const meta = FLAG_META[row.flag];
+                      const actionText = row.flag === "no_revenue"
+                        ? "Fix product page"
+                        : row.flag === "opportunity"
+                          ? "List on Amazon"
+                          : "Fix Merchant listing";
+                      return (
+                        <div key={row.productId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-zinc-100">
+                              {row.title ?? row.canonicalSku}
+                            </p>
+                            <div className="mt-1 flex items-center gap-3">
+                              <span className={`rounded border px-1.5 py-0.5 text-xs font-medium ${meta.className}`}>
+                                {meta.label}
+                              </span>
+                              <span className="font-mono text-xs text-zinc-500">
+                                {row.revenueCents > 0 ? currency(row.revenueCents) : "no revenue"}
+                                {row.gscImpressions > 0 ? ` · ${fmt(row.gscImpressions)} impr.` : ""}
+                              </span>
+                            </div>
+                          </div>
+                          <Link
+                            href={`/products/${row.productId}`}
+                            className="shrink-0 rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+                          >
+                            {actionText}
+                          </Link>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {actionableOps.length > 0 && (
+                <div className="flex items-center gap-4 border-t border-zinc-800 px-4 py-2.5">
+                  {(["no_revenue", "opportunity", "no_listing"] as const)
+                    .filter((f) => flagCounts[f] > 0)
+                    .map((f) => (
+                      <span key={f} className={`text-xs font-medium ${FLAG_META[f].className} rounded border px-2 py-0.5`}>
+                        {flagCounts[f]} {FLAG_META[f].label.toLowerCase()}
+                      </span>
+                    ))}
+                  {actionableOps.length > 3 && (
+                    <Link href="/cross-channel" className="ml-auto text-xs text-zinc-500 hover:text-zinc-300">
+                      +{actionableOps.length - 3} more
                     </Link>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+              )}
             </section>
           </div>
 
           <aside className="flex flex-col gap-6">
-            <section className="rounded border border-blue-800 bg-blue-950/30 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-400">AI Next Best Action</p>
-              <h2 className="mt-3 text-lg font-semibold text-zinc-100">{aiAction.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-300">{aiAction.detail}</p>
-              <Link href={aiAction.href} className="mt-4 inline-flex rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500">
-                {aiAction.action}
+            <section className={`rounded border p-4 ${priorityItems.length > 0 ? PRIORITY_TONE[priorityItems[0].tone] : "border-zinc-800 bg-zinc-900"}`}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Top Action</p>
+              <h2 className="mt-3 text-base font-semibold text-zinc-100">{aiAction.title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{aiAction.detail}</p>
+              <Link href={aiAction.href} className="mt-4 inline-flex rounded border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700">
+                {aiAction.action} →
               </Link>
             </section>
 
@@ -527,33 +597,16 @@ export default async function CommandCenterPage() {
                   <p className="px-4 py-6 text-sm text-zinc-500">No integrations connected.</p>
                 )}
               </div>
-            </section>
-
-            <section className="rounded border border-zinc-800 bg-zinc-900 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">Freshness</p>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-300">API</span>
-                  <StatusPill status={status?.ok ? "active" : "error"} label={status?.ok ? "Online" : "Offline"} />
+              <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
+                <div className="flex items-center gap-4">
+                  <span className="text-xs text-zinc-500">{fmt(totals.products)} products · {fmt(totals.variants)} variants</span>
+                  {gsc && <span className="text-xs text-zinc-500">{fmt(gsc.impressions)} GSC impr.</span>}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-300">Products</span>
-                  <span className="font-mono text-xs text-zinc-500">{fmt(totals.products)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-300">Variants</span>
-                  <span className="font-mono text-xs text-zinc-500">{fmt(totals.variants)}</span>
-                </div>
-                {gsc && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-zinc-300">GSC impressions</span>
-                    <span className="font-mono text-xs text-zinc-500">{fmt(gsc.impressions)}</span>
-                  </div>
-                )}
+                <StatusPill status={status?.ok ? "active" : "error"} label={status?.ok ? "API online" : "API offline"} />
               </div>
               {totals.failedJobs > 0 && (
-                <p className="mt-3 text-xs text-red-400">
-                  Failed jobs need cleanup in <Link href="/operations" className="underline hover:text-red-300">Operations</Link>.
+                <p className="border-t border-zinc-800 px-4 py-2 text-xs text-red-400">
+                  {fmt(totals.failedJobs)} failed {totals.failedJobs === 1 ? "job" : "jobs"} — <Link href="/operations" className="underline hover:text-red-300">clear in Operations</Link>
                 </p>
               )}
             </section>

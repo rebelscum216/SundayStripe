@@ -10,13 +10,11 @@ import { DATABASE_CONNECTION, DRIZZLE_DATABASE } from "./database.constants.js";
     {
       provide: DATABASE_CONNECTION,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) =>
-        postgres(
-          config.get<string>(
-            "DATABASE_URL",
-            "postgresql://postgres:postgres@localhost:5432/hub"
-          )
-        )
+      useFactory: (config: ConfigService) => {
+        const url = config.get<string>("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/hub");
+        const ssl = process.env.NODE_ENV === "production" ? ("require" as const) : false;
+        return postgres(url, { ssl });
+      }
     },
     {
       provide: DRIZZLE_DATABASE,

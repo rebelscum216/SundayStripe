@@ -259,7 +259,7 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
 
       <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
             <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
               <tr>
                 <th className="px-4 py-3">Product</th>
@@ -267,7 +267,6 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
                 <th className="px-4 py-3 text-right">Inventory</th>
                 <th className="px-4 py-3">Channels</th>
                 <th className="px-4 py-3">Amazon Score</th>
-                <th className="px-4 py-3">Gaps</th>
               </tr>
             </thead>
             <tbody>
@@ -303,7 +302,7 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
                       {product.channels.length > 0
                         ? product.channels.map((ch) =>
                             isKnownPlatform(ch.platform) ? (
-                              <PlatformBadge key={ch.platform} platform={ch.platform} />
+                              <PlatformBadge key={ch.platform} platform={ch.platform} status={ch.status} />
                             ) : (
                               <span
                                 key={ch.platform}
@@ -319,22 +318,6 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
                   <td className="px-4 py-3">
                     {product.amazonQualityScore != null ? (
                       <QualityScoreBadge score={product.amazonQualityScore} />
-                    ) : (
-                      <span className="text-xs text-zinc-500">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {product.missingAttributes.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {product.missingAttributes.map((attr) => (
-                          <span
-                            className="rounded border border-amber-500 bg-amber-950 px-1.5 py-0.5 text-xs text-amber-400"
-                            key={attr}
-                          >
-                            {ATTR_LABELS[attr] ?? attr}
-                          </span>
-                        ))}
-                      </div>
                     ) : (
                       <span className="text-xs text-zinc-500">-</span>
                     )}

@@ -37,3 +37,24 @@ export async function resolveAlert(alertId: string) {
   revalidatePath("/alerts");
   revalidatePath("/products/[id]", "page");
 }
+
+export async function importAmazonListing(listing: {
+  sku: string;
+  asin: string | null;
+  title: string | null;
+  status: string;
+  productType: string | null;
+  imageUrl: string | null;
+}) {
+  await assertOk(
+    await fetch(`${apiBaseUrl}/api/amazon/import-listing`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(listing),
+    }),
+    "Import Amazon listing",
+  );
+  revalidatePath("/");
+  revalidatePath("/amazon");
+  revalidatePath("/products");
+}

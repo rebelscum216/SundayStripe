@@ -19,7 +19,9 @@ import { ShopifyModule } from "./shopify/shopify.module.js";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
-          url: config.get<string>("REDIS_URL", "redis://localhost:6379")
+          url: config.get<string>("REDIS_URL", "redis://localhost:6379"),
+          enableOfflineQueue: false,
+          maxRetriesPerRequest: null,
         }
       })
     }),

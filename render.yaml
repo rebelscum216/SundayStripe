@@ -1,0 +1,80 @@
+services:
+  - type: web
+    name: sunday-stripe-api
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+
+      # ── Database (Neon) ──────────────────────────────────────────────────────
+      - key: DATABASE_URL
+        sync: false          # postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require
+
+      # ── Redis (Upstash) ──────────────────────────────────────────────────────
+      - key: REDIS_URL
+        sync: false          # rediss://default:password@your-endpoint.upstash.io:6380
+
+      # ── Web app (Vercel) ─────────────────────────────────────────────────────
+      - key: WEB_APP_URL
+        sync: false          # https://your-app.vercel.app  (enables CORS from Vercel)
+
+      # ── Token encryption ─────────────────────────────────────────────────────
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false          # 32-byte hex: openssl rand -hex 32
+
+      # ── Shopify ──────────────────────────────────────────────────────────────
+      - key: SHOPIFY_SHOP
+        sync: false          # yourstore.myshopify.com
+      - key: SHOPIFY_API_KEY
+        sync: false
+      - key: SHOPIFY_API_SECRET
+        sync: false
+      - key: SHOPIFY_SCOPES
+        value: read_products,write_products,read_inventory,write_inventory
+      - key: SHOPIFY_API_VERSION
+        value: 2025-10
+      - key: SHOPIFY_APP_URL
+        sync: false          # https://sunday-stripe-api.onrender.com
+      - key: SHOPIFY_WEBHOOK_CALLBACK_URL
+        sync: false          # https://sunday-stripe-api.onrender.com/api/shopify/webhook
+
+      # ── OpenAI ───────────────────────────────────────────────────────────────
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # ── Google Search Console ────────────────────────────────────────────────
+      - key: GSC_SITE
+        sync: false          # sc-domain:yourdomain.com
+      - key: GSC_TOKEN_JSON
+        sync: false          # Contents of token.json as a single-line JSON string
+
+      # ── Google Merchant Center ───────────────────────────────────────────────
+      - key: GOOGLE_MERCHANT_ID
+        sync: false
+      - key: GOOGLE_MERCHANT_CREDENTIALS_JSON
+        sync: false          # Contents of service account JSON as a single-line string
+      - key: GOOGLE_MERCHANT_DEVELOPER_EMAIL
+        sync: false
+
+      # ── Amazon SP-API ─────────────────────────────────────────────────────────
+      - key: AMAZON_SELLER_ID
+        sync: false
+      - key: AMAZON_CLIENT_ID
+        sync: false
+      - key: AMAZON_CLIENT_SECRET
+        sync: false
+      - key: AMAZON_REFRESH_TOKEN
+        sync: false
+      - key: AMAZON_MARKETPLACE_ID
+        value: ATVPDKIKX0DER
+      - key: AMAZON_REGION
+        value: us-east-1
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false

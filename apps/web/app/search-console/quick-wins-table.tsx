@@ -232,8 +232,18 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
   );
 }
 
-export function QuickWinsTable({ quickWins, topQueries }: { quickWins: GscRow[]; topQueries: string[] }) {
+export function QuickWinsTable({ quickWins, topQueries, embedded }: { quickWins: GscRow[]; topQueries: string[]; embedded?: boolean }) {
   if (quickWins.length === 0) return null;
+
+  const list = (
+    <ul className={embedded ? "divide-y divide-zinc-800" : "divide-y divide-amber-100"}>
+      {quickWins.map((row, i) => (
+        <OptimizeRow key={i} row={row} topQueries={topQueries} />
+      ))}
+    </ul>
+  );
+
+  if (embedded) return list;
 
   return (
     <section className="overflow-hidden border border-amber-200 bg-amber-50">
@@ -248,11 +258,7 @@ export function QuickWinsTable({ quickWins, topQueries }: { quickWins: GscRow[];
           AI-generated SEO titles and meta descriptions. Edit and apply directly to Shopify.
         </p>
       </div>
-      <ul className="divide-y divide-amber-100">
-        {quickWins.map((row, i) => (
-          <OptimizeRow key={i} row={row} topQueries={topQueries} />
-        ))}
-      </ul>
+      {list}
     </section>
   );
 }

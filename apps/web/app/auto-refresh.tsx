@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export function AutoRefresh({ intervalMs = 30_000 }: { intervalMs?: number }) {
-  const router = useRouter();
-
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), intervalMs);
+    const id = setInterval(() => window.location.reload(), intervalMs);
     return () => clearInterval(id);
-  }, [router, intervalMs]);
+  }, [intervalMs]);
 
   return null;
 }

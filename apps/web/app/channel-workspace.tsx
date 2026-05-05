@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { importAmazonListing } from "./actions";
 import { ChannelBadge } from "./components/channel-badge";
 import { MetricCard } from "./components/metric-card";
 import { PageHeader } from "./components/page-header";
@@ -27,6 +28,19 @@ type IntegrationStatus = {
   failedJobs?: number;
   open_alerts?: number;
   openAlerts?: number;
+};
+type AmazonUnmatchedListing = {
+  sku: string;
+  asin: string | null;
+  title: string | null;
+  status: string;
+  productType: string | null;
+  imageUrl: string | null;
+};
+type AmazonUnmatchedResponse = {
+  fetchedListings: number;
+  unmatchedCount: number;
+  items: AmazonUnmatchedListing[];
 };
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:3001";
@@ -70,6 +84,16 @@ async function getStatus() {
     return data.integrations ?? [];
   } catch {
     return [];
+  }
+}
+
+async function getAmazonUnmatchedListings() {
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/amazon/unmatched`, { cache: "no-store" });
+    if (!response.ok) return { fetchedListings: 0, unmatchedCount: 0, items: [] };
+    return (await response.json()) as AmazonUnmatchedResponse;
+  } catch {
+    return { fetchedListings: 0, unmatchedCount: 0, items: [] };
   }
 }
 
@@ -123,7 +147,13 @@ export async function ChannelWorkspace({
   title: string;
   meta: string;
 }) {
-  const [products, statuses] = await Promise.all([getProducts(), getStatus()]);
+  const [products, statuses, amazonUnmatched] = await Promise.all([
+    getProducts(),
+    getStatus(),
+    platform === "amazon_sp"
+      ? getAmazonUnmatchedListings()
+      : Promise.resolve({ fetchedListings: 0, unmatchedCount: 0, items: [] }),
+  ]);
   const integration = statuses.find((status) => status.platform === platform);
   const pendingJobs = integration?.pendingJobs ?? integration?.pending_jobs ?? 0;
   const failedJobs = integration?.failedJobs ?? integration?.failed_jobs ?? 0;
@@ -141,7 +171,12 @@ export async function ChannelWorkspace({
       <div className="grid gap-3 md:grid-cols-4">
         <MetricCard label="Listed products" value={formatNumber(listedProducts.length)} sub={`${formatNumber(products.length)} total products`} />
         <MetricCard label="Needs attention" value={formatNumber(issueProducts.length)} accent={issueProducts.length > 0 ? "warn" : "good"} sub="Listings, attributes, or quality" />
-        <MetricCard label="Not listed" value={formatNumber(notListedProducts.length)} accent={notListedProducts.length > 0 ? "warn" : "good"} />
+        <MetricCard
+          label={platform === "amazon_sp" ? "Unmatched Amazon" : "Not listed"}
+          value={formatNumber(platform === "amazon_sp" ? amazonUnmatched.unmatchedCount : notListedProducts.length)}
+          accent={(platform === "amazon_sp" ? amazonUnmatched.unmatchedCount : notListedProducts.length) > 0 ? "warn" : "good"}
+          sub={platform === "amazon_sp" ? `${formatNumber(notListedProducts.length)} catalog products not linked` : undefined}
+        />
         <MetricCard label="Open alerts" value={formatNumber(openAlerts)} accent={openAlerts > 0 ? "bad" : "good"} sub={`${formatNumber(failedJobs)} failed jobs`} />
       </div>
 
@@ -256,6 +291,83 @@ export async function ChannelWorkspace({
           </table>
         </div>
       </section>
+
+      {platform === "amazon_sp" && amazonUnmatched.items.length > 0 && (
+        <section className="overflow-hidden rounded border border-amber-500/60 bg-zinc-900">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-100">Unmatched Amazon listings</h2>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Live SP-API listings with seller SKUs that do not match a local Shopify variant SKU.
+              </p>
+            </div>
+            <div className="text-right font-mono text-xs text-zinc-500">
+              <div>{formatNumber(amazonUnmatched.unmatchedCount)} unmatched</div>
+              <div>{formatNumber(amazonUnmatched.fetchedListings)} fetched live</div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+              <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+                <tr>
+                  <th className="px-4 py-3">Amazon listing</th>
+                  <th className="px-4 py-3">Seller SKU</th>
+                  <th className="px-4 py-3">ASIN</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {amazonUnmatched.items.slice(0, 50).map((listing) => (
+                  <tr key={listing.sku} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {listing.imageUrl ? (
+                          <img
+                            src={listing.imageUrl}
+                            alt=""
+                            className="h-10 w-10 rounded border border-zinc-800 bg-zinc-950 object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded border border-zinc-800 bg-zinc-950" />
+                        )}
+                        <div>
+                          <div className="font-medium text-zinc-100">{listing.title ?? listing.sku}</div>
+                          <div className="mt-1 text-xs text-amber-400">Needs product link/import</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-zinc-300">{listing.sku}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-zinc-400">{listing.asin ?? "-"}</td>
+                    <td className="px-4 py-3 text-xs text-zinc-400">{listing.productType ?? "-"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded border px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[listing.status.toLowerCase()] ?? STATUS_CLASS.unlisted}`}>
+                        {listing.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <form action={importAmazonListing.bind(null, listing)}>
+                        <button
+                          type="submit"
+                          className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+                        >
+                          Import
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {amazonUnmatched.items.length > 50 && (
+            <div className="border-t border-zinc-800 px-4 py-3 text-xs text-zinc-500">
+              Showing first 50 unmatched listings.
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Not listed */}
       {notListedProducts.length > 0 && (

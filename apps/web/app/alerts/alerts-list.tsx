@@ -83,6 +83,10 @@ function AlertRow({ alert }: { alert: Alert }) {
   const title =
     payload?.title ?? payload?.merchant_product_name ?? alert.entityRef ?? "Unknown";
   const dismissAction = resolveAlert.bind(null, alert.id);
+  const [expanded, setExpanded] = useState(false);
+
+  const firstIssue = issues[0];
+  const extraCount = issues.length - 1;
 
   return (
     <div
@@ -126,29 +130,63 @@ function AlertRow({ alert }: { alert: Alert }) {
         </div>
       </div>
 
-      {issues.length > 0 && (
-        <ul className="mt-3 space-y-1.5 border-t border-zinc-700/60 pt-3">
-          {issues.map((issue, i) => (
-            <li key={i} className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[String(issue.severity ?? "").toLowerCase()] ?? "text-zinc-400"}`}
-                >
-                  {issue.severity ?? "issue"}
-                </span>
-                {issue.attribute && (
-                  <span className="font-mono text-xs text-zinc-500">{issue.attribute}</span>
-                )}
-              </div>
-              {issue.description && (
-                <p className="text-sm text-zinc-300">{issue.description}</p>
+      {firstIssue && (
+        <div className="mt-3 border-t border-zinc-700/60 pt-3">
+          {/* First issue always visible as a one-liner */}
+          <div className="flex items-start gap-2">
+            <span
+              className={`shrink-0 text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[String(firstIssue.severity ?? "").toLowerCase()] ?? "text-zinc-400"}`}
+            >
+              {firstIssue.severity ?? "issue"}
+            </span>
+            {firstIssue.attribute && (
+              <span className="shrink-0 font-mono text-xs text-zinc-500">{firstIssue.attribute}</span>
+            )}
+            {firstIssue.description && (
+              <p className="text-xs text-zinc-300 leading-relaxed">{firstIssue.description}</p>
+            )}
+          </div>
+          {firstIssue.resolution && (
+            <p className="mt-1 text-xs text-zinc-500 pl-0">→ {firstIssue.resolution}</p>
+          )}
+
+          {/* Remaining issues behind toggle */}
+          {extraCount > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="mt-2 text-xs text-zinc-500 hover:text-zinc-300"
+              >
+                {expanded ? "Hide details" : `+${extraCount} more ${extraCount === 1 ? "issue" : "issues"}`}
+              </button>
+              {expanded && (
+                <ul className="mt-2 space-y-2 border-t border-zinc-800 pt-2">
+                  {issues.slice(1).map((issue, i) => (
+                    <li key={i} className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[String(issue.severity ?? "").toLowerCase()] ?? "text-zinc-400"}`}
+                        >
+                          {issue.severity ?? "issue"}
+                        </span>
+                        {issue.attribute && (
+                          <span className="font-mono text-xs text-zinc-500">{issue.attribute}</span>
+                        )}
+                      </div>
+                      {issue.description && (
+                        <p className="text-xs text-zinc-300">{issue.description}</p>
+                      )}
+                      {issue.resolution && (
+                        <p className="text-xs text-zinc-500">→ {issue.resolution}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )}
-              {issue.resolution && (
-                <p className="text-xs text-zinc-500">{issue.resolution}</p>
-              )}
-            </li>
-          ))}
-        </ul>
+            </>
+          )}
+        </div>
       )}
 
       <AiExplainDrawerButton alertId={alert.id} />

@@ -1018,6 +1018,105 @@ export class AppController {
     }));
   }
 
+  @Get("search-console/almost-page-1")
+  async gscAlmostPage1() {
+    // Queries at position 11-20 with meaningful impression volume
+    const rows = await this.db
+      .select({
+        query: searchPerformance.dimensionValue,
+        clicks: searchPerformance.clicks,
+        impressions: searchPerformance.impressions,
+        ctr: searchPerformance.ctr,
+        position: searchPerformance.position,
+      })
+      .from(searchPerformance)
+      .where(
+        and(
+          eq(searchPerformance.dimension, "query"),
+          sql`${searchPerformance.position} > 100`,
+          sql`${searchPerformance.position} <= 200`,
+          sql`${searchPerformance.impressions} >= 10`,
+        ),
+      )
+      .orderBy(desc(searchPerformance.impressions))
+      .limit(50);
+
+    if (rows.length === 0) return [];
+
+    // Fetch all products for fuzzy matching
+    const allProducts = await this.db
+      .select({ id: products.id, title: products.title, canonicalSku: products.canonicalSku })
+      .from(products);
+
+    return rows.map((r) => {
+      const query = r.query.toLowerCase();
+      const queryTokens = query.split(/\s+/).filter((t) => t.length > 2);
+
+      // Score each product by how many query tokens appear in the title
+      let bestProduct: { id: string; title: string; score: number } | null = null;
+      for (const p of allProducts) {
+        const titleLower = (p.title ?? p.canonicalSku).toLowerCase();
+        const score = queryTokens.filter((t) => titleLower.includes(t)).length;
+        if (score > 0 && (!bestProduct || score > bestProduct.score)) {
+          bestProduct = { id: p.id, title: p.title ?? p.canonicalSku, score };
+        }
+      }
+
+      const position = r.position / 10;
+      const ctr = r.ctr / 1000;
+      // Estimate clicks at position 1 using a standard CTR curve (pos1 ≈ 28%)
+      const estimatedClicksAtPos1 = Math.round(r.impressions * 0.28);
+      const potentialExtraClicks = Math.max(0, estimatedClicksAtPos1 - r.clicks);
+
+      return {
+        query: r.query,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        ctr,
+        position,
+        potentialExtraClicks,
+        matchedProductId: bestProduct?.id ?? null,
+        matchedProductTitle: bestProduct?.title ?? null,
+        matchedPageUrl: bestProduct
+          ? `/products/${this.titleToHandle(bestProduct.title)}`
+          : null,
+      };
+    });
+  }
+
+  @Get("revenue-trend")
+  async getRevenueTrend() {
+    const [currentRows, priorRows] = await Promise.all([
+      this.db
+        .select({ total: sql<number>`coalesce(sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents}), 0)::int` })
+        .from(orderLineItems)
+        .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
+        .where(sql`${orders.createdAt} > now() - interval '45 days'`),
+      this.db
+        .select({ total: sql<number>`coalesce(sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents}), 0)::int` })
+        .from(orderLineItems)
+        .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
+        .where(sql`${orders.createdAt} > now() - interval '90 days' and ${orders.createdAt} <= now() - interval '45 days'`),
+    ]);
+
+    const current = currentRows[0]?.total ?? 0;
+    const prior = priorRows[0]?.total ?? 0;
+
+    let trend: "up" | "down" | "flat" = "flat";
+    let deltaPercent = 0;
+
+    if (prior > 0) {
+      deltaPercent = Math.round(((current - prior) / prior) * 100);
+      if (deltaPercent > 5) trend = "up";
+      else if (deltaPercent < -5) trend = "down";
+    } else if (current > 0) {
+      trend = "up";
+      deltaPercent = 100;
+    }
+
+    return { current, prior, trend, deltaPercent };
+  }
+
   @Get("revenue")
   async getRevenue() {
     return this.db
@@ -2115,11 +2214,14 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     const workspaceId = workspaceRow?.workspaceId ?? null;
     if (!workspaceId) throw new NotFoundException("No workspace found");
 
+    const position = body.position ?? 0;
+    const impressions = body.impressions ?? 0;
+    const topQueries = Array.isArray(body.topQueries) ? body.topQueries : [];
     const contextInput = {
       url: body.url,
-      position: Math.round(body.position * 10),
-      impressions: body.impressions,
-      topQueries: body.topQueries.slice(0, 8).sort(),
+      position: Math.round(position * 10),
+      impressions,
+      topQueries: topQueries.slice(0, 8).sort(),
       productId: matchedProduct?.id ?? null,
       seoTitle: matchedProduct?.seoTitle ?? null,
       seoDescription: matchedProduct?.seoDescription ?? null,
@@ -2134,10 +2236,10 @@ Sort groups by priority (critical first). Be specific about root causes.`,
 
     const prompt = [
       `Page URL: ${body.url}`,
-      `Current position: ${body.position.toFixed(1)}`,
-      `Impressions (90 days): ${body.impressions}`,
-      body.topQueries.length > 0
-        ? `Top queries this page ranks for: ${body.topQueries.slice(0, 8).join(", ")}`
+      `Current position: ${position.toFixed(1)}`,
+      `Impressions (90 days): ${impressions}`,
+      topQueries.length > 0
+        ? `Top queries this page ranks for: ${topQueries.slice(0, 8).join(", ")}`
         : "Top queries: none",
       matchedProduct?.title ? `Product title: ${matchedProduct.title}` : null,
       matchedProduct?.brand ? `Brand: ${matchedProduct.brand}` : null,

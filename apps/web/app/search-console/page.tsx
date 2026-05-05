@@ -8,6 +8,7 @@ type GscSummary = {
 
 import { MetricCard } from "../components/metric-card";
 import { PageHeader } from "../components/page-header";
+import { AlmostPage1Table, type AlmostPage1Row } from "./almost-page-1-table";
 import { QuickWinsTable } from "./quick-wins-table";
 
 type GscRow = {
@@ -46,6 +47,16 @@ async function getPages(): Promise<GscRow[]> {
     const res = await fetch(`${apiBaseUrl}/api/search-console/pages`, { cache: "no-store" });
     if (!res.ok) return [];
     return (await res.json()) as GscRow[];
+  } catch {
+    return [];
+  }
+}
+
+async function getAlmostPage1(): Promise<AlmostPage1Row[]> {
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/search-console/almost-page-1`, { cache: "no-store" });
+    if (!res.ok) return [];
+    return (await res.json()) as AlmostPage1Row[];
   } catch {
     return [];
   }
@@ -118,7 +129,7 @@ function PerformanceTable({
 }
 
 export default async function SearchConsolePage() {
-  const [summary, queries, pages] = await Promise.all([getSummary(), getQueries(), getPages()]);
+  const [summary, queries, pages, almostPage1] = await Promise.all([getSummary(), getQueries(), getPages(), getAlmostPage1()]);
 
   const quickWins = pages.filter((p) => p.position >= 5 && p.position <= 20 && p.impressions >= 50);
   const topQueryStrings = queries.slice(0, 10).map((q) => q.query ?? "").filter(Boolean);
@@ -148,21 +159,40 @@ export default async function SearchConsolePage() {
               <MetricCard label="Avg Position" value={fmtPos(summary.position)} />
             </section>
 
-            <section className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                Quick Wins
-              </h2>
-            <QuickWinsTable quickWins={quickWins} topQueries={topQueryStrings} />
-            </section>
+            {/* Quick Wins: pages already ranking — fix CTR via better title/meta */}
+            {quickWins.length > 0 && (
+              <section className="overflow-hidden rounded border border-amber-200/40 bg-zinc-900">
+                <div className="border-b border-amber-200/40 bg-amber-500/5 px-4 py-3">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <div>
+                      <h2 className="text-base font-semibold text-amber-300">
+                        Quick Wins
+                        <span className="ml-2 font-mono text-sm font-normal text-amber-500/70">
+                          {quickWins.length} {quickWins.length === 1 ? "page" : "pages"} at position 5–20
+                        </span>
+                      </h2>
+                      <p className="mt-0.5 text-xs text-zinc-400">
+                        These pages already rank — the position is fine. A stronger title or meta description will improve click-through rate without needing more backlinks.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <QuickWinsTable quickWins={quickWins} topQueries={topQueryStrings} embedded />
+              </section>
+            )}
+
+            {/* Almost Page 1: queries close to rank 10 — small push gets to page 1 */}
+            <AlmostPage1Table rows={almostPage1} />
 
             <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
               <div className="border-b border-zinc-800 px-4 py-3">
                 <h2 className="text-sm font-semibold text-zinc-100">
-                  Top Queries
+                  All Queries
                   <span className="ml-2 font-mono text-xs font-normal text-zinc-500">
-                    {queries.length}
+                    {queries.length} ranked queries, 90-day window
                   </span>
                 </h2>
+                <p className="mt-0.5 text-xs text-zinc-500">Full reference. Use this to spot new opportunities or track changes after edits.</p>
               </div>
               <PerformanceTable rows={queries} keyLabel="Query" keyField="query" />
             </section>
@@ -170,11 +200,12 @@ export default async function SearchConsolePage() {
             <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
               <div className="border-b border-zinc-800 px-4 py-3">
                 <h2 className="text-sm font-semibold text-zinc-100">
-                  Top Pages
+                  All Pages
                   <span className="ml-2 font-mono text-xs font-normal text-zinc-500">
-                    {pages.length}
+                    {pages.length} indexed pages, 90-day window
                   </span>
                 </h2>
+                <p className="mt-0.5 text-xs text-zinc-500">Full reference. Quick Wins above shows the highest-priority subset.</p>
               </div>
               <PerformanceTable rows={pages} keyLabel="Page" keyField="url" />
             </section>
