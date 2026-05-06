@@ -53,9 +53,9 @@ export class AmazonSyncService {
           .where(eq(syncJobs.id, syncJobId));
 
         for (const listing of items) {
-          const variantId = await this.findLocalVariantId(integration.workspaceId, listing.sku);
+          const variantId = await this.findLocalVariantId(integration.workspaceId, listing.sku, listing.title);
           if (!variantId) {
-            this.logger.warn(`Skipping Amazon listing without local SKU match: ${listing.sku}`);
+            this.logger.warn(`Skipping Amazon listing without local match: ${listing.sku}`);
             continue;
           }
 
@@ -133,17 +133,50 @@ export class AmazonSyncService {
     return integration;
   }
 
-  private async findLocalVariantId(workspaceId: string, sku: string): Promise<string | null> {
+  private productTitleCache: Map<string, string> | null = null;
+
+  private normalizeTitle(s: string): string {
+    return s.replace(/['"]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  private async getProductTitleCache(workspaceId: string): Promise<Map<string, string>> {
+    if (this.productTitleCache) return this.productTitleCache;
+
+    const rows = await this.db
+      .select({ id: products.id, title: products.title })
+      .from(products)
+      .where(eq(products.workspaceId, workspaceId));
+
+    this.productTitleCache = new Map(rows.map((r) => [this.normalizeTitle(r.title), r.id]));
+    return this.productTitleCache;
+  }
+
+  private async findLocalVariantId(workspaceId: string, sku: string, title: string | null): Promise<string | null> {
     if (!sku.trim()) return null;
 
-    const [match] = await this.db
+    // Exact SKU match first
+    const [skuMatch] = await this.db
       .select({ id: variants.id })
       .from(variants)
       .innerJoin(products, eq(variants.productId, products.id))
       .where(and(eq(products.workspaceId, workspaceId), eq(variants.sku, sku)))
       .limit(1);
 
-    return match?.id ?? null;
+    if (skuMatch) return skuMatch.id;
+
+    // Title-based fallback: strip quotes/extra whitespace and compare lowercased
+    if (!title) return null;
+    const cache = await this.getProductTitleCache(workspaceId);
+    const productId = cache.get(this.normalizeTitle(title));
+    if (!productId) return null;
+
+    const [variantMatch] = await this.db
+      .select({ id: variants.id })
+      .from(variants)
+      .where(eq(variants.productId, productId))
+      .limit(1);
+
+    return variantMatch?.id ?? null;
   }
 
   private async upsertChannelListing(
