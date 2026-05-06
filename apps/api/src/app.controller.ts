@@ -12,9 +12,14 @@ import type { Sql } from "postgres";
 import type * as schema from "@sunday-stripe/db";
 import { DATABASE_CONNECTION, DRIZZLE_DATABASE } from "./database/database.constants.js";
 import { AmazonApiService } from "./amazon/amazon-api.service.js";
+import { AmazonSyncService } from "./amazon/amazon-sync.service.js";
 import { MerchantApiService, type MerchantProduct } from "./merchant/merchant-api.service.js";
+import { MerchantSyncService } from "./merchant/merchant-sync.service.js";
 import { decryptToken } from "./shopify/crypto.util.js";
 import { ShopifyOAuthService } from "./shopify/shopify-oauth.service.js";
+import { ShopifyInitialSyncService } from "./shopify/sync/shopify-initial-sync.service.js";
+import { ShopifyOrdersSyncService } from "./shopify/sync/shopify-orders-sync.service.js";
+import { GscSyncService } from "./gsc/gsc-sync.service.js";
 
 type Db = PostgresJsDatabase<typeof schema>;
 
@@ -94,8 +99,13 @@ export class AppController {
     @Inject(DRIZZLE_DATABASE) private readonly db: Db,
     private readonly config: ConfigService,
     private readonly amazonApi: AmazonApiService,
+    private readonly amazonSync: AmazonSyncService,
     private readonly merchantApi: MerchantApiService,
+    private readonly merchantSync: MerchantSyncService,
     private readonly shopifyOAuth: ShopifyOAuthService,
+    private readonly shopifyInitialSync: ShopifyInitialSyncService,
+    private readonly shopifyOrdersSync: ShopifyOrdersSyncService,
+    private readonly gscSync: GscSyncService,
     @InjectQueue("shopify-sync") private readonly shopifyQueue: Queue,
     @InjectQueue("shopify-orders-sync") private readonly shopifyOrdersQueue: Queue,
     @InjectQueue("merchant-sync") private readonly merchantQueue: Queue,
@@ -2517,23 +2527,23 @@ Sort groups by priority (critical first). Be specific about root causes.`,
 
     if (!integration) throw new NotFoundException(`Integration ${id} not found`);
 
-    const syncConfig: Record<string, { queue: Queue; jobType: string }> = {
-      shopify: { queue: this.shopifyQueue, jobType: "shopify_initial_sync" },
-      shopify_orders: { queue: this.shopifyOrdersQueue, jobType: "shopify_orders_sync" },
-      merchant: { queue: this.merchantQueue, jobType: "merchant_initial_sync" },
-      search_console: { queue: this.gscQueue, jobType: "gsc_initial_sync" },
-      amazon_sp: { queue: this.amazonQueue, jobType: "amazon_initial_sync" },
+    const syncConfig: Record<string, { jobType: string; runner: (id: string) => Promise<void> }> = {
+      shopify: { jobType: "shopify_initial_sync", runner: (id) => this.shopifyInitialSync.run(id) },
+      shopify_orders: { jobType: "shopify_orders_sync", runner: (id) => this.shopifyOrdersSync.run(id) },
+      merchant: { jobType: "merchant_initial_sync", runner: (id) => this.merchantSync.run(id) },
+      search_console: { jobType: "gsc_initial_sync", runner: (id) => this.gscSync.run(id) },
+      amazon_sp: { jobType: "amazon_initial_sync", runner: (id) => this.amazonSync.run(id) },
     };
 
-    const config = syncConfig[integration.platform];
-    if (!config) throw new NotFoundException(`No sync handler for platform: ${integration.platform}`);
+    const syncHandler = syncConfig[integration.platform];
+    if (!syncHandler) throw new NotFoundException(`No sync handler for platform: ${integration.platform}`);
 
     const [syncJob] = await this.db
       .insert(syncJobs)
-      .values({ integrationAccountId: integration.id, jobType: config.jobType, state: "pending" })
+      .values({ integrationAccountId: integration.id, jobType: syncHandler.jobType, state: "pending" })
       .returning({ id: syncJobs.id });
 
-    await config.queue.add(config.jobType, { syncJobId: syncJob.id }, { attempts: 3, backoff: { type: "exponential", delay: 5000 } });
+    syncHandler.runner(syncJob.id).catch(() => {});
 
     return { ok: true, syncJobId: syncJob.id };
   }
