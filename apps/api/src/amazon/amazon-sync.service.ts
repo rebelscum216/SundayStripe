@@ -147,7 +147,9 @@ export class AmazonSyncService {
       .from(products)
       .where(eq(products.workspaceId, workspaceId));
 
-    this.productTitleCache = new Map(rows.map((r) => [this.normalizeTitle(r.title), r.id]));
+    this.productTitleCache = new Map(
+      rows.filter((r) => r.title != null).map((r) => [this.normalizeTitle(r.title!), r.id]),
+    );
     return this.productTitleCache;
   }
 
