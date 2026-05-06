@@ -2524,6 +2524,25 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       .from(integrationAccounts);
   }
 
+  @Post("integrations/:id/sync-orders")
+  async triggerOrdersSync(@Param("id") id: string) {
+    const [integration] = await this.db
+      .select({ id: integrationAccounts.id })
+      .from(integrationAccounts)
+      .where(and(eq(integrationAccounts.id, id), eq(integrationAccounts.platform, "shopify")))
+      .limit(1);
+
+    if (!integration) throw new NotFoundException(`Shopify integration ${id} not found`);
+
+    const [syncJob] = await this.db
+      .insert(syncJobs)
+      .values({ integrationAccountId: integration.id, jobType: "shopify_orders_sync", state: "pending" })
+      .returning({ id: syncJobs.id });
+
+    this.shopifyOrdersSync.run(syncJob.id).catch(() => {});
+    return { ok: true, syncJobId: syncJob.id };
+  }
+
   @Post("integrations/:id/sync")
   async triggerSync(@Param("id") id: string) {
     const [integration] = await this.db
