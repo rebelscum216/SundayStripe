@@ -108,7 +108,7 @@ export class AppController {
     const postgresReachable = await this.isPostgresReachable();
     const redisReachable = await this.isRedisReachable();
 
-    if (!postgresReachable || !redisReachable) {
+    if (!postgresReachable) {
       return {
         ok: false,
         integrations: []
@@ -180,7 +180,8 @@ export class AppController {
     );
 
     return {
-      ok: true,
+      ok: postgresReachable,
+      redis: redisReachable,
       integrations: integrationStatuses
     };
   }
