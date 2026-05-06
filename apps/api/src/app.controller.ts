@@ -2517,6 +2517,13 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     return { ok: true, gtinExempt: body.exempt };
   }
 
+  @Get("integrations")
+  async listIntegrations() {
+    return this.db
+      .select({ id: integrationAccounts.id, platform: integrationAccounts.platform, status: integrationAccounts.status })
+      .from(integrationAccounts);
+  }
+
   @Post("integrations/:id/sync")
   async triggerSync(@Param("id") id: string) {
     const [integration] = await this.db
