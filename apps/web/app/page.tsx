@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { AutoRefresh } from "./auto-refresh";
 import { MetricCard } from "./components/metric-card";
 import { PageHeader } from "./components/page-header";
+import { CardSkeleton, SectionSkeleton, Skeleton } from "./components/skeleton";
 import { StatusPill } from "./components/status-pill";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:3001";
@@ -260,42 +262,25 @@ function getAiNextBestAction(priorityItems: PriorityItem[]) {
   };
 }
 
-export default async function CommandCenterPage() {
-  const [status, alerts, crossChannel, gsc, inventory, revenueTrend] = await Promise.all([
-    getStatus(),
-    getAlerts(),
-    getCrossChannel(),
-    getGsc(),
-    getInventory(),
-    getRevenueTrend(),
-  ]);
+// ─── Async streaming sections ────────────────────────────────────────────────
 
-  const integrations = status?.integrations ?? [];
-  const totals = integrations.reduce(
-    (acc, integration) => ({
-      products: Math.max(acc.products, integration.product_count),
-      variants: Math.max(acc.variants, integration.variant_count),
-      pendingJobs: acc.pendingJobs + integration.pending_jobs,
-      failedJobs: acc.failedJobs + integration.failed_jobs,
-      openAlerts: acc.openAlerts + integration.open_alerts,
-    }),
-    { products: 0, variants: 0, pendingJobs: 0, failedJobs: 0, openAlerts: 0 },
-  );
-
-  const inventoryTotals = inventory?.totals;
-  const riskVariants = (inventory?.variants ?? []).filter((variant) => variant.status !== "ok");
-  const revenueAtRisk = riskVariants.reduce((sum, variant) => sum + variant.revenueCents, 0);
+function buildPriorityItems(
+  integrations: IntegrationStatus[],
+  alerts: Alert[],
+  crossChannel: CrossChannelRow[],
+  inventory: InventoryResponse | null,
+): PriorityItem[] {
+  const riskVariants = (inventory?.variants ?? []).filter((v) => v.status !== "ok");
   const actionableOps = crossChannel.filter((row) => row.flag !== "ok");
-  const priorityAlerts = alerts.filter((alert) => alert.severity === "critical" || alert.severity === "high");
-
-  const priorityItems: PriorityItem[] = [
+  const priorityAlerts = alerts.filter((a) => a.severity === "critical" || a.severity === "high");
+  return [
     ...integrations
-      .filter((integration) => integration.failed_jobs > 0)
-      .map((integration) => ({
-        id: `failed-${integration.id}`,
-        rank: 100 + integration.failed_jobs,
+      .filter((i) => i.failed_jobs > 0)
+      .map((i) => ({
+        id: `failed-${i.id}`,
+        rank: 100 + i.failed_jobs,
         label: "Sync failure",
-        title: `${PLATFORM_LABELS[integration.platform] ?? integration.platform} has ${integration.failed_jobs} failed job${integration.failed_jobs !== 1 ? "s" : ""}`,
+        title: `${PLATFORM_LABELS[i.platform] ?? i.platform} has ${i.failed_jobs} failed job${i.failed_jobs !== 1 ? "s" : ""}`,
         detail: "Clear or retry failed jobs so downstream channel data stays fresh.",
         href: "/operations",
         action: "Open operations",
@@ -334,282 +319,353 @@ export default async function CommandCenterPage() {
   ]
     .sort((a, b) => b.rank - a.rank)
     .slice(0, 7);
+}
 
-  const aiAction = getAiNextBestAction(priorityItems);
-
+async function MetricsRow() {
+  const [status, alerts, crossChannel, inventory, revenueTrend] = await Promise.all([
+    getStatus(), getAlerts(), getCrossChannel(), getInventory(), getRevenueTrend(),
+  ]);
+  const integrations = status?.integrations ?? [];
+  const totals = integrations.reduce(
+    (acc, i) => ({
+      products: Math.max(acc.products, i.product_count),
+      variants: Math.max(acc.variants, i.variant_count),
+      pendingJobs: acc.pendingJobs + i.pending_jobs,
+      failedJobs: acc.failedJobs + i.failed_jobs,
+      openAlerts: acc.openAlerts + i.open_alerts,
+    }),
+    { products: 0, variants: 0, pendingJobs: 0, failedJobs: 0, openAlerts: 0 },
+  );
+  const inventoryTotals = inventory?.totals;
+  const riskVariants = (inventory?.variants ?? []).filter((v) => v.status !== "ok");
+  const revenueAtRisk = riskVariants.reduce((sum, v) => sum + v.revenueCents, 0);
+  const actionableOps = crossChannel.filter((row) => row.flag !== "ok");
+  const priorityAlerts = alerts.filter((a) => a.severity === "critical" || a.severity === "high");
   const flagCounts = crossChannel.reduce<Record<CrossChannelRow["flag"], number>>(
-    (acc, row) => {
-      acc[row.flag] += 1;
-      return acc;
-    },
+    (acc, row) => { acc[row.flag] += 1; return acc; },
     { no_revenue: 0, opportunity: 0, no_listing: 0, ok: 0 },
   );
+  return (
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <MetricCard
+        label="Revenue tracked"
+        value={currency(inventoryTotals?.revenueCents ?? 0)}
+        sub={
+          revenueTrend && revenueTrend.prior > 0
+            ? `${revenueTrend.deltaPercent > 0 ? "+" : ""}${revenueTrend.deltaPercent}% vs prior 45d · ${fmt(inventoryTotals?.unitsSold ?? 0)} units`
+            : `${fmt(inventoryTotals?.unitsSold ?? 0)} units / 90d`
+        }
+        trend={revenueTrend?.trend}
+        accent={(inventoryTotals?.revenueCents ?? 0) > 0 ? "good" : "default"}
+      />
+      <MetricCard
+        label="Revenue at risk"
+        value={currency(revenueAtRisk)}
+        sub={`${fmt(riskVariants.length)} variants`}
+        accent={revenueAtRisk > 0 || riskVariants.length > 0 ? "warn" : "good"}
+      />
+      <MetricCard
+        label="Open alerts"
+        value={fmt(alerts.length)}
+        sub={`${fmt(priorityAlerts.length)} high priority`}
+        accent={alerts.length > 0 ? "warn" : "good"}
+      />
+      <MetricCard
+        label="Failed jobs"
+        value={fmt(totals.failedJobs)}
+        sub={`${fmt(totals.pendingJobs)} pending`}
+        accent={totals.failedJobs > 0 ? "bad" : totals.pendingJobs > 0 ? "warn" : "good"}
+      />
+      <MetricCard
+        label="Opportunities"
+        value={fmt(actionableOps.length)}
+        sub={`${fmt(flagCounts.opportunity)} Amazon expansion`}
+        accent={actionableOps.length > 0 ? "warn" : "good"}
+      />
+    </section>
+  );
+}
 
+async function PriorityStackSection() {
+  const [status, alerts, crossChannel, inventory] = await Promise.all([
+    getStatus(), getAlerts(), getCrossChannel(), getInventory(),
+  ]);
+  const integrations = status?.integrations ?? [];
+  const priorityItems = buildPriorityItems(integrations, alerts, crossChannel, inventory);
+  return (
+    <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-100">{"Today's Priority Stack"}</h2>
+          <p className="mt-0.5 text-xs text-zinc-500">Ranked by sync risk, alert severity, stock risk, and growth upside.</p>
+        </div>
+        <Link href="/alerts" className="text-xs text-zinc-400 hover:text-zinc-200">Triage alerts</Link>
+      </div>
+      {priorityItems.length === 0 ? (
+        <p className="px-4 py-8 text-sm text-zinc-500">No urgent work found. Channel data is quiet.</p>
+      ) : (
+        <div className="divide-y divide-zinc-800">
+          {priorityItems.map((item, index) => (
+            <div key={item.id} className="grid gap-3 px-4 py-3 md:grid-cols-[28px_140px_minmax(0,1fr)_120px] md:items-center">
+              <div className="font-mono text-xs text-zinc-500">{index + 1}</div>
+              <span className={`w-fit rounded border px-2 py-0.5 text-xs font-medium ${PRIORITY_TONE[item.tone]}`}>{item.label}</span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-zinc-100">{item.title}</p>
+                <p className="mt-0.5 truncate text-xs text-zinc-500">{item.detail}</p>
+              </div>
+              <Link href={item.href} className="rounded border border-zinc-700 px-3 py-1.5 text-center text-xs font-medium text-zinc-300 hover:bg-zinc-800">
+                {item.action}
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+async function RevenueAtRiskSection() {
+  const inventory = await getInventory();
+  const riskVariants = (inventory?.variants ?? []).filter((v) => v.status !== "ok");
+  return (
+    <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-100">Revenue At Risk</h2>
+          <p className="mt-0.5 text-xs text-zinc-500">Fast-moving or unavailable variants from live inventory and 90-day sales.</p>
+        </div>
+        <Link href="/inventory" className="text-xs text-zinc-400 hover:text-zinc-200">Open inventory</Link>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+            <tr>
+              <th className="px-4 py-3">Variant</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Available</th>
+              <th className="px-4 py-3 text-right">Sold 90d</th>
+              <th className="px-4 py-3 text-right">Days Cover</th>
+              <th className="px-4 py-3 text-right">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(riskVariants.length > 0 ? riskVariants : (inventory?.variants ?? []).slice(0, 5)).slice(0, 8).map((variant) => (
+              <tr key={variant.variantId} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
+                <td className="px-4 py-3">
+                  <Link href={`/products/${variant.productId}`} className="font-medium text-zinc-100 hover:underline">
+                    {variant.title ?? variant.canonicalSku}
+                  </Link>
+                  <p className="mt-1 font-mono text-xs text-zinc-500">{variant.sku}{variant.size ? ` · ${variant.size}` : ""}</p>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`rounded border px-2 py-0.5 text-xs font-medium ${
+                    variant.status === "out_of_stock" ? "border-red-500 bg-red-950 text-red-400"
+                      : variant.status === "ok" ? "border-emerald-500 bg-emerald-950 text-emerald-400"
+                      : "border-amber-500 bg-amber-950 text-amber-400"
+                  }`}>{variant.status.replace(/_/g, " ")}</span>
+                </td>
+                <td className={`px-4 py-3 text-right font-mono ${variant.available <= 0 ? "text-red-400" : "text-zinc-300"}`}>{fmt(variant.available)}</td>
+                <td className="px-4 py-3 text-right font-mono text-zinc-300">{fmt(variant.unitsSold)}</td>
+                <td className="px-4 py-3 text-right font-mono text-zinc-300">{variant.daysOfCover === null ? "-" : variant.daysOfCover}</td>
+                <td className="px-4 py-3 text-right font-mono text-emerald-400">{currency(variant.revenueCents)}</td>
+              </tr>
+            ))}
+            {(inventory?.variants ?? []).length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-zinc-500">No inventory data found.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+async function CrossChannelSection() {
+  const crossChannel = await getCrossChannel();
+  const actionableOps = crossChannel.filter((row) => row.flag !== "ok");
+  const flagCounts = crossChannel.reduce<Record<CrossChannelRow["flag"], number>>(
+    (acc, row) => { acc[row.flag] += 1; return acc; },
+    { no_revenue: 0, opportunity: 0, no_listing: 0, ok: 0 },
+  );
+  return (
+    <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-100">Cross-Channel Opportunities</h2>
+          <p className="mt-0.5 text-xs text-zinc-500">Top products needing channel action</p>
+        </div>
+        <Link href="/cross-channel" className="text-xs text-zinc-400 hover:text-zinc-200">View all</Link>
+      </div>
+      {actionableOps.length === 0 ? (
+        <p className="px-4 py-6 text-sm text-zinc-500">No actionable opportunities found.</p>
+      ) : (
+        <div className="divide-y divide-zinc-800/60">
+          {actionableOps
+            .slice()
+            .sort((a, b) => (b.revenueCents + b.gscImpressions * 10) - (a.revenueCents + a.gscImpressions * 10))
+            .slice(0, 3)
+            .map((row) => {
+              const meta = FLAG_META[row.flag];
+              const actionText = row.flag === "no_revenue" ? "Fix product page"
+                : row.flag === "opportunity" ? "List on Amazon" : "Fix Merchant listing";
+              return (
+                <div key={row.productId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-zinc-100">{row.title ?? row.canonicalSku}</p>
+                    <div className="mt-1 flex items-center gap-3">
+                      <span className={`rounded border px-1.5 py-0.5 text-xs font-medium ${meta.className}`}>{meta.label}</span>
+                      <span className="font-mono text-xs text-zinc-500">
+                        {row.revenueCents > 0 ? currency(row.revenueCents) : "no revenue"}
+                        {row.gscImpressions > 0 ? ` · ${fmt(row.gscImpressions)} impr.` : ""}
+                      </span>
+                    </div>
+                  </div>
+                  <Link href={`/products/${row.productId}`} className="shrink-0 rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800">
+                    {actionText}
+                  </Link>
+                </div>
+              );
+            })}
+        </div>
+      )}
+      {actionableOps.length > 0 && (
+        <div className="flex items-center gap-4 border-t border-zinc-800 px-4 py-2.5">
+          {(["no_revenue", "opportunity", "no_listing"] as const)
+            .filter((f) => flagCounts[f] > 0)
+            .map((f) => (
+              <span key={f} className={`text-xs font-medium ${FLAG_META[f].className} rounded border px-2 py-0.5`}>
+                {flagCounts[f]} {FLAG_META[f].label.toLowerCase()}
+              </span>
+            ))}
+          {actionableOps.length > 3 && (
+            <Link href="/cross-channel" className="ml-auto text-xs text-zinc-500 hover:text-zinc-300">
+              +{actionableOps.length - 3} more
+            </Link>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+async function TopActionSection() {
+  const [status, alerts, crossChannel, inventory] = await Promise.all([
+    getStatus(), getAlerts(), getCrossChannel(), getInventory(),
+  ]);
+  const integrations = status?.integrations ?? [];
+  const priorityItems = buildPriorityItems(integrations, alerts, crossChannel, inventory);
+  const aiAction = getAiNextBestAction(priorityItems);
+  return (
+    <section className={`rounded border p-4 ${priorityItems.length > 0 ? PRIORITY_TONE[priorityItems[0].tone] : "border-zinc-800 bg-zinc-900"}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Top Action</p>
+      <h2 className="mt-3 text-base font-semibold text-zinc-100">{aiAction.title}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{aiAction.detail}</p>
+      <Link href={aiAction.href} className="mt-4 inline-flex rounded border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700">
+        {aiAction.action} →
+      </Link>
+    </section>
+  );
+}
+
+async function ChannelHealthSection() {
+  const [status, gsc] = await Promise.all([getStatus(), getGsc()]);
+  const integrations = status?.integrations ?? [];
+  const totals = integrations.reduce(
+    (acc, i) => ({
+      products: Math.max(acc.products, i.product_count),
+      variants: Math.max(acc.variants, i.variant_count),
+      pendingJobs: acc.pendingJobs + i.pending_jobs,
+      failedJobs: acc.failedJobs + i.failed_jobs,
+      openAlerts: acc.openAlerts + i.open_alerts,
+    }),
+    { products: 0, variants: 0, pendingJobs: 0, failedJobs: 0, openAlerts: 0 },
+  );
+  return (
+    <section className="rounded border border-zinc-800 bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        <h2 className="text-sm font-semibold text-zinc-100">Channel Health</h2>
+        <Link href="/operations" className="text-xs text-zinc-400 hover:text-zinc-200">Operations</Link>
+      </div>
+      <div className="divide-y divide-zinc-800">
+        {integrations.map((integration) => (
+          <Link
+            key={integration.id}
+            href={PLATFORM_HREFS[integration.platform] ?? "/operations"}
+            className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-zinc-800/40"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-zinc-100">{PLATFORM_LABELS[integration.platform] ?? integration.platform}</p>
+              <p className="mt-0.5 font-mono text-xs text-zinc-500">{relativeTime(integration.last_synced_at)}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {integration.open_alerts > 0 && <span className="font-mono text-xs text-amber-400">{integration.open_alerts}</span>}
+              <StatusPill status={integrationStatus(integration)} />
+            </div>
+          </Link>
+        ))}
+        {integrations.length === 0 && <p className="px-4 py-6 text-sm text-zinc-500">No integrations connected.</p>}
+      </div>
+      <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-zinc-500">{fmt(totals.products)} products · {fmt(totals.variants)} variants</span>
+          {gsc && <span className="text-xs text-zinc-500">{fmt(gsc.impressions)} GSC impr.</span>}
+        </div>
+        <StatusPill status={status?.ok ? "active" : "error"} label={status?.ok ? "API online" : "API offline"} />
+      </div>
+      {totals.failedJobs > 0 && (
+        <p className="border-t border-zinc-800 px-4 py-2 text-xs text-red-400">
+          {fmt(totals.failedJobs)} failed {totals.failedJobs === 1 ? "job" : "jobs"} — <Link href="/operations" className="underline hover:text-red-300">clear in Operations</Link>
+        </p>
+      )}
+    </section>
+  );
+}
+
+// ─── Page (sync shell — streams sections independently) ──────────────────────
+
+export default function CommandCenterPage() {
   return (
     <>
       <AutoRefresh intervalMs={30_000} />
       <div className="flex flex-col gap-6">
         <PageHeader section="Commerce Hub" title="Command Center" meta="Live operating cockpit" />
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <MetricCard
-            label="Revenue tracked"
-            value={currency(inventoryTotals?.revenueCents ?? 0)}
-            sub={
-              revenueTrend && revenueTrend.prior > 0
-                ? `${revenueTrend.deltaPercent > 0 ? "+" : ""}${revenueTrend.deltaPercent}% vs prior 45d · ${fmt(inventoryTotals?.unitsSold ?? 0)} units`
-                : `${fmt(inventoryTotals?.unitsSold ?? 0)} units / 90d`
-            }
-            trend={revenueTrend?.trend}
-            accent={(inventoryTotals?.revenueCents ?? 0) > 0 ? "good" : "default"}
-          />
-          <MetricCard
-            label="Revenue at risk"
-            value={currency(revenueAtRisk)}
-            sub={`${fmt(riskVariants.length)} variants`}
-            accent={revenueAtRisk > 0 || riskVariants.length > 0 ? "warn" : "good"}
-          />
-          <MetricCard
-            label="Open alerts"
-            value={fmt(alerts.length)}
-            sub={`${fmt(priorityAlerts.length)} high priority`}
-            accent={alerts.length > 0 ? "warn" : "good"}
-          />
-          <MetricCard
-            label="Failed jobs"
-            value={fmt(totals.failedJobs)}
-            sub={`${fmt(totals.pendingJobs)} pending`}
-            accent={totals.failedJobs > 0 ? "bad" : totals.pendingJobs > 0 ? "warn" : "good"}
-          />
-          <MetricCard
-            label="Opportunities"
-            value={fmt(actionableOps.length)}
-            sub={`${fmt(flagCounts.opportunity)} Amazon expansion`}
-            accent={actionableOps.length > 0 ? "warn" : "good"}
-          />
-        </section>
+        <Suspense fallback={
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)}
+          </section>
+        }>
+          <MetricsRow />
+        </Suspense>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="flex flex-col gap-6">
-            <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-zinc-100">Today's Priority Stack</h2>
-                  <p className="mt-0.5 text-xs text-zinc-500">Ranked by sync risk, alert severity, stock risk, and growth upside.</p>
-                </div>
-                <Link href="/alerts" className="text-xs text-zinc-400 hover:text-zinc-200">
-                  Triage alerts
-                </Link>
-              </div>
-              {priorityItems.length === 0 ? (
-                <p className="px-4 py-8 text-sm text-zinc-500">No urgent work found. Channel data is quiet.</p>
-              ) : (
-                <div className="divide-y divide-zinc-800">
-                  {priorityItems.map((item, index) => (
-                    <div key={item.id} className="grid gap-3 px-4 py-3 md:grid-cols-[28px_140px_minmax(0,1fr)_120px] md:items-center">
-                      <div className="font-mono text-xs text-zinc-500">{index + 1}</div>
-                      <span className={`w-fit rounded border px-2 py-0.5 text-xs font-medium ${PRIORITY_TONE[item.tone]}`}>
-                        {item.label}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-zinc-100">{item.title}</p>
-                        <p className="mt-0.5 truncate text-xs text-zinc-500">{item.detail}</p>
-                      </div>
-                      <Link href={item.href} className="rounded border border-zinc-700 px-3 py-1.5 text-center text-xs font-medium text-zinc-300 hover:bg-zinc-800">
-                        {item.action}
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-zinc-100">Revenue At Risk</h2>
-                  <p className="mt-0.5 text-xs text-zinc-500">Fast-moving or unavailable variants from live inventory and 90-day sales.</p>
-                </div>
-                <Link href="/inventory" className="text-xs text-zinc-400 hover:text-zinc-200">
-                  Open inventory
-                </Link>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-                  <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
-                    <tr>
-                      <th className="px-4 py-3">Variant</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Available</th>
-                      <th className="px-4 py-3 text-right">Sold 90d</th>
-                      <th className="px-4 py-3 text-right">Days Cover</th>
-                      <th className="px-4 py-3 text-right">Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(riskVariants.length > 0 ? riskVariants : (inventory?.variants ?? []).slice(0, 5)).slice(0, 8).map((variant) => (
-                      <tr key={variant.variantId} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                        <td className="px-4 py-3">
-                          <Link href={`/products/${variant.productId}`} className="font-medium text-zinc-100 hover:underline">
-                            {variant.title ?? variant.canonicalSku}
-                          </Link>
-                          <p className="mt-1 font-mono text-xs text-zinc-500">{variant.sku}{variant.size ? ` · ${variant.size}` : ""}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                            variant.status === "out_of_stock"
-                              ? "border-red-500 bg-red-950 text-red-400"
-                              : variant.status === "ok"
-                                ? "border-emerald-500 bg-emerald-950 text-emerald-400"
-                                : "border-amber-500 bg-amber-950 text-amber-400"
-                          }`}>
-                            {variant.status.replace(/_/g, " ")}
-                          </span>
-                        </td>
-                        <td className={`px-4 py-3 text-right font-mono ${variant.available <= 0 ? "text-red-400" : "text-zinc-300"}`}>{fmt(variant.available)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-zinc-300">{fmt(variant.unitsSold)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-zinc-300">{variant.daysOfCover === null ? "-" : variant.daysOfCover}</td>
-                        <td className="px-4 py-3 text-right font-mono text-emerald-400">{currency(variant.revenueCents)}</td>
-                      </tr>
-                    ))}
-                    {(inventory?.variants ?? []).length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-zinc-500">
-                          No inventory data found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-zinc-100">Cross-Channel Opportunities</h2>
-                  <p className="mt-0.5 text-xs text-zinc-500">Top products needing channel action</p>
-                </div>
-                <Link href="/cross-channel" className="text-xs text-zinc-400 hover:text-zinc-200">
-                  View all
-                </Link>
-              </div>
-
-              {actionableOps.length === 0 ? (
-                <p className="px-4 py-6 text-sm text-zinc-500">No actionable opportunities found.</p>
-              ) : (
-                <div className="divide-y divide-zinc-800/60">
-                  {actionableOps
-                    .slice()
-                    .sort((a, b) => (b.revenueCents + b.gscImpressions * 10) - (a.revenueCents + a.gscImpressions * 10))
-                    .slice(0, 3)
-                    .map((row) => {
-                      const meta = FLAG_META[row.flag];
-                      const actionText = row.flag === "no_revenue"
-                        ? "Fix product page"
-                        : row.flag === "opportunity"
-                          ? "List on Amazon"
-                          : "Fix Merchant listing";
-                      return (
-                        <div key={row.productId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-zinc-100">
-                              {row.title ?? row.canonicalSku}
-                            </p>
-                            <div className="mt-1 flex items-center gap-3">
-                              <span className={`rounded border px-1.5 py-0.5 text-xs font-medium ${meta.className}`}>
-                                {meta.label}
-                              </span>
-                              <span className="font-mono text-xs text-zinc-500">
-                                {row.revenueCents > 0 ? currency(row.revenueCents) : "no revenue"}
-                                {row.gscImpressions > 0 ? ` · ${fmt(row.gscImpressions)} impr.` : ""}
-                              </span>
-                            </div>
-                          </div>
-                          <Link
-                            href={`/products/${row.productId}`}
-                            className="shrink-0 rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
-                          >
-                            {actionText}
-                          </Link>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-
-              {actionableOps.length > 0 && (
-                <div className="flex items-center gap-4 border-t border-zinc-800 px-4 py-2.5">
-                  {(["no_revenue", "opportunity", "no_listing"] as const)
-                    .filter((f) => flagCounts[f] > 0)
-                    .map((f) => (
-                      <span key={f} className={`text-xs font-medium ${FLAG_META[f].className} rounded border px-2 py-0.5`}>
-                        {flagCounts[f]} {FLAG_META[f].label.toLowerCase()}
-                      </span>
-                    ))}
-                  {actionableOps.length > 3 && (
-                    <Link href="/cross-channel" className="ml-auto text-xs text-zinc-500 hover:text-zinc-300">
-                      +{actionableOps.length - 3} more
-                    </Link>
-                  )}
-                </div>
-              )}
-            </section>
+            <Suspense fallback={<SectionSkeleton rows={5} />}>
+              <PriorityStackSection />
+            </Suspense>
+            <Suspense fallback={<SectionSkeleton rows={4} />}>
+              <RevenueAtRiskSection />
+            </Suspense>
+            <Suspense fallback={<SectionSkeleton rows={3} />}>
+              <CrossChannelSection />
+            </Suspense>
           </div>
 
           <aside className="flex flex-col gap-6">
-            <section className={`rounded border p-4 ${priorityItems.length > 0 ? PRIORITY_TONE[priorityItems[0].tone] : "border-zinc-800 bg-zinc-900"}`}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Top Action</p>
-              <h2 className="mt-3 text-base font-semibold text-zinc-100">{aiAction.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{aiAction.detail}</p>
-              <Link href={aiAction.href} className="mt-4 inline-flex rounded border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700">
-                {aiAction.action} →
-              </Link>
-            </section>
-
-            <section className="rounded border border-zinc-800 bg-zinc-900">
-              <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-                <h2 className="text-sm font-semibold text-zinc-100">Channel Health</h2>
-                <Link href="/operations" className="text-xs text-zinc-400 hover:text-zinc-200">
-                  Operations
-                </Link>
+            <Suspense fallback={
+              <div className="rounded border border-zinc-800 bg-zinc-900 p-4">
+                <Skeleton className="mb-3 h-3 w-20" />
+                <Skeleton className="mb-2 h-5 w-48" />
+                <Skeleton className="mb-1 h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="mt-4 h-7 w-28" />
               </div>
-              <div className="divide-y divide-zinc-800">
-                {integrations.map((integration) => (
-                  <Link
-                    key={integration.id}
-                    href={PLATFORM_HREFS[integration.platform] ?? "/operations"}
-                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-zinc-800/40"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-zinc-100">{PLATFORM_LABELS[integration.platform] ?? integration.platform}</p>
-                      <p className="mt-0.5 font-mono text-xs text-zinc-500">{relativeTime(integration.last_synced_at)}</p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {integration.open_alerts > 0 && (
-                        <span className="font-mono text-xs text-amber-400">{integration.open_alerts}</span>
-                      )}
-                      <StatusPill status={integrationStatus(integration)} />
-                    </div>
-                  </Link>
-                ))}
-                {integrations.length === 0 && (
-                  <p className="px-4 py-6 text-sm text-zinc-500">No integrations connected.</p>
-                )}
-              </div>
-              <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-zinc-500">{fmt(totals.products)} products · {fmt(totals.variants)} variants</span>
-                  {gsc && <span className="text-xs text-zinc-500">{fmt(gsc.impressions)} GSC impr.</span>}
-                </div>
-                <StatusPill status={status?.ok ? "active" : "error"} label={status?.ok ? "API online" : "API offline"} />
-              </div>
-              {totals.failedJobs > 0 && (
-                <p className="border-t border-zinc-800 px-4 py-2 text-xs text-red-400">
-                  {fmt(totals.failedJobs)} failed {totals.failedJobs === 1 ? "job" : "jobs"} — <Link href="/operations" className="underline hover:text-red-300">clear in Operations</Link>
-                </p>
-              )}
-            </section>
+            }>
+              <TopActionSection />
+            </Suspense>
+            <Suspense fallback={<SectionSkeleton rows={3} />}>
+              <ChannelHealthSection />
+            </Suspense>
           </aside>
         </div>
       </div>
