@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 import { resolveAlert } from "../../actions";
 import { AmazonListingRewrite } from "./amazon-listing-rewrite";
 import { AiDescribeButton } from "./ai-describe";
@@ -107,23 +108,23 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  published:   "border-emerald-700 bg-emerald-950 text-emerald-400",
-  issue:       "border-amber-700 bg-amber-950 text-amber-400",
-  disapproved: "border-red-700 bg-red-950 text-red-400",
-  unlisted:    "border-zinc-700 bg-zinc-800 text-zinc-500",
+  published: "ss-pill ss-pill-sage",
+  issue: "ss-pill ss-pill-amber",
+  disapproved: "ss-pill ss-pill-red",
+  unlisted: "ss-pill",
 };
 
 const SEVERITY_BADGE: Record<string, string> = {
-  high:     "border-red-700 bg-red-950 text-red-400",
-  critical: "border-red-600 bg-red-950 text-red-300",
-  info:     "border-zinc-700 bg-zinc-800 text-zinc-400",
+  high: "ss-pill ss-pill-red",
+  critical: "ss-pill ss-pill-red",
+  info: "ss-pill",
 };
 
 const ISSUE_SEV_COLOR: Record<string, string> = {
-  critical:   "text-red-400",
-  error:      "text-orange-400",
-  warning:    "text-amber-400",
-  suggestion: "text-zinc-500",
+  critical: "var(--ss-red-ink)",
+  error: "var(--ss-orange)",
+  warning: "var(--ss-amber-ink)",
+  suggestion: "var(--ss-ink-3)",
 };
 
 const QUANTITY_ORDER = ["available", "committed", "on_hand", "incoming"];
@@ -185,13 +186,32 @@ function currency(cents: number) {
 }
 
 const SectionHeader = ({ title, count }: { title: string; count?: number }) => (
-  <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+  <h2 className="flex items-center gap-2" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>
     {title}
     {count !== undefined && (
-      <span className="font-mono font-normal normal-case tracking-normal text-zinc-600">{count}</span>
+      <span className="ss-num" style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "var(--ss-ink-4)" }}>{count}</span>
     )}
   </h2>
 );
+
+function HeaderStat({ label, value, tone = "default" }: { label: string; value: string | number; tone?: "default" | "sage" | "amber" }) {
+  const color = tone === "sage" ? "var(--ss-sage-ink)" : tone === "amber" ? "var(--ss-amber-ink)" : "var(--ss-ink)";
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{label}</p>
+      <p className="ss-num" style={{ fontFamily: "var(--ss-font-display)", fontSize: 24, fontWeight: 600, color }}>{value}</p>
+    </div>
+  );
+}
+
+function CardHeader({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
+      <h3 style={{ fontSize: 13, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>{title}</h3>
+      {children}
+    </div>
+  );
+}
 
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const [data, gsc, revenue] = await Promise.all([
@@ -226,45 +246,31 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
-        <a href="/products" className="text-sm text-zinc-500 hover:text-zinc-300">
+        <a href="/products" style={{ fontSize: 14, color: "var(--ss-ink-3)", textDecoration: "none" }}>
           ← Products
         </a>
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-b border-zinc-800 pb-5">
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3" style={{ borderBottom: "1px solid var(--ss-line)", paddingBottom: 20 }}>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Product</p>
-            <h1 className="mt-1 text-3xl font-semibold text-zinc-100 md:text-4xl">
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>Product</p>
+            <h1 className="mt-1 text-3xl md:text-4xl" style={{ fontFamily: "var(--ss-font-display)", fontWeight: 600, color: "var(--ss-ink)", letterSpacing: "-0.02em" }}>
               {product.title ?? product.canonicalSku}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="font-mono text-sm text-zinc-500">{product.canonicalSku}</span>
-              {product.brand && <span className="text-sm text-zinc-500">{product.brand}</span>}
-              <span className="rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
+              <span className="ss-num" style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>{product.canonicalSku}</span>
+              {product.brand && <span style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>{product.brand}</span>}
+              <span className="ss-pill">
                 source: {product.sourceOfTruth}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-5 text-right">
-            <div>
-              <p className="text-xs text-zinc-500">Variants</p>
-              <p className="font-mono text-2xl font-semibold text-zinc-100">{variants.length}</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500">Available</p>
-              <p className="font-mono text-2xl font-semibold text-zinc-100">{fmt(totalAvailable)}</p>
-            </div>
+            <HeaderStat label="Variants" value={variants.length} />
+            <HeaderStat label="Available" value={fmt(totalAvailable)} />
             {revenue && revenue.revenueCents > 0 && (
-              <div>
-                <p className="text-xs text-zinc-500">Revenue (90d)</p>
-                <p className="font-mono text-2xl font-semibold text-emerald-400">
-                  {currency(revenue.revenueCents)}
-                </p>
-              </div>
+              <HeaderStat label="Revenue (90d)" value={currency(revenue.revenueCents)} tone="sage" />
             )}
             {alerts.length > 0 && (
-              <div>
-                <p className="text-xs text-zinc-500">Open Issues</p>
-                <p className="font-mono text-2xl font-semibold text-amber-400">{alerts.length}</p>
-              </div>
+              <HeaderStat label="Open Issues" value={alerts.length} tone="amber" />
             )}
           </div>
         </div>
@@ -272,20 +278,21 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
 
       {/* Missing attributes */}
       {missingAttributes.length > 0 && (
-        <div className="rounded border border-amber-800/60 bg-amber-950/30 p-4">
-          <p className="mb-2 text-sm font-semibold text-amber-400">
+        <div className="ss-card" style={{ padding: 16, borderColor: "var(--ss-amber-soft)", background: "color-mix(in oklab, var(--ss-amber-soft) 35%, var(--ss-bg-card))" }}>
+          <p style={{ marginBottom: 8, fontSize: 14, fontWeight: 600, color: "var(--ss-amber-ink)" }}>
             {missingAttributes.length} missing attribute{missingAttributes.length !== 1 ? "s" : ""}
-            <span className="ml-2 font-normal text-amber-500/70">— required for channel listing quality</span>
+            <span style={{ marginLeft: 8, fontWeight: 400, color: "var(--ss-ink-3)" }}>— required for channel listing quality</span>
           </p>
           <ul className="space-y-1">
             {missingAttributes.map((item) => (
               <li
                 key={item.attr}
-                className="flex flex-col justify-between gap-3 border-t border-amber-900/50 pt-3 first:border-t-0 first:pt-0 sm:flex-row sm:items-start"
+                className="flex flex-col justify-between gap-3 pt-3 first:pt-0 sm:flex-row sm:items-start"
+                style={{ borderTop: "1px solid color-mix(in oklab, var(--ss-amber-soft) 55%, transparent)" }}
               >
                 <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
-                  <span className="text-sm font-medium text-amber-300">{item.label}</span>
-                  <span className="text-xs text-amber-500/80">{item.detail}</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ss-amber-ink)" }}>{item.label}</span>
+                  <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{item.detail}</span>
                 </div>
                 <MissingAttributeFix
                   productId={product.id}
@@ -306,25 +313,25 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
       {/* AI Actions */}
       <section id="ai-actions" className="flex flex-col gap-3">
         <SectionHeader title="AI Actions" />
-        <div className="rounded border border-zinc-800 bg-zinc-900 p-4">
+        <div className="ss-card" style={{ padding: 16 }}>
           {(product.seoTitle || product.seoDescription) && (
             <div className="mb-4 flex flex-col gap-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>
                 Current Shopify SEO
               </p>
               {product.seoTitle && (
                 <div>
-                  <p className="text-xs text-zinc-500">SEO Title</p>
-                  <p className="mt-0.5 text-sm text-zinc-300">{product.seoTitle}</p>
+                  <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>SEO Title</p>
+                  <p style={{ marginTop: 2, fontSize: 14, color: "var(--ss-ink-2)" }}>{product.seoTitle}</p>
                 </div>
               )}
               {product.seoDescription && (
                 <div>
-                  <p className="text-xs text-zinc-500">SEO Meta Description</p>
-                  <p className="mt-0.5 text-sm text-zinc-300">{product.seoDescription}</p>
+                  <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>SEO Meta Description</p>
+                  <p style={{ marginTop: 2, fontSize: 14, color: "var(--ss-ink-2)" }}>{product.seoDescription}</p>
                 </div>
               )}
-              <div className="border-t border-zinc-800 pt-3" />
+              <div style={{ borderTop: "1px solid var(--ss-line)", paddingTop: 12 }} />
             </div>
           )}
           <div className="flex flex-wrap gap-3">
@@ -339,36 +346,30 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
       {revenue && revenue.unitsSold > 0 && (
         <section className="flex flex-col gap-3">
           <SectionHeader title="Revenue — last 90 days" />
-          <div className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+          <div className="ss-card" style={{ overflow: "hidden" }}>
+            <div className="flex items-center justify-between" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
               <div className="flex items-center gap-5">
-                <div>
-                  <p className="text-xs text-zinc-500">Units</p>
-                  <p className="font-mono font-semibold text-zinc-100">{fmt(revenue.unitsSold)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-500">Revenue</p>
-                  <p className="font-mono font-semibold text-emerald-400">{currency(revenue.revenueCents)}</p>
-                </div>
+                <HeaderStat label="Units" value={fmt(revenue.unitsSold)} />
+                <HeaderStat label="Revenue" value={currency(revenue.revenueCents)} tone="sage" />
               </div>
             </div>
             {revenue.topVariants.length > 0 && (
-              <table className="w-full border-collapse text-left text-sm">
-                <thead className="text-xs font-medium text-zinc-500">
-                  <tr className="border-b border-zinc-800">
-                    <th className="px-4 py-2">SKU</th>
-                    <th className="px-4 py-2">Size</th>
-                    <th className="px-4 py-2 text-right">Units</th>
-                    <th className="px-4 py-2 text-right">Revenue</th>
+              <table className="ss-tbl">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Size</th>
+                    <th style={{ textAlign: "right" }}>Units</th>
+                    <th style={{ textAlign: "right" }}>Revenue</th>
                   </tr>
                 </thead>
                 <tbody>
                   {revenue.topVariants.map((v, i) => (
-                    <tr key={i} className="border-t border-zinc-800 hover:bg-zinc-800/40">
-                      <td className="px-4 py-2 font-mono text-xs text-zinc-400">{v.sku}</td>
-                      <td className="px-4 py-2 text-zinc-300">{v.size ?? "—"}</td>
-                      <td className="px-4 py-2 text-right font-mono text-zinc-300">{v.unitsSold}</td>
-                      <td className="px-4 py-2 text-right font-mono text-emerald-400">{currency(v.revenueCents)}</td>
+                    <tr key={i}>
+                      <td className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{v.sku}</td>
+                      <td style={{ color: "var(--ss-ink-2)" }}>{v.size ?? "—"}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{v.unitsSold}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-sage-ink)" }}>{currency(v.revenueCents)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -381,18 +382,18 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
       {/* Variants */}
       <section className="flex flex-col gap-3">
         <SectionHeader title="Variants" count={variants.length} />
-        <div className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
+        <div className="ss-card" style={{ overflow: "hidden" }}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-              <thead className="text-xs font-medium text-zinc-500">
-                <tr className="border-b border-zinc-800">
-                  <th className="px-4 py-3">SKU</th>
-                  <th className="px-4 py-3">Size</th>
-                  <th className="px-4 py-3">Barcode</th>
+            <table className="ss-tbl" style={{ minWidth: 640 }}>
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Size</th>
+                  <th>Barcode</th>
                   {platforms.map((p) => (
-                    <th key={p} className="px-4 py-3">{PLATFORM_LABELS[p] ?? p}</th>
+                    <th key={p}>{PLATFORM_LABELS[p] ?? p}</th>
                   ))}
-                  <th className="px-4 py-3 text-right">Available</th>
+                  <th style={{ textAlign: "right" }}>Available</th>
                 </tr>
               </thead>
               <tbody>
@@ -402,17 +403,17 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   );
                   const listingByPlatform = new Map(variant.listings.map((l) => [l.platform, l]));
                   return (
-                    <tr key={variant.id} className="border-t border-zinc-800 hover:bg-zinc-800/40">
-                      <td className="px-4 py-3 font-mono text-sm text-zinc-300">{variant.sku}</td>
-                      <td className="px-4 py-3 text-zinc-300">{variant.size ?? "—"}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-zinc-500">{variant.barcode ?? "—"}</td>
+                    <tr key={variant.id}>
+                      <td className="ss-num" style={{ fontSize: 13, color: "var(--ss-ink-2)" }}>{variant.sku}</td>
+                      <td style={{ color: "var(--ss-ink-2)" }}>{variant.size ?? "—"}</td>
+                      <td className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{variant.barcode ?? "—"}</td>
                       {platforms.map((p) => {
                         const listing = listingByPlatform.get(p);
                         const status = listing?.status ?? "unlisted";
                         return (
-                          <td key={p} className="px-4 py-3">
+                          <td key={p}>
                             <div className="flex flex-col gap-1">
-                              <span className={`rounded border px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[status] ?? STATUS_BADGE.unlisted}`}>
+                              <span className={STATUS_BADGE[status] ?? STATUS_BADGE.unlisted}>
                                 {status}
                               </span>
                               {p === "amazon_sp" && listing?.qualityScore != null && (
@@ -422,7 +423,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                           </td>
                         );
                       })}
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{fmt(available)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmt(available)}</td>
                     </tr>
                   );
                 })}
@@ -436,25 +437,25 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
       {inventorySummary.length > 0 && (
         <section className="flex flex-col gap-3">
           <SectionHeader title="Inventory by Location" />
-          <div className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
+          <div className="ss-card" style={{ overflow: "hidden" }}>
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead className="text-xs font-medium text-zinc-500">
-                  <tr className="border-b border-zinc-800">
-                    <th className="px-4 py-3">Location</th>
+              <table className="ss-tbl">
+                <thead>
+                  <tr>
+                    <th>Location</th>
                     {QUANTITY_ORDER.map((q) => (
-                      <th key={q} className="px-4 py-3 text-right capitalize">{q.replace("_", " ")}</th>
+                      <th key={q} className="capitalize" style={{ textAlign: "right" }}>{q.replace("_", " ")}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {inventorySummary.map((loc) => (
-                    <tr key={loc.locationKey} className="border-t border-zinc-800 hover:bg-zinc-800/40">
-                      <td className="px-4 py-3 text-sm text-zinc-300">
+                    <tr key={loc.locationKey}>
+                      <td style={{ color: "var(--ss-ink-2)" }}>
                         {loc.name}
                       </td>
                       {QUANTITY_ORDER.map((qName) => (
-                        <td key={qName} className="px-4 py-3 text-right font-mono text-zinc-300">
+                        <td key={qName} className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>
                           {fmt(getQuantity(loc.quantities, qName))}
                         </td>
                       ))}
@@ -475,27 +476,27 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             const payload = alert.payloadJson;
             const issues = payload?.issues ?? [];
             return (
-              <div key={alert.id} className="rounded border border-zinc-800 bg-zinc-900 p-4">
+              <div key={alert.id} className="ss-card" style={{ padding: 16 }}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      <span className={`rounded border px-2 py-0.5 text-xs font-medium ${SEVERITY_BADGE[alert.severity] ?? SEVERITY_BADGE.info}`}>
+                      <span className={SEVERITY_BADGE[alert.severity] ?? SEVERITY_BADGE.info}>
                         {alert.severity}
                       </span>
-                      <span className="text-xs text-zinc-500">
+                      <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
                         {PLATFORM_LABELS[alert.sourcePlatform ?? ""] ?? alert.sourcePlatform}
                       </span>
                     </div>
                     {payload?.offer_id && (
-                      <p className="font-mono text-xs text-zinc-500">offer: {payload.offer_id}</p>
+                      <p className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>offer: {payload.offer_id}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs text-zinc-500">{formatDate(alert.createdAt)}</span>
+                    <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{formatDate(alert.createdAt)}</span>
                     <form action={resolveAlert.bind(null, alert.id)}>
                       <button
                         type="submit"
-                        className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+                        className="ss-btn ss-btn-sm"
                       >
                         Dismiss
                       </button>
@@ -503,19 +504,19 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   </div>
                 </div>
                 {issues.length > 0 && (
-                  <ul className="mt-3 space-y-2 border-t border-zinc-800 pt-3">
+                  <ul className="mt-3 space-y-2" style={{ borderTop: "1px solid var(--ss-line)", paddingTop: 12 }}>
                     {issues.map((issue, i) => (
                       <li key={i} className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2">
-                          <span className={`text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[String(issue.severity ?? "").toLowerCase()] ?? "text-zinc-400"}`}>
+                          <span style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: ISSUE_SEV_COLOR[String(issue.severity ?? "").toLowerCase()] ?? "var(--ss-ink-3)" }}>
                             {issue.severity ?? "issue"}
                           </span>
                           {issue.attribute && (
-                            <span className="font-mono text-xs text-zinc-500">{issue.attribute}</span>
+                            <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{issue.attribute}</span>
                           )}
                         </div>
-                        {issue.description && <p className="text-sm text-zinc-300">{issue.description}</p>}
-                        {issue.resolution && <p className="text-xs text-zinc-500">{issue.resolution}</p>}
+                        {issue.description && <p style={{ fontSize: 14, color: "var(--ss-ink-2)" }}>{issue.description}</p>}
+                        {issue.resolution && <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{issue.resolution}</p>}
                       </li>
                     ))}
                   </ul>
@@ -531,29 +532,27 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
         <section className="flex flex-col gap-4">
           <SectionHeader title={`Search Console — /products/${gsc.handle}`} />
           {gsc.pages.length > 0 && (
-            <div className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="border-b border-zinc-800 px-4 py-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Landing Pages</h3>
-              </div>
+            <div className="ss-card" style={{ overflow: "hidden" }}>
+              <CardHeader title="Landing Pages" />
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead className="text-xs font-medium text-zinc-500">
-                    <tr className="border-b border-zinc-800">
-                      <th className="px-4 py-2">Page</th>
-                      <th className="px-4 py-2 text-right">Clicks</th>
-                      <th className="px-4 py-2 text-right">Impressions</th>
-                      <th className="px-4 py-2 text-right">CTR</th>
-                      <th className="px-4 py-2 text-right">Position</th>
+                <table className="ss-tbl">
+                  <thead>
+                    <tr>
+                      <th>Page</th>
+                      <th style={{ textAlign: "right" }}>Clicks</th>
+                      <th style={{ textAlign: "right" }}>Impressions</th>
+                      <th style={{ textAlign: "right" }}>CTR</th>
+                      <th style={{ textAlign: "right" }}>Position</th>
                     </tr>
                   </thead>
                   <tbody>
                     {gsc.pages.map((row, i) => (
-                      <tr key={i} className="border-t border-zinc-800 hover:bg-zinc-800/40">
-                        <td className="max-w-[280px] truncate px-4 py-2 font-mono text-xs text-zinc-400">{row.url}</td>
-                        <td className="px-4 py-2 text-right font-mono text-zinc-300">{row.clicks}</td>
-                        <td className="px-4 py-2 text-right font-mono text-zinc-300">{fmt(row.impressions)}</td>
-                        <td className="px-4 py-2 text-right font-mono text-zinc-300">{row.ctr.toFixed(1)}%</td>
-                        <td className="px-4 py-2 text-right font-mono text-zinc-300">{row.position.toFixed(1)}</td>
+                      <tr key={i}>
+                        <td className="ss-num max-w-[280px] truncate" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{row.url}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.clicks}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmt(row.impressions)}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.ctr.toFixed(1)}%</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.position.toFixed(1)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -562,29 +561,27 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
             </div>
           )}
           {gsc.queries.length > 0 && (
-            <div className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="border-b border-zinc-800 px-4 py-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Search Queries</h3>
-              </div>
+            <div className="ss-card" style={{ overflow: "hidden" }}>
+              <CardHeader title="Search Queries" />
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead className="text-xs font-medium text-zinc-500">
-                    <tr className="border-b border-zinc-800">
-                      <th className="px-4 py-2">Query</th>
-                      <th className="px-4 py-2 text-right">Clicks</th>
-                      <th className="px-4 py-2 text-right">Impressions</th>
-                      <th className="px-4 py-2 text-right">CTR</th>
-                      <th className="px-4 py-2 text-right">Position</th>
+                <table className="ss-tbl">
+                  <thead>
+                    <tr>
+                      <th>Query</th>
+                      <th style={{ textAlign: "right" }}>Clicks</th>
+                      <th style={{ textAlign: "right" }}>Impressions</th>
+                      <th style={{ textAlign: "right" }}>CTR</th>
+                      <th style={{ textAlign: "right" }}>Position</th>
                     </tr>
                   </thead>
                   <tbody>
                     {gsc.queries.map((row, i) => (
-                      <tr key={i} className="border-t border-zinc-800 hover:bg-zinc-800/40">
-                        <td className="px-4 py-2 text-zinc-300">{row.query}</td>
-                        <td className="px-4 py-2 text-right font-mono text-zinc-300">{row.clicks}</td>
-                        <td className="px-4 py-2 text-right font-mono text-zinc-300">{fmt(row.impressions)}</td>
-                        <td className="px-4 py-2 text-right font-mono text-zinc-300">{row.ctr.toFixed(1)}%</td>
-                        <td className="px-4 py-2 text-right font-mono text-zinc-300">{row.position.toFixed(1)}</td>
+                      <tr key={i}>
+                        <td style={{ color: "var(--ss-ink-2)" }}>{row.query}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.clicks}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmt(row.impressions)}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.ctr.toFixed(1)}%</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.position.toFixed(1)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -595,7 +592,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
         </section>
       )}
 
-      <p className="text-xs text-zinc-600">Last updated {formatDate(product.updatedAt)}</p>
+      <p style={{ fontSize: 12, color: "var(--ss-ink-4)" }}>Last updated {formatDate(product.updatedAt)}</p>
     </div>
   );
 }

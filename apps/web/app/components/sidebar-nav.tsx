@@ -48,11 +48,11 @@ type NavItem = NavGroup | NavLink;
 const navItems: NavItem[] = [
   { group: "Workspace" },
   { href: "/",               label: "Command Center",    icon: "home" },
-  { href: "/search-console", label: "SEO Opportunities", icon: "spark",  badge: "32" },
   { href: "/products",       label: "Products",          icon: "box" },
   { href: "/alerts",         label: "Alerts",            icon: "bell",   badge: "20", badgeWarn: true },
   { group: "Channels" },
   { href: "/shopify",        label: "Shopify",           icon: "shop" },
+  { href: "/search-console", label: "Search Console",    icon: "search", badge: "32" },
   { href: "/merchant",       label: "Merchant Center",   icon: "target" },
   { href: "/amazon",         label: "Amazon",            icon: "amazon" },
   { group: "Insights" },

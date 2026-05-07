@@ -41,10 +41,10 @@ export default async function CrossChannelPage() {
       <PageHeader section="Analytics" title="Cross-Channel Opportunities" />
 
         {rows.length === 0 ? (
-          <div className="rounded border border-zinc-800 bg-zinc-900 px-6 py-12 text-center">
-            <p className="text-zinc-100">No data yet.</p>
-            <p className="mt-2 text-sm text-zinc-400">Run the orders seed to populate revenue data:</p>
-            <pre className="mx-auto mt-3 max-w-md rounded border border-zinc-800 bg-zinc-950 px-4 py-2 text-left text-xs text-zinc-300">
+          <div className="ss-card" style={{ padding: "40px 24px", textAlign: "center" }}>
+            <p style={{ color: "var(--ss-ink)", fontWeight: 500 }}>No data yet.</p>
+            <p style={{ marginTop: 8, fontSize: 14, color: "var(--ss-ink-3)" }}>Run the orders seed to populate revenue data:</p>
+            <pre className="mx-auto mt-3 max-w-md text-left" style={{ border: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)", borderRadius: 8, padding: "8px 16px", fontSize: 12, color: "var(--ss-ink-2)", fontFamily: "var(--ss-font-mono)" }}>
               cd apps/api{"\n"}npx tsx src/scripts/seed-orders.ts
             </pre>
           </div>

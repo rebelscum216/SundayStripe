@@ -59,11 +59,12 @@ const PLATFORM_GAPS: Record<Platform, string[]> = {
 };
 
 const STATUS_CLASS: Record<string, string> = {
-  published: "border-emerald-500 bg-emerald-950 text-emerald-400",
-  active: "border-emerald-500 bg-emerald-950 text-emerald-400",
-  issue: "border-amber-500 bg-amber-950 text-amber-400",
-  disapproved: "border-red-500 bg-red-950 text-red-400",
-  unlisted: "border-zinc-700 bg-zinc-900 text-zinc-400",
+  published: "ss-pill ss-pill-sage",
+  active: "ss-pill ss-pill-sage",
+  issue: "ss-pill ss-pill-amber",
+  disapproved: "ss-pill ss-pill-red",
+  missing: "ss-pill ss-pill-amber",
+  unlisted: "ss-pill",
 };
 
 async function getProducts() {
@@ -180,7 +181,7 @@ export async function ChannelWorkspace({
         <MetricCard label="Open alerts" value={formatNumber(openAlerts)} accent={openAlerts > 0 ? "bad" : "good"} sub={`${formatNumber(failedJobs)} failed jobs`} />
       </div>
 
-      <section className="rounded border border-zinc-800 bg-zinc-900 p-4">
+      <section className="ss-card" style={{ padding: 16 }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <ChannelBadge platform={platform} />
@@ -188,20 +189,20 @@ export async function ChannelWorkspace({
               status={integration ? statusToPill(integration.status, pendingJobs) : "missing"}
               label={integration ? undefined : "Missing"}
             />
-            <span className="font-mono text-xs text-zinc-500">
+            <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
               Last sync {formatDate(integration?.lastSyncedAt ?? integration?.last_synced_at)}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
               href="/operations"
-              className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+              className="ss-btn ss-btn-sm ss-btn-primary"
             >
               Sync channel
             </Link>
             <Link
               href={gapHref(platform)}
-              className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+              className="ss-btn ss-btn-sm"
             >
               Review products
             </Link>
@@ -210,22 +211,22 @@ export async function ChannelWorkspace({
       </section>
 
       {/* Listed products */}
-      <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <h2 className="text-sm font-semibold text-zinc-100">{listedTitle}</h2>
-          <span className="font-mono text-xs text-zinc-500">{formatNumber(listedRows.length)}</span>
+      <section className="ss-card" style={{ overflow: "hidden" }}>
+        <div className="flex items-center justify-between" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>{listedTitle}</h2>
+          <span className="ss-pill">{formatNumber(listedRows.length)}</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-            <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+          <table className="ss-tbl" style={{ minWidth: 860 }}>
+            <thead>
               <tr>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Variants</th>
-                <th className="px-4 py-3 text-right">Inventory</th>
-                {platform === "amazon_sp" && <th className="px-4 py-3">Amazon Score</th>}
-                <th className="px-4 py-3">Gaps</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                <th>Product</th>
+                <th>Status</th>
+                <th style={{ textAlign: "right" }}>Variants</th>
+                <th style={{ textAlign: "right" }}>Inventory</th>
+                {platform === "amazon_sp" && <th>Amazon Score</th>}
+                <th>Gaps</th>
+                <th style={{ textAlign: "right" }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -233,46 +234,46 @@ export async function ChannelWorkspace({
                 const status = listingStatus(product, platform);
                 const gaps = product.missingAttributes.filter((attr) => PLATFORM_GAPS[platform].includes(attr));
                 return (
-                  <tr key={product.id} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                    <td className="px-4 py-3">
-                      <Link href={`/products/${product.id}`} className="font-medium text-zinc-100 hover:underline">
+                  <tr key={product.id}>
+                    <td>
+                      <Link href={`/products/${product.id}`} style={{ fontWeight: 500, color: "var(--ss-ink)", textDecoration: "none" }}>
                         {product.title ?? product.canonicalSku}
                       </Link>
-                      <p className="mt-1 font-mono text-xs text-zinc-500">{product.canonicalSku}</p>
+                      <p className="ss-num" style={{ marginTop: 4, fontSize: 12, color: "var(--ss-ink-3)" }}>{product.canonicalSku}</p>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded border px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[status] ?? STATUS_CLASS.unlisted}`}>
+                    <td>
+                      <span className={STATUS_CLASS[status] ?? STATUS_CLASS.unlisted}>
                         {status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(product.variantCount)}</td>
-                    <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(product.availableInventory)}</td>
+                    <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(product.variantCount)}</td>
+                    <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(product.availableInventory)}</td>
                     {platform === "amazon_sp" && (
-                      <td className="px-4 py-3">
+                      <td>
                         {product.amazonQualityScore !== null ? (
                           <QualityScoreBadge score={product.amazonQualityScore} />
                         ) : (
-                          <span className="text-xs text-zinc-500">-</span>
+                          <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>-</span>
                         )}
                       </td>
                     )}
-                    <td className="px-4 py-3">
+                    <td>
                       {gaps.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {gaps.map((gap) => (
-                            <span key={gap} className="rounded border border-amber-500 bg-amber-950 px-1.5 py-0.5 text-xs text-amber-400">
+                            <span key={gap} className="ss-pill ss-pill-amber">
                               {ATTR_LABELS[gap] ?? gap}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-xs text-zinc-500">-</span>
+                        <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td style={{ textAlign: "right" }}>
                       <Link
                         href={`/products/${product.id}`}
-                        className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+                        className="ss-btn ss-btn-sm"
                       >
                         Fix
                       </Link>
@@ -282,7 +283,7 @@ export async function ChannelWorkspace({
               })}
               {listedRows.length === 0 && (
                 <tr>
-                  <td className="px-4 py-8 text-center text-sm text-zinc-500" colSpan={platform === "amazon_sp" ? 7 : 6}>
+                  <td style={{ padding: 24, textAlign: "center", color: "var(--ss-ink-3)" }} colSpan={platform === "amazon_sp" ? 7 : 6}>
                     No listed products found.
                   </td>
                 </tr>
@@ -293,64 +294,65 @@ export async function ChannelWorkspace({
       </section>
 
       {platform === "amazon_sp" && amazonUnmatched.items.length > 0 && (
-        <section className="overflow-hidden rounded border border-amber-500/60 bg-zinc-900">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-4 py-3">
+        <section className="ss-card" style={{ overflow: "hidden", borderColor: "var(--ss-amber-soft)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
             <div>
-              <h2 className="text-sm font-semibold text-zinc-100">Unmatched Amazon listings</h2>
-              <p className="mt-0.5 text-xs text-zinc-500">
+              <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>Unmatched Amazon listings</h2>
+              <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>
                 Live SP-API listings with seller SKUs that do not match a local Shopify variant SKU.
               </p>
             </div>
-            <div className="text-right font-mono text-xs text-zinc-500">
+            <div className="ss-num" style={{ textAlign: "right", fontSize: 12, color: "var(--ss-ink-3)" }}>
               <div>{formatNumber(amazonUnmatched.unmatchedCount)} unmatched</div>
               <div>{formatNumber(amazonUnmatched.fetchedListings)} fetched live</div>
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-              <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+            <table className="ss-tbl" style={{ minWidth: 900 }}>
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Amazon listing</th>
-                  <th className="px-4 py-3">Seller SKU</th>
-                  <th className="px-4 py-3">ASIN</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                  <th>Amazon listing</th>
+                  <th>Seller SKU</th>
+                  <th>ASIN</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: "right" }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {amazonUnmatched.items.slice(0, 50).map((listing) => (
-                  <tr key={listing.sku} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                    <td className="px-4 py-3">
+                  <tr key={listing.sku}>
+                    <td>
                       <div className="flex items-center gap-3">
                         {listing.imageUrl ? (
                           <img
                             src={listing.imageUrl}
                             alt=""
-                            className="h-10 w-10 rounded border border-zinc-800 bg-zinc-950 object-cover"
+                            className="h-10 w-10 object-cover"
+                            style={{ borderRadius: 6, border: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)" }}
                           />
                         ) : (
-                          <div className="h-10 w-10 rounded border border-zinc-800 bg-zinc-950" />
+                          <div className="h-10 w-10" style={{ borderRadius: 6, border: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)" }} />
                         )}
                         <div>
-                          <div className="font-medium text-zinc-100">{listing.title ?? listing.sku}</div>
-                          <div className="mt-1 text-xs text-amber-400">Needs product link/import</div>
+                          <div style={{ fontWeight: 500, color: "var(--ss-ink)" }}>{listing.title ?? listing.sku}</div>
+                          <div style={{ marginTop: 4, fontSize: 12, color: "var(--ss-amber-ink)" }}>Needs product link/import</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-zinc-300">{listing.sku}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-zinc-400">{listing.asin ?? "-"}</td>
-                    <td className="px-4 py-3 text-xs text-zinc-400">{listing.productType ?? "-"}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded border px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[listing.status.toLowerCase()] ?? STATUS_CLASS.unlisted}`}>
+                    <td className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>{listing.sku}</td>
+                    <td className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{listing.asin ?? "-"}</td>
+                    <td style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{listing.productType ?? "-"}</td>
+                    <td>
+                      <span className={STATUS_CLASS[listing.status.toLowerCase()] ?? STATUS_CLASS.unlisted}>
                         {listing.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td style={{ textAlign: "right" }}>
                       <form action={importAmazonListing.bind(null, listing)}>
                         <button
                           type="submit"
-                          className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+                          className="ss-btn ss-btn-sm ss-btn-primary"
                         >
                           Import
                         </button>
@@ -362,7 +364,7 @@ export async function ChannelWorkspace({
             </table>
           </div>
           {amazonUnmatched.items.length > 50 && (
-            <div className="border-t border-zinc-800 px-4 py-3 text-xs text-zinc-500">
+            <div style={{ borderTop: "1px solid var(--ss-line)", padding: "12px 16px", fontSize: 12, color: "var(--ss-ink-3)" }}>
               Showing first 50 unmatched listings.
             </div>
           )}
@@ -371,55 +373,55 @@ export async function ChannelWorkspace({
 
       {/* Not listed */}
       {notListedProducts.length > 0 && (
-        <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-          <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        <section className="ss-card" style={{ overflow: "hidden" }}>
+          <div className="flex items-center justify-between" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
             <div>
-              <h2 className="text-sm font-semibold text-zinc-100">Not on {title}</h2>
-              <p className="mt-0.5 text-xs text-zinc-500">Products in your catalog with no {title} listing</p>
+              <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>Not on {title}</h2>
+              <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>Products in your catalog with no {title} listing</p>
             </div>
-            <span className="font-mono text-xs text-zinc-500">{formatNumber(notListedProducts.length)}</span>
+            <span className="ss-pill">{formatNumber(notListedProducts.length)}</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-              <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+            <table className="ss-tbl" style={{ minWidth: 640 }}>
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3 text-right">Variants</th>
-                  <th className="px-4 py-3 text-right">Inventory</th>
-                  <th className="px-4 py-3">Gaps to fix first</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                  <th>Product</th>
+                  <th style={{ textAlign: "right" }}>Variants</th>
+                  <th style={{ textAlign: "right" }}>Inventory</th>
+                  <th>Gaps to fix first</th>
+                  <th style={{ textAlign: "right" }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {notListedProducts.map((product) => {
                   const gaps = product.missingAttributes.filter((attr) => PLATFORM_GAPS[platform].includes(attr));
                   return (
-                    <tr key={product.id} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                      <td className="px-4 py-3">
-                        <Link href={`/products/${product.id}`} className="font-medium text-zinc-100 hover:underline">
+                    <tr key={product.id}>
+                      <td>
+                        <Link href={`/products/${product.id}`} style={{ fontWeight: 500, color: "var(--ss-ink)", textDecoration: "none" }}>
                           {product.title ?? product.canonicalSku}
                         </Link>
-                        <p className="mt-1 font-mono text-xs text-zinc-500">{product.canonicalSku}</p>
+                        <p className="ss-num" style={{ marginTop: 4, fontSize: 12, color: "var(--ss-ink-3)" }}>{product.canonicalSku}</p>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(product.variantCount)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(product.availableInventory)}</td>
-                      <td className="px-4 py-3">
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(product.variantCount)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(product.availableInventory)}</td>
+                      <td>
                         {gaps.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {gaps.map((gap) => (
-                              <span key={gap} className="rounded border border-amber-500 bg-amber-950 px-1.5 py-0.5 text-xs text-amber-400">
+                              <span key={gap} className="ss-pill ss-pill-amber">
                                 {ATTR_LABELS[gap] ?? gap}
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-zinc-500">Ready to list</span>
+                          <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>Ready to list</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td style={{ textAlign: "right" }}>
                         <Link
                           href={`/products/${product.id}`}
-                          className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+                          className="ss-btn ss-btn-sm"
                         >
                           View
                         </Link>

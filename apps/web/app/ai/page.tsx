@@ -35,12 +35,13 @@ export default function AiPage() {
 
       <section className="grid gap-3 md:grid-cols-2">
         {workflows.map((workflow) => (
-          <div key={workflow.href} className="rounded border border-zinc-800 bg-zinc-900 p-4">
-            <h2 className="text-sm font-semibold text-zinc-100">{workflow.title}</h2>
-            <p className="mt-2 min-h-10 text-sm leading-relaxed text-zinc-400">{workflow.detail}</p>
+          <div key={workflow.href} className="ss-card" style={{ padding: 16 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>{workflow.title}</h2>
+            <p style={{ marginTop: 8, minHeight: 40, fontSize: 14, lineHeight: 1.55, color: "var(--ss-ink-3)" }}>{workflow.detail}</p>
             <Link
               href={workflow.href}
-              className="mt-4 inline-flex rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+              className="ss-btn ss-btn-sm ss-btn-primary"
+              style={{ marginTop: 16 }}
             >
               {workflow.action}
             </Link>

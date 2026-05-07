@@ -118,7 +118,7 @@ export default async function OperationsPage() {
   return (
     <>
       {/* Topbar */}
-      <div className="ss-topbar-blur sticky top-0 z-10 flex items-center gap-3 border-b px-6 py-3"
+      <div className="ss-page-topbar ss-topbar-blur sticky z-10 flex items-center gap-3 border-b"
         style={{ borderColor: "var(--ss-line)" }}>
         <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ss-ink)" }}>
           Operations
@@ -133,7 +133,7 @@ export default async function OperationsPage() {
         <ClearFailedJobsButton failedJobs={totalFailedJobs} />
       </div>
 
-      <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="ss-content-stack">
 
         {/* Integration Health */}
         <div className="ss-card" style={{ overflow: "hidden" }}>

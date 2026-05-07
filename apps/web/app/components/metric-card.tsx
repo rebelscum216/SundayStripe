@@ -6,17 +6,17 @@ type MetricCardProps = {
   accent?: "good" | "warn" | "bad" | "default";
 };
 
-const accentClasses = {
-  good: "border-emerald-500/60 bg-emerald-950/40",
-  warn: "border-amber-500/60 bg-amber-950/40",
-  bad: "border-red-500/60 bg-red-950/40",
-  default: "border-zinc-800 bg-zinc-900",
+const accentStyles = {
+  good: { borderColor: "var(--ss-sage-soft)", background: "color-mix(in oklab, var(--ss-sage-soft) 35%, var(--ss-bg-card))" },
+  warn: { borderColor: "var(--ss-amber-soft)", background: "color-mix(in oklab, var(--ss-amber-soft) 38%, var(--ss-bg-card))" },
+  bad: { borderColor: "var(--ss-red-soft)", background: "color-mix(in oklab, var(--ss-red-soft) 38%, var(--ss-bg-card))" },
+  default: {},
 };
 
 const trendMeta = {
-  up: { arrow: "↑", className: "text-emerald-400" },
-  down: { arrow: "↓", className: "text-red-400" },
-  flat: { arrow: "→", className: "text-zinc-400" },
+  up: { arrow: "↑", color: "var(--ss-sage-ink)" },
+  down: { arrow: "↓", color: "var(--ss-red-ink)" },
+  flat: { arrow: "→", color: "var(--ss-ink-3)" },
 };
 
 export function MetricCard({
@@ -29,21 +29,21 @@ export function MetricCard({
   const trendInfo = trend ? trendMeta[trend] : null;
 
   return (
-    <div className={`border px-4 py-3 ${accentClasses[accent]}`}>
-      <div className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+    <div className="ss-card" style={{ padding: "12px 16px", ...accentStyles[accent] }}>
+      <div style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>
         {label}
       </div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <div className="font-mono text-3xl font-semibold text-zinc-100">
+      <div style={{ marginTop: 8, display: "flex", alignItems: "baseline", gap: 8 }}>
+        <div className="ss-num" style={{ fontFamily: "var(--ss-font-display)", fontSize: 28, fontWeight: 600, color: "var(--ss-ink)" }}>
           {value}
         </div>
         {trendInfo && (
-          <span className={`font-mono text-lg font-semibold ${trendInfo.className}`}>
+          <span className="ss-num" style={{ fontSize: 18, fontWeight: 600, color: trendInfo.color }}>
             {trendInfo.arrow}
           </span>
         )}
       </div>
-      {sub && <div className="mt-1 text-xs text-zinc-400">{sub}</div>}
+      {sub && <div style={{ marginTop: 4, fontSize: 12, color: "var(--ss-ink-3)" }}>{sub}</div>}
     </div>
   );
 }

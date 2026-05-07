@@ -100,10 +100,7 @@ export function AiFeed({ actions }: { actions: AiAction[] }) {
           const isLast = i === visible.length - 1;
 
           return (
-            <div key={action.id} style={{
-              display: "grid",
-              gridTemplateColumns: "32px 1fr 200px auto",
-              gap: 14,
+            <div key={action.id} className="ss-ai-feed-row" style={{
               padding: "14px 16px",
               borderBottom: isLast ? "none" : "1px solid var(--ss-line)",
               alignItems: "center",

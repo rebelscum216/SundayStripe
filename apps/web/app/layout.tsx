@@ -20,7 +20,7 @@ export default function RootLayout({
           <div className="flex h-dvh overflow-hidden">
             <SidebarNav />
             {/* Main content — light, grid bg, scrollable */}
-            <main className="ss-main-bg flex-1 overflow-y-auto lg:block">
+            <main className="ss-main-bg ss-app-shell-main flex-1 overflow-y-auto lg:block">
               {children}
             </main>
           </div>

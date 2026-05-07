@@ -122,7 +122,8 @@ function CompletenessIndicator({ missing }: { missing: string[] }) {
   return (
     <span
       title={`Missing: ${missing.map((a) => ATTR_LABELS[a] ?? a).join(", ")}`}
-      className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded border border-amber-500 bg-amber-950 text-[10px] font-semibold text-amber-400"
+      className="ml-1.5 inline-flex h-4 w-4 items-center justify-center ss-num"
+      style={{ borderRadius: 999, background: "var(--ss-amber-soft)", color: "var(--ss-amber-ink)", fontSize: 10, fontWeight: 600 }}
     >
       {missing.length}
     </span>
@@ -184,11 +185,8 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
         <button
           type="button"
           onClick={() => setActiveGap(null)}
-          className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-            !activeGap
-              ? "border-blue-500 bg-blue-950 text-blue-300"
-              : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
-          }`}
+          className="ss-btn ss-btn-sm"
+          style={!activeGap ? { borderColor: "var(--ss-orange-soft)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" } : undefined}
         >
           All
         </button>
@@ -211,14 +209,11 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
               key={gapKey(chip)}
               type="button"
               onClick={() => toggleGap(chip)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                isActive
-                  ? "border-blue-500 bg-blue-950 text-blue-300"
-                  : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
-              }`}
+              className="ss-btn ss-btn-sm"
+              style={isActive ? { borderColor: "var(--ss-orange-soft)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" } : undefined}
             >
               {label}
-              <span className="ml-2 font-mono text-zinc-500">{count}</span>
+              <span className="ss-num" style={{ marginLeft: 8, color: isActive ? "var(--ss-orange-ink)" : "var(--ss-ink-3)" }}>{count}</span>
             </button>
           );
         })}
@@ -232,12 +227,14 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
             placeholder="Search title or SKU…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-9 w-full max-w-xs rounded border border-zinc-700 bg-zinc-900 px-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-blue-500 focus:outline-none sm:max-w-sm"
+            className="h-9 w-full max-w-xs px-3 text-sm sm:max-w-sm"
+            style={{ borderRadius: 7, border: "1px solid var(--ss-line)", background: "var(--ss-bg-card)", color: "var(--ss-ink)", outline: "none" }}
           />
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as StatusFilter)}
-            className="h-9 rounded border border-zinc-700 bg-zinc-900 px-3 text-sm text-zinc-100 focus:border-blue-500 focus:outline-none"
+            className="h-9 px-3 text-sm"
+            style={{ borderRadius: 7, border: "1px solid var(--ss-line)", background: "var(--ss-bg-card)", color: "var(--ss-ink)", outline: "none" }}
           >
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -245,59 +242,60 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
           </select>
           {hasActiveFilter && (
             <button type="button" onClick={() => { setQuery(""); setStatus("all"); setActiveGap(null); }}
-              className="h-9 rounded border border-zinc-700 px-3 text-xs text-zinc-300 hover:bg-zinc-800">
+              className="ss-btn">
               Clear
             </button>
           )}
         </div>
-        <span className="font-mono text-sm text-zinc-400">
+        <span className="ss-num" style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>
           {filtered.length !== products.length
             ? `${filtered.length} of ${products.length}`
             : `${new Intl.NumberFormat("en").format(products.length)} products`}
         </span>
       </div>
 
-      <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
+      <section className="ss-card" style={{ overflow: "hidden" }}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-            <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+          <table className="ss-tbl" style={{ minWidth: 720 }}>
+            <thead>
               <tr>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3 text-right">Variants</th>
-                <th className="px-4 py-3 text-right">Inventory</th>
-                <th className="px-4 py-3">Channels</th>
-                <th className="px-4 py-3">Amazon Score</th>
+                <th>Product</th>
+                <th style={{ textAlign: "right" }}>Variants</th>
+                <th style={{ textAlign: "right" }}>Inventory</th>
+                <th>Channels</th>
+                <th>Amazon Score</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((product) => (
                 <tr
-                  className="cursor-pointer border-b border-zinc-800/60 hover:bg-zinc-800/40"
+                  className="cursor-pointer"
                   key={product.id}
                   onClick={() => {
                     window.location.href = `/products/${product.id}`;
                   }}
                 >
-                  <td className="max-w-[280px] px-4 py-3 font-medium">
-                    <span className="flex items-center gap-1 text-zinc-100">
+                  <td className="max-w-[280px]" style={{ fontWeight: 500 }}>
+                    <span className="flex items-center gap-1" style={{ color: "var(--ss-ink)" }}>
                       <a
                         href={`/products/${product.id}`}
                         onClick={(event) => event.stopPropagation()}
-                        className="truncate hover:underline"
+                        className="truncate"
+                        style={{ color: "inherit", textDecoration: "none" }}
                       >
-                        {product.title ?? <span className="italic text-zinc-400">No title</span>}
+                        {product.title ?? <span style={{ fontStyle: "italic", color: "var(--ss-ink-3)" }}>No title</span>}
                       </a>
                       <CompletenessIndicator missing={product.missingAttributes} />
                     </span>
-                    <span className="mt-1 block font-mono text-xs text-zinc-500">
+                    <span className="ss-num" style={{ marginTop: 4, display: "block", fontSize: 12, color: "var(--ss-ink-3)" }}>
                       {product.canonicalSku}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-300">{product.variantCount}</td>
-                  <td className="px-4 py-3 text-right font-mono text-zinc-300">
+                  <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{product.variantCount}</td>
+                  <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>
                     {new Intl.NumberFormat("en").format(product.availableInventory)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     <div className="flex flex-wrap gap-1">
                       {product.channels.length > 0
                         ? product.channels.map((ch) =>
@@ -306,27 +304,27 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
                             ) : (
                               <span
                                 key={ch.platform}
-                                className="inline-flex items-center border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-xs font-medium text-zinc-100"
+                                className="ss-pill"
                               >
                                 {PLATFORM_LABELS[ch.platform] ?? ch.platform}
                               </span>
                             ),
                           )
-                        : <span className="text-xs text-zinc-400">No listings</span>}
+                        : <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>No listings</span>}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     {product.amazonQualityScore != null ? (
                       <QualityScoreBadge score={product.amazonQualityScore} />
                     ) : (
-                      <span className="text-xs text-zinc-500">-</span>
+                      <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>-</span>
                     )}
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td className="px-4 py-8 text-zinc-400" colSpan={6}>
+                  <td style={{ padding: 24, color: "var(--ss-ink-3)" }} colSpan={6}>
                     {products.length === 0 ? "No products found." : "No products match the filter."}
                   </td>
                 </tr>

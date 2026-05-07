@@ -28,11 +28,12 @@ export function FlagChips({
           key={flag}
           type="button"
           onClick={() => onFilter(flag)}
-          className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-medium text-zinc-300 hover:bg-zinc-800 aria-pressed:border-blue-500 aria-pressed:bg-blue-950 aria-pressed:text-blue-300"
+          className="ss-btn ss-btn-sm"
+          style={counts.active === flag ? { borderColor: "var(--ss-orange-soft)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" } : undefined}
           aria-pressed={counts.active === flag}
         >
           {flagLabels[flag]}
-          <span className="ml-2 font-mono text-zinc-500">{counts[flag]}</span>
+          <span className="ss-num" style={{ marginLeft: 8, color: counts.active === flag ? "var(--ss-orange-ink)" : "var(--ss-ink-3)" }}>{counts[flag]}</span>
         </button>
       ))}
     </div>

@@ -72,19 +72,19 @@ async function getInventory(): Promise<InventoryResponse | null> {
 const STATUS_META: Record<InventoryVariant["status"], { label: string; className: string }> = {
   out_of_stock: {
     label: "Out of stock",
-    className: "border-red-500 bg-red-950 text-red-400",
+    className: "ss-pill ss-pill-red",
   },
   stock_risk: {
     label: "Stock risk",
-    className: "border-amber-500 bg-amber-950 text-amber-400",
+    className: "ss-pill ss-pill-amber",
   },
   low_stock: {
     label: "Low stock",
-    className: "border-amber-500 bg-amber-950 text-amber-400",
+    className: "ss-pill ss-pill-amber",
   },
   ok: {
     label: "OK",
-    className: "border-emerald-500 bg-emerald-950 text-emerald-400",
+    className: "ss-pill ss-pill-sage",
   },
 };
 
@@ -109,9 +109,36 @@ function formatDays(value: number | null) {
 function statusBadge(status: InventoryVariant["status"]) {
   const meta = STATUS_META[status];
   return (
-    <span className={`rounded border px-2 py-0.5 text-xs font-medium ${meta.className}`}>
+    <span className={meta.className}>
       {meta.label}
     </span>
+  );
+}
+
+function RiskStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "red" | "amber" | "default";
+}) {
+  const toneStyle = tone === "red"
+    ? { borderColor: "var(--ss-red-soft)", background: "color-mix(in oklab, var(--ss-red-soft) 35%, var(--ss-bg-card))", labelColor: "var(--ss-red-ink)" }
+    : tone === "amber"
+      ? { borderColor: "var(--ss-amber-soft)", background: "color-mix(in oklab, var(--ss-amber-soft) 35%, var(--ss-bg-card))", labelColor: "var(--ss-amber-ink)" }
+      : { borderColor: "var(--ss-line)", background: "var(--ss-bg-card)", labelColor: "var(--ss-ink-3)" };
+
+  return (
+    <div className="ss-card" style={{ padding: "12px 16px", borderColor: toneStyle.borderColor, background: toneStyle.background }}>
+      <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", color: toneStyle.labelColor }}>
+        {label}
+      </p>
+      <p className="ss-num" style={{ marginTop: 8, fontFamily: "var(--ss-font-display)", fontSize: 28, fontWeight: 600, color: "var(--ss-ink)" }}>
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -131,7 +158,7 @@ export default async function InventoryPage() {
       <PageHeader section="Workspace" title="Inventory" meta="90-day stock radar" />
 
       {!data || !totals ? (
-        <section className="rounded border border-zinc-800 bg-zinc-900 px-4 py-8 text-center text-sm text-zinc-500">
+        <section className="ss-card" style={{ padding: 24, textAlign: "center", color: "var(--ss-ink-3)", fontSize: 13 }}>
           Inventory data is not available.
         </section>
       ) : (
@@ -145,64 +172,55 @@ export default async function InventoryPage() {
           </section>
 
           <section className="grid gap-3 lg:grid-cols-3">
-            <div className="rounded border border-red-500/60 bg-red-950/30 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-red-400">Out of stock</p>
-              <p className="mt-2 font-mono text-3xl font-semibold text-zinc-100">{formatNumber(totals.outOfStockCount)}</p>
-            </div>
-            <div className="rounded border border-amber-500/60 bg-amber-950/30 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-amber-400">Velocity risk</p>
-              <p className="mt-2 font-mono text-3xl font-semibold text-zinc-100">{formatNumber(totals.stockRiskCount)}</p>
-            </div>
-            <div className="rounded border border-zinc-800 bg-zinc-900 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Revenue tracked</p>
-              <p className="mt-2 font-mono text-3xl font-semibold text-zinc-100">{formatCurrency(totals.revenueCents)}</p>
-            </div>
+            <RiskStat label="Out of stock" value={formatNumber(totals.outOfStockCount)} tone="red" />
+            <RiskStat label="Velocity risk" value={formatNumber(totals.stockRiskCount)} tone="amber" />
+            <RiskStat label="Revenue tracked" value={formatCurrency(totals.revenueCents)} tone="default" />
           </section>
 
-          <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+          <section className="ss-card" style={{ overflow: "hidden" }}>
+            <div className="flex items-center justify-between" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
               <div>
-                <h2 className="text-sm font-semibold text-zinc-100">Stock Risk Queue</h2>
-                <p className="mt-0.5 text-xs text-zinc-500">Out-of-stock, low-stock, and fast-moving variants.</p>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>Stock Risk Queue</h2>
+                <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>Out-of-stock, low-stock, and fast-moving variants.</p>
               </div>
               <StatusPill status={riskRows.length > 0 ? "syncing" : "active"} label={riskRows.length > 0 ? `${riskRows.length} to review` : "Clear"} />
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-                <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+              <table className="ss-tbl" style={{ minWidth: 980 }}>
+                <thead>
                   <tr>
-                    <th className="px-4 py-3">Variant</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 text-right">Available</th>
-                    <th className="px-4 py-3 text-right">On Hand</th>
-                    <th className="px-4 py-3 text-right">Committed</th>
-                    <th className="px-4 py-3 text-right">Sold 90d</th>
-                    <th className="px-4 py-3 text-right">Days Cover</th>
-                    <th className="px-4 py-3 text-right">Revenue</th>
-                    <th className="px-4 py-3 text-right">Action</th>
+                    <th>Variant</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: "right" }}>Available</th>
+                    <th style={{ textAlign: "right" }}>On Hand</th>
+                    <th style={{ textAlign: "right" }}>Committed</th>
+                    <th style={{ textAlign: "right" }}>Sold 90d</th>
+                    <th style={{ textAlign: "right" }}>Days Cover</th>
+                    <th style={{ textAlign: "right" }}>Revenue</th>
+                    <th style={{ textAlign: "right" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(riskRows.length > 0 ? riskRows : variants.slice(0, 20)).map((variant) => (
-                    <tr key={variant.variantId} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                      <td className="px-4 py-3">
-                        <Link href={`/products/${variant.productId}`} className="font-medium text-zinc-100 hover:underline">
+                    <tr key={variant.variantId}>
+                      <td>
+                        <Link href={`/products/${variant.productId}`} style={{ fontWeight: 500, color: "var(--ss-ink)", textDecoration: "none" }}>
                           {variant.title ?? variant.canonicalSku}
                         </Link>
-                        <div className="mt-1 flex flex-wrap gap-2 font-mono text-xs text-zinc-500">
+                        <div className="ss-num" style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12, color: "var(--ss-ink-3)" }}>
                           <span>{variant.sku}</span>
                           {variant.size && <span>{variant.size}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3">{statusBadge(variant.status)}</td>
-                      <td className={`px-4 py-3 text-right font-mono ${variant.available <= 0 ? "text-red-400" : "text-zinc-300"}`}>{formatNumber(variant.available)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(variant.onHand)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(variant.committed)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(variant.unitsSold)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatDays(variant.daysOfCover)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatCurrency(variant.revenueCents)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <Link href={`/products/${variant.productId}`} className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800">
+                      <td>{statusBadge(variant.status)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: variant.available <= 0 ? "var(--ss-red-ink)" : "var(--ss-ink-2)" }}>{formatNumber(variant.available)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(variant.onHand)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(variant.committed)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(variant.unitsSold)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatDays(variant.daysOfCover)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatCurrency(variant.revenueCents)}</td>
+                      <td style={{ textAlign: "right" }}>
+                        <Link href={`/products/${variant.productId}`} className="ss-btn ss-btn-sm">
                           Open
                         </Link>
                       </td>
@@ -210,7 +228,7 @@ export default async function InventoryPage() {
                   ))}
                   {variants.length === 0 && (
                     <tr>
-                      <td className="px-4 py-8 text-center text-sm text-zinc-500" colSpan={9}>
+                      <td style={{ padding: 24, textAlign: "center", color: "var(--ss-ink-3)" }} colSpan={9}>
                         No inventory variants found.
                       </td>
                     </tr>
@@ -221,39 +239,39 @@ export default async function InventoryPage() {
           </section>
 
           <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-            <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="border-b border-zinc-800 px-4 py-3">
-                <h2 className="text-sm font-semibold text-zinc-100">Revenue With Stock Position</h2>
+            <section className="ss-card" style={{ overflow: "hidden" }}>
+              <div style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>Revenue With Stock Position</h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-                  <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+                <table className="ss-tbl" style={{ minWidth: 760 }}>
+                  <thead>
                     <tr>
-                      <th className="px-4 py-3">Variant</th>
-                      <th className="px-4 py-3 text-right">Revenue</th>
-                      <th className="px-4 py-3 text-right">Units</th>
-                      <th className="px-4 py-3 text-right">Available</th>
-                      <th className="px-4 py-3 text-right">Days Cover</th>
+                      <th>Variant</th>
+                      <th style={{ textAlign: "right" }}>Revenue</th>
+                      <th style={{ textAlign: "right" }}>Units</th>
+                      <th style={{ textAlign: "right" }}>Available</th>
+                      <th style={{ textAlign: "right" }}>Days Cover</th>
                     </tr>
                   </thead>
                   <tbody>
                     {velocityRows.map((variant) => (
-                      <tr key={variant.variantId} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                        <td className="px-4 py-3">
-                          <Link href={`/products/${variant.productId}`} className="font-medium text-zinc-100 hover:underline">
+                      <tr key={variant.variantId}>
+                        <td>
+                          <Link href={`/products/${variant.productId}`} style={{ fontWeight: 500, color: "var(--ss-ink)", textDecoration: "none" }}>
                             {variant.title ?? variant.canonicalSku}
                           </Link>
-                          <p className="mt-1 font-mono text-xs text-zinc-500">{variant.sku}</p>
+                          <p className="ss-num" style={{ marginTop: 4, fontSize: 12, color: "var(--ss-ink-3)" }}>{variant.sku}</p>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-emerald-400">{formatCurrency(variant.revenueCents)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(variant.unitsSold)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(variant.available)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatDays(variant.daysOfCover)}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-sage-ink)" }}>{formatCurrency(variant.revenueCents)}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(variant.unitsSold)}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(variant.available)}</td>
+                        <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatDays(variant.daysOfCover)}</td>
                       </tr>
                     ))}
                     {velocityRows.length === 0 && (
                       <tr>
-                        <td className="px-4 py-8 text-center text-sm text-zinc-500" colSpan={5}>
+                        <td style={{ padding: 24, textAlign: "center", color: "var(--ss-ink-3)" }} colSpan={5}>
                           No recent variant sales found.
                         </td>
                       </tr>
@@ -263,31 +281,31 @@ export default async function InventoryPage() {
               </div>
             </section>
 
-            <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="border-b border-zinc-800 px-4 py-3">
-                <h2 className="text-sm font-semibold text-zinc-100">Location Inventory</h2>
+            <section className="ss-card" style={{ overflow: "hidden" }}>
+              <div style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>Location Inventory</h2>
               </div>
-              <table className="w-full border-collapse text-left text-sm">
-                <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+              <table className="ss-tbl">
+                <thead>
                   <tr>
-                    <th className="px-4 py-3">Location</th>
-                    <th className="px-4 py-3 text-right">Avail</th>
-                    <th className="px-4 py-3 text-right">On Hand</th>
-                    <th className="px-4 py-3 text-right">Committed</th>
+                    <th>Location</th>
+                    <th style={{ textAlign: "right" }}>Avail</th>
+                    <th style={{ textAlign: "right" }}>On Hand</th>
+                    <th style={{ textAlign: "right" }}>Committed</th>
                   </tr>
                 </thead>
                 <tbody>
                   {locations.map((location) => (
-                    <tr key={location.locationKey} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                      <td className="px-4 py-3 text-sm text-zinc-300">{location.name}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(location.available)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(location.onHand)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-zinc-300">{formatNumber(location.committed)}</td>
+                    <tr key={location.locationKey}>
+                      <td style={{ color: "var(--ss-ink-2)" }}>{location.name}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(location.available)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(location.onHand)}</td>
+                      <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(location.committed)}</td>
                     </tr>
                   ))}
                   {locations.length === 0 && (
                     <tr>
-                      <td className="px-4 py-8 text-center text-sm text-zinc-500" colSpan={4}>
+                      <td style={{ padding: 24, textAlign: "center", color: "var(--ss-ink-3)" }} colSpan={4}>
                         No location inventory found.
                       </td>
                     </tr>

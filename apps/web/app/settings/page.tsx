@@ -75,26 +75,27 @@ export default async function SettingsPage() {
           const relativeSync = formatRelativeTime(integration.lastSyncedAt);
           return (
             <article
-              className="rounded border border-zinc-800 bg-zinc-900 p-4"
+              className="ss-card"
+              style={{ padding: 16 }}
               key={integration.key}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded border border-zinc-800 bg-zinc-950 font-mono text-xs font-semibold text-blue-400">
+                  <div className="ss-num flex h-9 w-9 items-center justify-center" style={{ borderRadius: 6, border: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)", fontSize: 12, fontWeight: 600, color: "var(--ss-orange)" }}>
                     {iconLabels[integration.key]}
                   </div>
                   <div>
-                    <h2 className="text-sm font-semibold text-zinc-100">{integration.label}</h2>
-                    <p className="mt-0.5 text-xs text-zinc-400">{integration.detail}</p>
+                    <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>{integration.label}</h2>
+                    <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>{integration.detail}</p>
                   </div>
                 </div>
                 <StatusPill status={pill.status} label={pill.label} />
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-3 text-xs text-zinc-400">
+              <div className="mt-4 flex flex-wrap gap-3" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
                 {relativeSync && <span>Last synced {relativeSync}</span>}
                 {integration.openAlerts > 0 && (
-                  <span className="text-amber-400">
+                  <span style={{ color: "var(--ss-amber-ink)" }}>
                     {integration.openAlerts} open alert{integration.openAlerts === 1 ? "" : "s"}
                   </span>
                 )}
@@ -105,7 +106,8 @@ export default async function SettingsPage() {
                   {integration.capabilities.map((cap) => (
                     <li
                       key={cap}
-                      className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400"
+                      className="ss-pill"
+                      style={{ height: 18, fontSize: 10 }}
                     >
                       {cap}
                     </li>
@@ -114,10 +116,10 @@ export default async function SettingsPage() {
               )}
 
               {integration.missingSteps.length > 0 && (
-                <ul className="mt-4 space-y-1 border-t border-zinc-800 pt-3">
+                <ul className="mt-4 space-y-1" style={{ borderTop: "1px solid var(--ss-line)", paddingTop: 12 }}>
                   {integration.missingSteps.map((step) => (
-                    <li className="text-xs text-amber-400" key={step}>
-                      <span className="mr-2 text-amber-500">-</span>
+                    <li style={{ fontSize: 12, color: "var(--ss-amber-ink)" }} key={step}>
+                      <span className="mr-2">-</span>
                       {step}
                     </li>
                   ))}
@@ -128,7 +130,7 @@ export default async function SettingsPage() {
         })}
 
         {integrations.length === 0 && (
-          <div className="rounded border border-zinc-800 bg-zinc-900 px-6 py-10 text-sm text-zinc-400 lg:col-span-2">
+          <div className="ss-card lg:col-span-2" style={{ padding: "32px 24px", fontSize: 14, color: "var(--ss-ink-3)" }}>
             Connection readiness is unavailable.
           </div>
         )}

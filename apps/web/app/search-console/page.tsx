@@ -121,7 +121,7 @@ export default async function SearchConsolePage() {
   return (
     <>
       {/* Topbar */}
-      <div className="ss-topbar-blur sticky top-0 z-10 flex items-center gap-3 border-b px-6 py-3"
+      <div className="ss-page-topbar ss-topbar-blur sticky z-10 flex items-center gap-3 border-b"
         style={{ borderColor: "var(--ss-line)" }}>
         <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ss-ink)" }}>
           SEO Opportunities
@@ -136,7 +136,7 @@ export default async function SearchConsolePage() {
         <span className="ss-pill ss-pill-amber">{almostPage1.length} almost page 1</span>
       </div>
 
-      <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="ss-content-stack">
         {isEmpty ? (
           <div className="ss-card" style={{ padding: 24 }}>
             <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 15, fontWeight: 600, color: "var(--ss-ink)", marginBottom: 8 }}>
@@ -153,11 +153,8 @@ export default async function SearchConsolePage() {
           <>
             {/* Opportunity hero banner */}
             {totalOpportunities > 0 && (
-              <div className="ss-card" style={{
+              <div className="ss-card ss-hero-grid" style={{
                 padding: 20,
-                display: "grid",
-                gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
-                gap: 24,
                 alignItems: "center",
                 background: "linear-gradient(135deg, var(--ss-bg-card) 0%, color-mix(in oklab, var(--ss-orange-soft) 40%, var(--ss-bg-card)) 100%)",
                 borderColor: "var(--ss-orange-soft)",
@@ -193,7 +190,7 @@ export default async function SearchConsolePage() {
             )}
 
             {/* KPI strip */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+            <div className="ss-kpi-grid">
               <KpiCard label="Total Clicks · 90d" value={fmtNum(summary!.clicks)} />
               <KpiCard label="Total Impressions · 90d" value={fmtK(summary!.impressions)} />
               <KpiCard label="Avg CTR" value={`${summary!.ctr.toFixed(1)}%`} />

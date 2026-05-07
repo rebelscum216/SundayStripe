@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, type CSSProperties } from "react";
 import Link from "next/link";
 import { AutoRefresh } from "./auto-refresh";
 import { TopbarSearch } from "./components/topbar-search";
@@ -244,7 +244,7 @@ async function KpiStrip() {
   const [gsc, inventory, revenueTrend] = await Promise.all([getGsc(), getInventory(), getRevenueTrend()]);
   const inv = inventory?.totals;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+    <div className="ss-kpi-grid">
       <KpiCard label="GSC Clicks · 90d" value={fmtK(gsc?.clicks ?? 0)} sub={gsc ? `${(gsc.ctr * 100).toFixed(1)}% CTR` : "No data"} />
       <KpiCard label="GSC Impressions · 90d" value={fmtK(gsc?.impressions ?? 0)} sub={gsc ? `Avg pos ${gsc.position.toFixed(1)}` : "No data"} />
       <KpiCard
@@ -284,7 +284,7 @@ async function ChannelHealthSection() {
         <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 13, fontWeight: 600, color: "var(--ss-ink)" }}>Channel Health</div>
         <Link href="/operations" style={{ fontSize: 12, color: "var(--ss-orange)", textDecoration: "none" }}>Operations →</Link>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(integrations.length, 1)}, 1fr)` }}>
+      <div className="ss-channel-health-grid" style={{ "--ss-health-count": Math.max(integrations.length, 1) } as CSSProperties}>
         {integrations.map((integration, i) => (
           <Link key={integration.id} href={PLATFORM_HREFS[integration.platform] ?? "/operations"}
             style={{
@@ -353,7 +353,7 @@ export default function CommandCenterPage() {
     <>
       <AutoRefresh intervalMs={30_000} />
 
-      <div className="ss-topbar-blur sticky top-0 z-10 flex items-center gap-3 border-b px-6 py-3"
+      <div className="ss-page-topbar ss-topbar-blur sticky z-10 flex items-center gap-3 border-b"
         style={{ borderColor: "var(--ss-line)" }}>
         <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ss-ink)" }}>
           Command Center
@@ -369,9 +369,9 @@ export default function CommandCenterPage() {
         <TopbarSearch />
       </div>
 
-      <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="ss-content-stack">
         <Suspense fallback={
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          <div className="ss-kpi-grid">
             {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
           </div>
         }>

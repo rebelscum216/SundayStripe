@@ -52,7 +52,7 @@ const navItems: SearchItem[] = [
   { id: "nav-home", kind: "nav", label: "Command Center", detail: "Live operating cockpit", href: "/", terms: "home command center overview cockpit" },
   { id: "nav-products", kind: "nav", label: "Products", detail: "Catalog and channel coverage", href: "/products", terms: "products catalog sku inventory variants" },
   { id: "nav-alerts", kind: "nav", label: "Alerts", detail: "Open channel issues", href: "/alerts", terms: "alerts issues warnings triage" },
-  { id: "nav-search-console", kind: "nav", label: "SEO Opportunities", detail: "Search Console queries and pages", href: "/search-console", terms: "seo opportunities search console gsc queries pages" },
+  { id: "nav-search-console", kind: "nav", label: "Search Console", detail: "Queries, pages, and SEO opportunities", href: "/search-console", terms: "search console seo opportunities gsc queries pages" },
   { id: "nav-shopify", kind: "nav", label: "Shopify", detail: "Shopify channel workspace", href: "/shopify", terms: "shopify store products" },
   { id: "nav-merchant", kind: "nav", label: "Merchant Center", detail: "Google Merchant listings", href: "/merchant", terms: "merchant center google listings feed" },
   { id: "nav-amazon", kind: "nav", label: "Amazon", detail: "Amazon SP-API listings", href: "/amazon", terms: "amazon asin sp api listings" },
@@ -266,6 +266,30 @@ export function TopbarSearch() {
 
   return (
     <div className="ss-topbar-search-wrap">
+      <button
+        className="ss-topbar-search-mobile-button"
+        type="button"
+        aria-label="Search"
+        onClick={() => {
+          setOpen(true);
+          requestAnimationFrame(() => inputRef.current?.focus());
+        }}
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="6" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+      </button>
       <label className="ss-topbar-search" aria-label="Search">
         <svg
           width="14"

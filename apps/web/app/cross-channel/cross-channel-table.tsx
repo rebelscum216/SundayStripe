@@ -31,10 +31,10 @@ type RowExpansion =
   | { status: "error"; message: string };
 
 const FLAG_META = {
-  no_revenue: { label: "Not converting", badge: "border-red-500 bg-red-950 text-red-400", row: "" },
-  opportunity: { label: "Expand to Amazon", badge: "border-amber-500 bg-amber-950 text-amber-400", row: "" },
-  no_listing: { label: "Missing Merchant", badge: "border-blue-500 bg-blue-950 text-blue-400", row: "" },
-  ok: { label: "OK", badge: "border-zinc-700 bg-zinc-900 text-zinc-400", row: "" },
+  no_revenue: { label: "Not converting", badge: "ss-pill-red", row: "" },
+  opportunity: { label: "Expand to Amazon", badge: "ss-pill-amber", row: "" },
+  no_listing: { label: "Missing Merchant", badge: "ss-pill-orange", row: "" },
+  ok: { label: "OK", badge: "", row: "" },
 } as const;
 
 const FLAG_ORDER: Record<string, number> = { no_revenue: 0, opportunity: 1, no_listing: 2, ok: 3 };
@@ -57,11 +57,11 @@ function fmtN(n: number) {
 }
 
 function QualityDot({ score }: { score: number }) {
-  const color = score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-400" : "bg-red-400";
+  const color = score >= 70 ? "var(--ss-sage-ink)" : score >= 40 ? "var(--ss-amber-ink)" : "var(--ss-red-ink)";
   return (
     <span className="flex items-center gap-1.5">
-      <span className={`inline-block h-2 w-2 rounded-full ${color}`} />
-      <span className="font-mono text-xs">{score}</span>
+      <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, background: color }} />
+      <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>{score}</span>
     </span>
   );
 }
@@ -92,13 +92,13 @@ function ExpandedRow({ productId }: { productId: string }) {
 
   if (state.status === "loading") {
     return (
-      <div className="px-4 py-3 text-xs text-zinc-400">Analyzing opportunity...</div>
+      <div style={{ padding: "12px 16px", fontSize: 12, color: "var(--ss-ink-3)" }}>Analyzing opportunity...</div>
     );
   }
 
   if (state.status === "error") {
     return (
-      <div className="px-4 py-3 text-xs text-red-400">Error: {state.message}</div>
+      <div style={{ padding: "12px 16px", fontSize: 12, color: "var(--ss-red-ink)" }}>Error: {state.message}</div>
     );
   }
 
@@ -107,19 +107,19 @@ function ExpandedRow({ productId }: { productId: string }) {
     return (
       <div className="grid gap-4 px-4 py-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <p className="text-sm text-zinc-300">{data.summary}</p>
-          <p className="text-xs text-zinc-400"><span className="font-semibold text-zinc-200">Likely cause:</span> {data.likelyCause}</p>
-          <p className="text-xs text-zinc-400"><span className="font-semibold text-zinc-200">Next action:</span> {data.nextBestAction}</p>
-          <p className="text-xs text-zinc-400"><span className="font-semibold text-zinc-200">Expected upside:</span> {data.expectedUpside}</p>
+          <p style={{ fontSize: 14, color: "var(--ss-ink-2)" }}>{data.summary}</p>
+          <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Likely cause:</span> {data.likelyCause}</p>
+          <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Next action:</span> {data.nextBestAction}</p>
+          <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Expected upside:</span> {data.expectedUpside}</p>
         </div>
         {data.fixes.length > 0 && (
           <ol className="space-y-1.5">
             {data.fixes.map((fix, i) => (
-              <li key={i} className="text-xs text-zinc-400">
-                <span className="font-mono text-zinc-500">{i + 1}.</span>{" "}
-                <span className="font-medium text-zinc-200">{fix.channel}:</span>{" "}
+              <li key={i} style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+                <span className="ss-num" style={{ color: "var(--ss-ink-4)" }}>{i + 1}.</span>{" "}
+                <span style={{ fontWeight: 500, color: "var(--ss-ink)" }}>{fix.channel}:</span>{" "}
                 {fix.action}
-                <span className="text-zinc-500"> - {fix.reason}</span>
+                <span style={{ color: "var(--ss-ink-4)" }}> - {fix.reason}</span>
               </li>
             ))}
           </ol>
@@ -161,21 +161,20 @@ export function CrossChannelTable({ rows }: { rows: CrossChannelRow[] }) {
     setExpandedId((prev) => (prev === id ? null : id));
   }
 
-  const filterBtnBase = "border px-3 py-1 text-xs font-medium transition-colors";
-  const filterBtnActive = "border-blue-500 bg-blue-950 text-blue-300";
-  const filterBtnIdle = "border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800";
+  const filterBtnBase = "ss-btn ss-btn-sm";
 
   return (
     <div className="space-y-4">
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">
-          <span className="text-xs font-medium text-zinc-400 mr-1">Flag</span>
+          <span style={{ marginRight: 4, fontSize: 12, fontWeight: 500, color: "var(--ss-ink-3)" }}>Flag</span>
           {(["all", "no_revenue", "opportunity", "no_listing"] as FilterFlag[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilterFlag(f)}
-              className={`${filterBtnBase} ${filterFlag === f ? filterBtnActive : filterBtnIdle}`}
+              className={filterBtnBase}
+              style={filterFlag === f ? { borderColor: "var(--ss-orange-soft)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" } : undefined}
             >
               {f === "all" ? `All (${rows.length})` : `${FLAG_META[f].label} (${flagCounts[f] ?? 0})`}
             </button>
@@ -183,12 +182,13 @@ export function CrossChannelTable({ rows }: { rows: CrossChannelRow[] }) {
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="text-xs font-medium text-zinc-400 mr-1">Channel</span>
+          <span style={{ marginRight: 4, fontSize: 12, fontWeight: 500, color: "var(--ss-ink-3)" }}>Channel</span>
           {(["all", "shopify", "merchant", "amazon_sp"] as FilterChannel[]).map((c) => (
             <button
               key={c}
               onClick={() => setFilterChannel(c)}
-              className={`${filterBtnBase} ${filterChannel === c ? filterBtnActive : filterBtnIdle}`}
+              className={filterBtnBase}
+              style={filterChannel === c ? { borderColor: "var(--ss-orange-soft)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" } : undefined}
             >
               {c === "all" ? "All" : (PLATFORM_LABELS[c] ?? c)}
             </button>
@@ -196,12 +196,13 @@ export function CrossChannelTable({ rows }: { rows: CrossChannelRow[] }) {
         </div>
 
         <div className="flex items-center gap-1 ml-auto">
-          <span className="text-xs font-medium text-zinc-400 mr-1">Sort</span>
+          <span style={{ marginRight: 4, fontSize: 12, fontWeight: 500, color: "var(--ss-ink-3)" }}>Sort</span>
           {([["flag", "Priority"], ["revenue", "Revenue"], ["gsc", "GSC"]] as [SortKey, string][]).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setSort(key)}
-              className={`${filterBtnBase} ${sort === key ? filterBtnActive : filterBtnIdle}`}
+              className={filterBtnBase}
+              style={sort === key ? { borderColor: "var(--ss-orange-soft)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" } : undefined}
             >
               {label}
             </button>
@@ -210,20 +211,20 @@ export function CrossChannelTable({ rows }: { rows: CrossChannelRow[] }) {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
+      <div className="ss-card" style={{ overflow: "hidden" }}>
         {filtered.length === 0 ? (
-          <p className="px-6 py-8 text-center text-sm text-zinc-400">No products match the current filters.</p>
+          <p style={{ padding: 24, textAlign: "center", fontSize: 13, color: "var(--ss-ink-3)" }}>No products match the current filters.</p>
         ) : (
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
+          <table className="ss-tbl">
+            <thead>
               <tr>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Flag</th>
-                <th className="px-4 py-3 text-right">Revenue</th>
-                <th className="px-4 py-3 text-right">GSC</th>
-                <th className="px-4 py-3">Channels</th>
-                <th className="px-4 py-3">AQ</th>
-                <th className="w-8 px-4 py-3" />
+                <th>Product</th>
+                <th>Flag</th>
+                <th style={{ textAlign: "right" }}>Revenue</th>
+                <th style={{ textAlign: "right" }}>GSC</th>
+                <th>Channels</th>
+                <th>AQ</th>
+                <th style={{ width: 32 }} />
               </tr>
             </thead>
             <tbody>
@@ -234,67 +235,69 @@ export function CrossChannelTable({ rows }: { rows: CrossChannelRow[] }) {
                   <Fragment key={row.productId}>
                     <tr
                       onClick={() => toggleExpand(row.productId)}
-                      className={`cursor-pointer border-b border-zinc-800/60 transition-colors hover:bg-zinc-800/40 ${meta.row} ${isExpanded ? "bg-zinc-800" : ""}`}
+                      className="cursor-pointer"
+                      style={isExpanded ? { background: "var(--ss-bg-elev)" } : undefined}
                     >
-                      <td className="max-w-[220px] px-4 py-3">
+                      <td className="max-w-[220px]">
                         <a
                           href={`/products/${row.productId}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="block truncate font-medium hover:underline"
+                          className="block truncate"
+                          style={{ fontWeight: 500, color: "var(--ss-ink)", textDecoration: "none" }}
                         >
                           {row.title ?? row.canonicalSku}
                         </a>
-                        <span className="font-mono text-xs text-zinc-500">{row.canonicalSku}</span>
+                        <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{row.canonicalSku}</span>
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td>
                         {row.flag !== "ok" && (
-                          <span className={`border px-2 py-0.5 text-xs font-medium ${meta.badge}`}>
+                          <span className={`ss-pill ${meta.badge}`}>
                             {meta.label}
                           </span>
                         )}
                       </td>
 
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-zinc-300">{fmt(row.revenueCents)}</span>
+                      <td style={{ textAlign: "right" }}>
+                        <span className="ss-num" style={{ fontSize: 13, color: "var(--ss-ink-2)" }}>{fmt(row.revenueCents)}</span>
                         {row.unitsSold > 0 && (
-                          <span className="block font-mono text-xs text-zinc-400">{fmtN(row.unitsSold)} units</span>
+                          <span className="ss-num" style={{ display: "block", fontSize: 12, color: "var(--ss-ink-3)" }}>{fmtN(row.unitsSold)} units</span>
                         )}
                       </td>
 
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-zinc-300">{fmtN(row.gscImpressions)}</span>
+                      <td style={{ textAlign: "right" }}>
+                        <span className="ss-num" style={{ fontSize: 13, color: "var(--ss-ink-2)" }}>{fmtN(row.gscImpressions)}</span>
                         {row.gscPosition != null && (
-                          <span className="block font-mono text-xs text-zinc-400">pos {row.gscPosition.toFixed(1)}</span>
+                          <span className="ss-num" style={{ display: "block", fontSize: 12, color: "var(--ss-ink-3)" }}>pos {row.gscPosition.toFixed(1)}</span>
                         )}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td>
                         <div className="flex flex-wrap gap-1">
                           {row.channels.length > 0
                             ? row.channels.map((ch) => (
-                                <span key={ch} className="border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-xs text-zinc-300">
+                                <span key={ch} className="ss-pill">
                                   {PLATFORM_LABELS[ch] ?? ch}
                                 </span>
                               ))
-                            : <span className="text-xs text-zinc-400">None</span>}
+                            : <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>None</span>}
                         </div>
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td>
                         {row.channels.includes("amazon_sp") && row.amazonQualityScore !== null
                           ? <QualityDot score={row.amazonQualityScore} />
-                          : <span className="text-zinc-500">-</span>}
+                          : <span style={{ color: "var(--ss-ink-3)" }}>-</span>}
                       </td>
 
-                      <td className="px-4 py-3 text-zinc-400">
+                      <td style={{ color: "var(--ss-ink-3)" }}>
                         <span className={`transition-transform inline-block ${isExpanded ? "rotate-90" : ""}`}>›</span>
                       </td>
                     </tr>
 
                     {isExpanded && (
-                      <tr className={`border-b border-zinc-800/60 bg-zinc-950/40 ${meta.row}`}>
-                        <td colSpan={7} className="border-t border-zinc-800">
+                      <tr style={{ background: "var(--ss-bg-elev)" }}>
+                        <td colSpan={7} style={{ borderTop: "1px solid var(--ss-line)" }}>
                           <ExpandedRow productId={row.productId} />
                         </td>
                       </tr>
@@ -307,7 +310,7 @@ export function CrossChannelTable({ rows }: { rows: CrossChannelRow[] }) {
         )}
       </div>
 
-      <p className="text-xs text-zinc-400 text-right">{filtered.length} of {rows.length} products</p>
+      <p style={{ fontSize: 12, color: "var(--ss-ink-3)", textAlign: "right" }}>{filtered.length} of {rows.length} products</p>
     </div>
   );
 }

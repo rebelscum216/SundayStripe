@@ -9,13 +9,14 @@ type EmptyStateProps = {
 
 export function EmptyState({ message, detail, action }: EmptyStateProps) {
   return (
-    <div className="border border-zinc-800 bg-zinc-900 px-6 py-12 text-center">
-      <p className="text-sm font-medium text-zinc-100">{message}</p>
-      {detail && <p className="mt-1 text-sm text-zinc-400">{detail}</p>}
+    <div className="ss-card" style={{ padding: "40px 24px", textAlign: "center" }}>
+      <p style={{ fontSize: 14, fontWeight: 500, color: "var(--ss-ink)" }}>{message}</p>
+      {detail && <p style={{ marginTop: 4, fontSize: 14, color: "var(--ss-ink-3)" }}>{detail}</p>}
       {action && (
         <a
           href={action.href}
-          className="mt-5 inline-flex items-center justify-center border border-blue-500 bg-blue-950 px-3 py-1.5 text-sm font-medium text-blue-400 hover:bg-blue-900"
+          className="ss-btn ss-btn-primary"
+          style={{ marginTop: 20, display: "inline-flex" }}
         >
           {action.label}
         </a>

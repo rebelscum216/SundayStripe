@@ -47,31 +47,31 @@ export function OpportunityExplainer({ productId }: { productId: string }) {
         type="button"
         onClick={explain}
         disabled={state === "loading"}
-        className="w-fit border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        className="ss-btn ss-btn-sm w-fit disabled:opacity-50"
       >
         {state === "loading" ? "Explaining..." : state === "done" ? "Hide" : "Explain"}
       </button>
 
       {state === "error" && (
-        <p className="text-xs text-red-600">Could not explain: {error}</p>
+        <p style={{ fontSize: 12, color: "var(--ss-red-ink)" }}>Could not explain: {error}</p>
       )}
 
       {explanation && (
-        <div className="flex flex-col gap-2 border border-zinc-200 bg-zinc-50 p-3">
-          <p className="text-sm leading-5 text-zinc-800">{explanation.summary}</p>
-          <div className="grid gap-2 text-xs text-zinc-600">
-            <p><span className="font-semibold text-zinc-800">Cause:</span> {explanation.likelyCause}</p>
-            <p><span className="font-semibold text-zinc-800">Next:</span> {explanation.nextBestAction}</p>
-            <p><span className="font-semibold text-zinc-800">Upside:</span> {explanation.expectedUpside}</p>
+        <div className="ss-card flex flex-col gap-2" style={{ padding: 12 }}>
+          <p style={{ fontSize: 14, lineHeight: 1.45, color: "var(--ss-ink-2)" }}>{explanation.summary}</p>
+          <div className="grid gap-2" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+            <p><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Cause:</span> {explanation.likelyCause}</p>
+            <p><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Next:</span> {explanation.nextBestAction}</p>
+            <p><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Upside:</span> {explanation.expectedUpside}</p>
           </div>
           {explanation.fixes.length > 0 && (
-            <ol className="space-y-1 border-t border-zinc-200 pt-2">
+            <ol className="space-y-1" style={{ borderTop: "1px solid var(--ss-line)", paddingTop: 8 }}>
               {explanation.fixes.map((fix, index) => (
-                <li key={`${fix.channel}-${index}`} className="text-xs leading-5 text-zinc-600">
-                  <span className="font-mono text-zinc-400">{index + 1}.</span>{" "}
-                  <span className="font-medium text-zinc-800">{fix.channel}:</span>{" "}
+                <li key={`${fix.channel}-${index}`} style={{ fontSize: 12, lineHeight: 1.55, color: "var(--ss-ink-3)" }}>
+                  <span className="ss-num" style={{ color: "var(--ss-ink-4)" }}>{index + 1}.</span>{" "}
+                  <span style={{ fontWeight: 500, color: "var(--ss-ink)" }}>{fix.channel}:</span>{" "}
                   {fix.action}
-                  <span className="text-zinc-400"> — {fix.reason}</span>
+                  <span style={{ color: "var(--ss-ink-4)" }}> — {fix.reason}</span>
                 </li>
               ))}
             </ol>
