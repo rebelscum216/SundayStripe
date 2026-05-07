@@ -1,9 +1,22 @@
 "use client";
-import { useActionState } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import { loginAction } from "./actions";
 
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="mt-1 rounded-lg bg-[#f45b52] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#e04840] disabled:opacity-60"
+    >
+      {pending ? "Signing in…" : "Sign in →"}
+    </button>
+  );
+}
+
 export function LoginForm() {
-  const [state, action, pending] = useActionState(loginAction, null);
+  const [state, action] = useFormState(loginAction, null);
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -27,13 +40,7 @@ export function LoginForm() {
         <p className="text-sm font-medium text-red-400">{state.error}</p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-1 rounded-lg bg-[#f45b52] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#e04840] disabled:opacity-60"
-      >
-        {pending ? "Signing in…" : "Sign in →"}
-      </button>
+      <SubmitButton />
     </form>
   );
 }

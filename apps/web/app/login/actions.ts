@@ -3,10 +3,10 @@ import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-export const COOKIE_NAME = "hub_session";
+const COOKIE_NAME = "hub_session";
 const SUFFIX = "sunday-stripe-hub-2026";
 
-export function makeToken(password: string): string {
+function makeToken(password: string): string {
   return createHash("sha256").update(password + "|" + SUFFIX).digest("hex");
 }
 
