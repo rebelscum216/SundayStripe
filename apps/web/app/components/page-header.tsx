@@ -1,3 +1,5 @@
+import { TopbarSearch } from "./topbar-search";
+
 type PageHeaderProps = {
   section?: string;
   title: string;
@@ -18,7 +20,9 @@ export function PageHeader({ section, title, meta, children }: PageHeaderProps) 
           {meta ?? section}
         </div>
       )}
-      {children && <><div style={{ flex: 1 }} />{children}</>}
+      <div style={{ flex: 1 }} />
+      <TopbarSearch />
+      {children}
     </div>
   );
 }

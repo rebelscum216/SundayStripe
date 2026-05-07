@@ -1,4 +1,5 @@
-import { ClearFailedJobsButton, SyncNowButton } from "./operations-actions";
+import { TopbarSearch } from "../components/topbar-search";
+import { ClearFailedJobsButton, ClearPendingJobsButton, SyncNowButton } from "./operations-actions";
 
 type IntegrationStatus = {
   id?: string;
@@ -110,6 +111,9 @@ export default async function OperationsPage() {
   const totalFailedJobs = integrations.reduce(
     (t, i) => t + (i.failedJobs ?? i.failed_jobs ?? 0), 0,
   );
+  const totalPendingJobs = integrations.reduce(
+    (t, i) => t + (i.pendingJobs ?? i.pending_jobs ?? 0), 0,
+  );
 
   return (
     <>
@@ -124,6 +128,8 @@ export default async function OperationsPage() {
           Integration health &amp; jobs
         </div>
         <div style={{ flex: 1 }} />
+        <TopbarSearch />
+        <ClearPendingJobsButton pendingJobs={totalPendingJobs} />
         <ClearFailedJobsButton failedJobs={totalFailedJobs} />
       </div>
 

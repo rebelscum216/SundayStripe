@@ -20,6 +20,15 @@ export async function clearFailedJobs() {
   revalidatePath("/operations");
 }
 
+export async function clearPendingJobs() {
+  await assertOk(
+    await fetch(`${apiBaseUrl}/api/jobs/pending`, { method: "DELETE" }),
+    "Clear pending jobs",
+  );
+  revalidatePath("/");
+  revalidatePath("/operations");
+}
+
 export async function triggerSync(integrationId: string) {
   await assertOk(
     await fetch(`${apiBaseUrl}/api/integrations/${integrationId}/sync`, { method: "POST" }),

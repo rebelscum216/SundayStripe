@@ -2687,6 +2687,16 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     return { ok: true };
   }
 
+  @Delete("jobs/pending")
+  async clearPendingJobs() {
+    await this.db
+      .update(syncJobs)
+      .set({ state: "dismissed" })
+      .where(eq(syncJobs.state, "pending"));
+
+    return { ok: true };
+  }
+
   private async getAlertLiveContext(
     alert: typeof alerts.$inferSelect,
     payload: Record<string, unknown> | null,

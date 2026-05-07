@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TopbarSearch } from "../components/topbar-search";
 import { AlmostPage1Table, type AlmostPage1Row } from "./almost-page-1-table";
 import { QuickWinsTable } from "./quick-wins-table";
 
@@ -127,6 +128,7 @@ export default async function SearchConsolePage() {
           90-day window
         </div>
         <div style={{ flex: 1 }} />
+        <TopbarSearch />
         <span className="ss-pill ss-pill-orange">{quickWins.length} quick wins</span>
         <span className="ss-pill ss-pill-amber">{almostPage1.length} almost page 1</span>
       </div>
