@@ -2,41 +2,195 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ── Sunday Stripe design tokens ── */
 :root {
-  color-scheme: dark;
+  /* Typography */
+  --ss-font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --ss-font-display: "Fraunces", Georgia, serif;
+  --ss-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Light main surface (warm bone) */
+  --ss-bg: #f6f4ef;
+  --ss-bg-elev: #fbfaf6;
+  --ss-bg-card: #ffffff;
+  --ss-grid: rgba(40, 36, 30, 0.05);
+  --ss-grid-strong: rgba(40, 36, 30, 0.08);
+  --ss-ink: #1a1815;
+  --ss-ink-2: #3a3631;
+  --ss-ink-3: #6b665e;
+  --ss-ink-4: #a8a39a;
+  --ss-line: #e6e2d8;
+  --ss-line-strong: #d6d2c7;
+
+  /* Dark sidebar */
+  --ss-side-bg: #161310;
+  --ss-side-bg-2: #1f1b16;
+  --ss-side-ink: #efe9dc;
+  --ss-side-ink-2: #b8b1a3;
+  --ss-side-ink-3: #6b665e;
+  --ss-side-line: #2a251f;
+  --ss-side-active: #2a251f;
+
+  /* Accents */
+  --ss-orange: #d97757;
+  --ss-orange-soft: #f4d9cc;
+  --ss-orange-ink: #8a3e21;
+  --ss-sage: #7b9a82;
+  --ss-sage-soft: #d9e3dc;
+  --ss-sage-ink: #3d5a45;
+  --ss-amber: #c79233;
+  --ss-amber-soft: #f3e2c0;
+  --ss-amber-ink: #6b4d10;
+  --ss-red: #b6492c;
+  --ss-red-soft: #f3d6cc;
+  --ss-red-ink: #6b1f0c;
+
+  /* Density */
+  --ss-row-h: 44px;
+  --ss-pad: 16px;
+  --ss-radius: 10px;
 }
 
+/* ── Base styles ── */
 html {
-  background-color: rgb(9 9 11); /* zinc-950 */
+  background: var(--ss-bg);
+  color-scheme: light;
 }
 
 body {
   min-height: 100dvh;
   margin: 0;
-  background-color: rgb(9 9 11); /* zinc-950 */
-  color: rgb(244 244 245); /* zinc-100 */
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  background: var(--ss-bg);
+  color: var(--ss-ink);
+  font-family: var(--ss-font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-* {
-  box-sizing: border-box;
+* { box-sizing: border-box; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ss-line-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ss-ink-4); }
+
+/* Sidebar scrollbar */
+.ss-side::-webkit-scrollbar-thumb { background: var(--ss-side-line); }
+
+/* ── Sidebar shell ── */
+.ss-side {
+  background: var(--ss-side-bg);
+  position: relative;
+  overflow: hidden;
+}
+.ss-side::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 16px 16px;
+  pointer-events: none;
+  z-index: 0;
+}
+.ss-side > * { position: relative; z-index: 1; }
+
+/* ── Main area grid background ── */
+.ss-main-bg {
+  background-color: var(--ss-bg);
+  background-image:
+    linear-gradient(to right, var(--ss-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--ss-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ── Topbar frosted ── */
+.ss-topbar-blur {
+  background: color-mix(in oklab, var(--ss-bg) 85%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+/* ── Cards ── */
+.ss-card {
+  background: var(--ss-bg-card);
+  border: 1px solid var(--ss-line);
+  border-radius: var(--ss-radius);
 }
-::-webkit-scrollbar-thumb {
-  background: rgb(63 63 70); /* zinc-700 */
-  border-radius: 3px;
+
+/* ── Pill / chip ── */
+.ss-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 20px; padding: 0 7px;
+  border-radius: 10px;
+  font-size: 11px; font-weight: 500;
+  font-family: var(--ss-font-mono);
+  background: var(--ss-bg-elev);
+  color: var(--ss-ink-2);
+  border: 1px solid var(--ss-line);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgb(82 82 91); /* zinc-600 */
+.ss-pill-orange { background: var(--ss-orange-soft); color: var(--ss-orange-ink); border-color: transparent; }
+.ss-pill-sage   { background: var(--ss-sage-soft);   color: var(--ss-sage-ink);   border-color: transparent; }
+.ss-pill-amber  { background: var(--ss-amber-soft);  color: var(--ss-amber-ink);  border-color: transparent; }
+.ss-pill-red    { background: var(--ss-red-soft);    color: var(--ss-red-ink);    border-color: transparent; }
+.ss-pill-ink    { background: var(--ss-ink);         color: var(--ss-bg);         border-color: transparent; }
+
+/* ── Tables ── */
+.ss-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ss-tbl th {
+  text-align: left;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ss-ink-3); font-weight: 500;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ss-line);
+  background: var(--ss-bg-elev);
+  white-space: nowrap;
 }
+.ss-tbl td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ss-line);
+  height: var(--ss-row-h);
+  vertical-align: middle;
+}
+.ss-tbl tr:last-child td { border-bottom: none; }
+.ss-tbl tbody tr:hover td { background: var(--ss-bg-elev); }
+
+/* ── Buttons ── */
+.ss-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid var(--ss-line);
+  background: var(--ss-bg-card);
+  color: var(--ss-ink);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: all 0.1s;
+  text-decoration: none;
+}
+.ss-btn:hover { background: var(--ss-bg-elev); border-color: var(--ss-line-strong); }
+.ss-btn-primary {
+  background: var(--ss-orange); border-color: var(--ss-orange); color: #fff;
+}
+.ss-btn-primary:hover { background: #c4663f; border-color: #c4663f; }
+.ss-btn-sm { height: 24px; padding: 0 8px; font-size: 12px; border-radius: 5px; }
+
+/* ── Mono numbers ── */
+.ss-num { font-family: var(--ss-font-mono); font-variant-numeric: tabular-nums; }
+
+/* ── Severity dots ── */
+.ss-sev { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ss-sev-critical { background: var(--ss-red); }
+.ss-sev-high     { background: var(--ss-orange); }
+.ss-sev-medium   { background: var(--ss-amber); }
+.ss-sev-low      { background: var(--ss-sage); }
+
+/* ── Delta ── */
+.ss-delta { display: inline-flex; align-items: center; gap: 2px; font-family: var(--ss-font-mono); font-size: 11px; }
+.ss-delta-up   { color: var(--ss-sage-ink); }
+.ss-delta-down { color: var(--ss-red-ink); }
+.ss-delta-flat { color: var(--ss-ink-3); }

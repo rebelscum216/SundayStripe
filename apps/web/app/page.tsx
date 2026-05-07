@@ -1,388 +1,269 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { AutoRefresh } from "./auto-refresh";
-import { MetricCard } from "./components/metric-card";
-import { PageHeader } from "./components/page-header";
 import { CardSkeleton, SectionSkeleton, Skeleton } from "./components/skeleton";
 import { StatusPill } from "./components/status-pill";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:3001";
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 type IntegrationStatus = {
-  id: string;
-  platform: string;
-  shop_domain: string | null;
-  status: string;
-  last_synced_at: string | null;
-  product_count: number;
-  variant_count: number;
-  pending_jobs: number;
-  failed_jobs: number;
-  open_alerts: number;
+  id: string; platform: string; shop_domain: string | null; status: string;
+  last_synced_at: string | null; product_count: number; variant_count: number;
+  pending_jobs: number; failed_jobs: number; open_alerts: number;
 };
 type StatusResponse = { ok: boolean; integrations: IntegrationStatus[] };
 
 type Alert = {
-  id: string;
-  severity: string;
-  category: string;
-  sourcePlatform: string | null;
+  id: string; severity: string; category: string; sourcePlatform: string | null;
   entityRef: string | null;
   payloadJson: { title?: string; merchant_product_name?: string; offer_id?: string } | null;
-  status: string;
-  createdAt: string;
+  status: string; createdAt: string;
 };
 
 type CrossChannelRow = {
-  productId: string;
-  title: string | null;
-  canonicalSku: string;
-  revenueCents: number;
-  unitsSold: number;
-  gscImpressions: number;
-  channels: string[];
-  amazonQualityScore: number | null;
+  productId: string; title: string | null; canonicalSku: string;
+  revenueCents: number; unitsSold: number; gscImpressions: number;
+  channels: string[]; amazonQualityScore: number | null;
   flag: "no_revenue" | "opportunity" | "no_listing" | "ok";
 };
 
-type GscSummary = {
-  clicks: number;
-  impressions: number;
-  ctr: number;
-  position: number;
-};
+type GscSummary = { clicks: number; impressions: number; ctr: number; position: number };
 
 type InventoryVariant = {
-  productId: string;
-  title: string | null;
-  canonicalSku: string;
-  variantId: string;
-  sku: string;
-  size: string | null;
-  available: number;
-  unitsSold: number;
-  revenueCents: number;
-  daysOfCover: number | null;
+  productId: string; title: string | null; canonicalSku: string; variantId: string;
+  sku: string; size: string | null; available: number; unitsSold: number;
+  revenueCents: number; daysOfCover: number | null;
   status: "out_of_stock" | "stock_risk" | "low_stock" | "ok";
 };
-
 type InventoryResponse = {
   periodDays: number;
   totals: {
-    variantCount: number;
-    totalAvailable: number;
-    unitsSold: number;
-    revenueCents: number;
-    lowStockCount: number;
-    stockRiskCount: number;
-    outOfStockCount: number;
+    variantCount: number; totalAvailable: number; unitsSold: number; revenueCents: number;
+    lowStockCount: number; stockRiskCount: number; outOfStockCount: number;
   };
   variants: InventoryVariant[];
 };
 
 type PriorityItem = {
-  id: string;
-  rank: number;
-  label: string;
-  title: string;
-  detail: string;
-  href: string;
-  action: string;
-  tone: "bad" | "warn" | "blue";
+  id: string; rank: number; label: string; title: string; detail: string;
+  href: string; action: string; tone: "bad" | "warn" | "blue";
 };
+
+type RevenueTrend = { current: number; prior: number; trend: "up" | "down" | "flat"; deltaPercent: number };
+
+// ─── Data fetchers ────────────────────────────────────────────────────────────
 
 async function getStatus(): Promise<StatusResponse | null> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/status`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as StatusResponse;
-  } catch {
-    return null;
-  }
+    return res.ok ? (await res.json()) as StatusResponse : null;
+  } catch { return null; }
 }
-
 async function getAlerts(): Promise<Alert[]> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/alerts`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return (await res.json()) as Alert[];
-  } catch {
-    return [];
-  }
+    return res.ok ? (await res.json()) as Alert[] : [];
+  } catch { return []; }
 }
-
 async function getCrossChannel(): Promise<CrossChannelRow[]> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/cross-channel`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return (await res.json()) as CrossChannelRow[];
-  } catch {
-    return [];
-  }
+    return res.ok ? (await res.json()) as CrossChannelRow[] : [];
+  } catch { return []; }
 }
-
 async function getGsc(): Promise<GscSummary | null> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/search-console/summary`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as GscSummary;
-  } catch {
-    return null;
-  }
+    return res.ok ? (await res.json()) as GscSummary : null;
+  } catch { return null; }
 }
-
 async function getInventory(): Promise<InventoryResponse | null> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/inventory`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as InventoryResponse;
-  } catch {
-    return null;
-  }
+    return res.ok ? (await res.json()) as InventoryResponse : null;
+  } catch { return null; }
 }
-
-type RevenueTrend = { current: number; prior: number; trend: "up" | "down" | "flat"; deltaPercent: number };
-
 async function getRevenueTrend(): Promise<RevenueTrend | null> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/revenue-trend`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as RevenueTrend;
-  } catch {
-    return null;
-  }
+    return res.ok ? (await res.json()) as RevenueTrend : null;
+  } catch { return null; }
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PLATFORM_LABELS: Record<string, string> = {
-  shopify: "Shopify",
-  merchant: "Merchant",
-  search_console: "Search Console",
-  amazon_sp: "Amazon",
+  shopify: "Shopify", merchant: "Merchant", search_console: "Search Console", amazon_sp: "Amazon",
 };
-
 const PLATFORM_HREFS: Record<string, string> = {
-  shopify: "/shopify",
-  merchant: "/merchant",
-  search_console: "/search-console",
-  amazon_sp: "/amazon",
+  shopify: "/shopify", merchant: "/merchant", search_console: "/search-console", amazon_sp: "/amazon",
 };
-
 const CATEGORY_LABELS: Record<string, string> = {
-  listing_issue: "Listing issue",
-  sync_lag: "Sync failure",
-  inventory_drift: "Inventory drift",
-  connector_error: "Connector error",
+  listing_issue: "Listing issue", sync_lag: "Sync failure",
+  inventory_drift: "Inventory drift", connector_error: "Connector error",
+};
+const FLAG_META: Record<CrossChannelRow["flag"], { label: string; tone: string; href: string }> = {
+  no_revenue: { label: "Traffic not converting", tone: "red",    href: "/cross-channel" },
+  opportunity: { label: "Expand to Amazon",      tone: "amber",  href: "/cross-channel" },
+  no_listing:  { label: "Missing Merchant",       tone: "orange", href: "/cross-channel" },
+  ok:          { label: "OK",                     tone: "sage",   href: "/cross-channel" },
 };
 
-const FLAG_META: Record<CrossChannelRow["flag"], { label: string; className: string; href: string }> = {
-  no_revenue: {
-    label: "Traffic not converting",
-    className: "border-red-800 bg-red-950/40 text-red-400",
-    href: "/cross-channel",
-  },
-  opportunity: {
-    label: "Expand to Amazon",
-    className: "border-amber-800 bg-amber-950/40 text-amber-400",
-    href: "/cross-channel",
-  },
-  no_listing: {
-    label: "Missing Merchant",
-    className: "border-blue-800 bg-blue-950/40 text-blue-400",
-    href: "/cross-channel",
-  },
-  ok: {
-    label: "OK",
-    className: "border-emerald-800 bg-emerald-950/40 text-emerald-400",
-    href: "/cross-channel",
-  },
-};
-
-const PRIORITY_TONE: Record<PriorityItem["tone"], string> = {
-  bad: "border-red-800 bg-red-950/30 text-red-400",
-  warn: "border-amber-800 bg-amber-950/30 text-amber-400",
-  blue: "border-blue-800 bg-blue-950/30 text-blue-400",
-};
-
-function fmt(value: number) {
-  return new Intl.NumberFormat("en").format(value);
-}
-
+function fmtNum(n: number) { return new Intl.NumberFormat("en").format(n); }
+function fmtK(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : fmtNum(n); }
 function currency(cents: number) {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
+  return new Intl.NumberFormat("en", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
 }
-
 function relativeTime(iso: string | null): string {
   if (!iso) return "never";
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
-
-function integrationStatus(integration: IntegrationStatus): "active" | "syncing" | "error" | "idle" {
-  if (integration.status === "error" || integration.failed_jobs > 0) return "error";
-  if (integration.pending_jobs > 0) return "syncing";
-  if (integration.status === "active") return "active";
+function integrationStatus(i: IntegrationStatus): "active" | "syncing" | "error" | "idle" {
+  if (i.status === "error" || i.failed_jobs > 0) return "error";
+  if (i.pending_jobs > 0) return "syncing";
+  if (i.status === "active") return "active";
   return "idle";
 }
-
-function alertTitle(alert: Alert) {
-  return (
-    alert.payloadJson?.title ??
-    alert.payloadJson?.merchant_product_name ??
-    alert.payloadJson?.offer_id ??
-    alert.entityRef ??
-    "Unknown alert"
-  );
+function alertTitle(a: Alert) {
+  return a.payloadJson?.title ?? a.payloadJson?.merchant_product_name ?? a.payloadJson?.offer_id ?? a.entityRef ?? "Alert";
 }
-
-function getAiNextBestAction(priorityItems: PriorityItem[]) {
-  const top = priorityItems[0];
-  if (!top) {
-    return {
-      title: "No urgent action",
-      detail: "Core systems are quiet. Review cross-channel opportunities for growth work.",
-      href: "/cross-channel",
-      action: "Review opportunities",
-    };
-  }
-
-  return {
-    title: top.title,
-    detail: top.detail,
-    href: top.href,
-    action: top.action,
-  };
-}
-
-// ─── Async streaming sections ────────────────────────────────────────────────
 
 function buildPriorityItems(
-  integrations: IntegrationStatus[],
-  alerts: Alert[],
-  crossChannel: CrossChannelRow[],
-  inventory: InventoryResponse | null,
+  integrations: IntegrationStatus[], alerts: Alert[],
+  crossChannel: CrossChannelRow[], inventory: InventoryResponse | null,
 ): PriorityItem[] {
   const riskVariants = (inventory?.variants ?? []).filter((v) => v.status !== "ok");
   const actionableOps = crossChannel.filter((row) => row.flag !== "ok");
   const priorityAlerts = alerts.filter((a) => a.severity === "critical" || a.severity === "high");
   return [
-    ...integrations
-      .filter((i) => i.failed_jobs > 0)
-      .map((i) => ({
-        id: `failed-${i.id}`,
-        rank: 100 + i.failed_jobs,
-        label: "Sync failure",
-        title: `${PLATFORM_LABELS[i.platform] ?? i.platform} has ${i.failed_jobs} failed job${i.failed_jobs !== 1 ? "s" : ""}`,
-        detail: "Clear or retry failed jobs so downstream channel data stays fresh.",
-        href: "/operations",
-        action: "Open operations",
-        tone: "bad" as const,
-      })),
+    ...integrations.filter((i) => i.failed_jobs > 0).map((i) => ({
+      id: `failed-${i.id}`, rank: 100 + i.failed_jobs,
+      label: "Sync failure",
+      title: `${PLATFORM_LABELS[i.platform] ?? i.platform} has ${i.failed_jobs} failed job${i.failed_jobs !== 1 ? "s" : ""}`,
+      detail: "Clear or retry failed jobs so channel data stays fresh.",
+      href: "/operations", action: "Open operations", tone: "bad" as const,
+    })),
     ...priorityAlerts.slice(0, 4).map((alert) => ({
-      id: `alert-${alert.id}`,
-      rank: alert.severity === "critical" ? 90 : 80,
+      id: `alert-${alert.id}`, rank: alert.severity === "critical" ? 90 : 80,
       label: CATEGORY_LABELS[alert.category] ?? alert.category,
       title: alertTitle(alert),
       detail: `${PLATFORM_LABELS[alert.sourcePlatform ?? ""] ?? alert.sourcePlatform ?? "Channel"} needs review.`,
-      href: "/alerts",
-      action: "Review alert",
+      href: "/alerts", action: "Review alert",
       tone: alert.severity === "critical" ? ("bad" as const) : ("warn" as const),
     })),
-    ...riskVariants.slice(0, 4).map((variant) => ({
-      id: `stock-${variant.variantId}`,
-      rank: variant.status === "out_of_stock" ? 70 : 60,
-      label: variant.status === "out_of_stock" ? "Out of stock" : "Inventory risk",
-      title: variant.title ?? variant.canonicalSku,
-      detail: `${variant.sku} has ${fmt(variant.available)} available, ${fmt(variant.unitsSold)} sold in 90 days.`,
-      href: `/products/${variant.productId}`,
-      action: "Open product",
-      tone: variant.status === "out_of_stock" ? ("bad" as const) : ("warn" as const),
+    ...riskVariants.slice(0, 3).map((v) => ({
+      id: `stock-${v.variantId}`, rank: v.status === "out_of_stock" ? 70 : 60,
+      label: v.status === "out_of_stock" ? "Out of stock" : "Inventory risk",
+      title: v.title ?? v.canonicalSku,
+      detail: `${v.sku} has ${fmtNum(v.available)} available, ${fmtNum(v.unitsSold)} sold in 90d.`,
+      href: `/products/${v.productId}`, action: "Open product",
+      tone: v.status === "out_of_stock" ? ("bad" as const) : ("warn" as const),
     })),
     ...actionableOps.slice(0, 3).map((row) => ({
-      id: `opportunity-${row.productId}-${row.flag}`,
-      rank: 40,
-      label: FLAG_META[row.flag].label,
-      title: row.title ?? row.canonicalSku,
-      detail: `${currency(row.revenueCents)} revenue, ${fmt(row.gscImpressions)} GSC impressions.`,
-      href: "/cross-channel",
-      action: "Analyze",
-      tone: "blue" as const,
+      id: `opp-${row.productId}-${row.flag}`, rank: 40,
+      label: FLAG_META[row.flag].label, title: row.title ?? row.canonicalSku,
+      detail: `${currency(row.revenueCents)} revenue, ${fmtNum(row.gscImpressions)} GSC impressions.`,
+      href: "/cross-channel", action: "Analyze", tone: "blue" as const,
     })),
-  ]
-    .sort((a, b) => b.rank - a.rank)
-    .slice(0, 7);
+  ].sort((a, b) => b.rank - a.rank).slice(0, 7);
 }
 
-async function MetricsRow() {
-  const [status, alerts, crossChannel, inventory, revenueTrend] = await Promise.all([
-    getStatus(), getAlerts(), getCrossChannel(), getInventory(), getRevenueTrend(),
-  ]);
-  const integrations = status?.integrations ?? [];
-  const totals = integrations.reduce(
-    (acc, i) => ({
-      products: Math.max(acc.products, i.product_count),
-      variants: Math.max(acc.variants, i.variant_count),
-      pendingJobs: acc.pendingJobs + i.pending_jobs,
-      failedJobs: acc.failedJobs + i.failed_jobs,
-      openAlerts: acc.openAlerts + i.open_alerts,
-    }),
-    { products: 0, variants: 0, pendingJobs: 0, failedJobs: 0, openAlerts: 0 },
-  );
-  const inventoryTotals = inventory?.totals;
-  const riskVariants = (inventory?.variants ?? []).filter((v) => v.status !== "ok");
-  const revenueAtRisk = riskVariants.reduce((sum, v) => sum + v.revenueCents, 0);
-  const actionableOps = crossChannel.filter((row) => row.flag !== "ok");
-  const priorityAlerts = alerts.filter((a) => a.severity === "critical" || a.severity === "high");
-  const flagCounts = crossChannel.reduce<Record<CrossChannelRow["flag"], number>>(
-    (acc, row) => { acc[row.flag] += 1; return acc; },
-    { no_revenue: 0, opportunity: 0, no_listing: 0, ok: 0 },
-  );
+// ─── Pill helper ──────────────────────────────────────────────────────────────
+
+function TonePill({ tone, children }: { tone: string; children: React.ReactNode }) {
+  const cls: Record<string, string> = {
+    bad:    "ss-pill ss-pill-red",
+    warn:   "ss-pill ss-pill-amber",
+    blue:   "ss-pill ss-pill-orange",
+    red:    "ss-pill ss-pill-red",
+    amber:  "ss-pill ss-pill-amber",
+    orange: "ss-pill ss-pill-orange",
+    sage:   "ss-pill ss-pill-sage",
+  };
+  return <span className={cls[tone] ?? "ss-pill"}>{children}</span>;
+}
+
+// ─── Topbar (shared across page sections) ────────────────────────────────────
+
+function Topbar({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
   return (
-    <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      <MetricCard
-        label="Revenue tracked"
-        value={currency(inventoryTotals?.revenueCents ?? 0)}
-        sub={
-          revenueTrend && revenueTrend.prior > 0
-            ? `${revenueTrend.deltaPercent > 0 ? "+" : ""}${revenueTrend.deltaPercent}% vs prior 45d · ${fmt(inventoryTotals?.unitsSold ?? 0)} units`
-            : `${fmt(inventoryTotals?.unitsSold ?? 0)} units / 90d`
-        }
-        trend={revenueTrend?.trend}
-        accent={(inventoryTotals?.revenueCents ?? 0) > 0 ? "good" : "default"}
+    <div className="ss-topbar-blur sticky top-0 z-10 flex items-center gap-3 border-b px-6 py-3"
+      style={{ borderColor: "var(--ss-line)" }}>
+      <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ss-ink)" }}>
+        {title}
+      </div>
+      {sub && (
+        <div style={{ fontSize: 13, color: "var(--ss-ink-3)" }}>
+          <span style={{ margin: "0 6px", color: "var(--ss-ink-4)" }}>/</span>{sub}
+        </div>
+      )}
+      <div style={{ flex: 1 }} />
+      {right}
+    </div>
+  );
+}
+
+// ─── KPI card (new design) ────────────────────────────────────────────────────
+
+function KpiCard({ label, value, sub, accentBg }: {
+  label: string; value: string; sub?: string; accentBg?: boolean;
+}) {
+  return (
+    <div className="ss-card" style={{
+      padding: 16, display: "flex", flexDirection: "column", gap: 6, minHeight: 100,
+      ...(accentBg ? { background: "var(--ss-orange-soft)", borderColor: "transparent" } : {}),
+    }}>
+      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: accentBg ? "var(--ss-orange-ink)" : "var(--ss-ink-3)", fontWeight: 500 }}>
+        {label}
+      </div>
+      <div className="ss-num" style={{ fontSize: 26, fontWeight: 600, fontFamily: "var(--ss-font-display)", letterSpacing: "-0.02em", color: accentBg ? "var(--ss-orange-ink)" : "var(--ss-ink)" }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: 12, color: accentBg ? "var(--ss-orange-ink)" : "var(--ss-ink-3)" }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ─── Async sections ───────────────────────────────────────────────────────────
+
+async function KpiStrip() {
+  const [gsc, inventory, revenueTrend] = await Promise.all([getGsc(), getInventory(), getRevenueTrend()]);
+  const inv = inventory?.totals;
+  const riskCount = (inventory?.variants ?? []).filter((v) => v.status !== "ok").length;
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, padding: "0 24px" }}>
+      <KpiCard
+        label="GSC Clicks · 30d"
+        value={fmtK(gsc?.clicks ?? 0)}
+        sub={gsc ? `${(gsc.ctr * 100).toFixed(1)}% CTR · pos ${gsc.position.toFixed(1)}` : "No data"}
       />
-      <MetricCard
-        label="Revenue at risk"
-        value={currency(revenueAtRisk)}
-        sub={`${fmt(riskVariants.length)} variants`}
-        accent={revenueAtRisk > 0 || riskVariants.length > 0 ? "warn" : "good"}
+      <KpiCard
+        label="GSC Impressions · 30d"
+        value={fmtK(gsc?.impressions ?? 0)}
+        sub="From Search Console"
       />
-      <MetricCard
-        label="Open alerts"
-        value={fmt(alerts.length)}
-        sub={`${fmt(priorityAlerts.length)} high priority`}
-        accent={alerts.length > 0 ? "warn" : "good"}
+      <KpiCard
+        label="Revenue tracked · 90d"
+        value={currency(inv?.revenueCents ?? 0)}
+        sub={revenueTrend && revenueTrend.prior > 0
+          ? `${revenueTrend.deltaPercent > 0 ? "+" : ""}${revenueTrend.deltaPercent}% vs prior 45d`
+          : `${fmtNum(inv?.unitsSold ?? 0)} units sold`}
       />
-      <MetricCard
-        label="Failed jobs"
-        value={fmt(totals.failedJobs)}
-        sub={`${fmt(totals.pendingJobs)} pending`}
-        accent={totals.failedJobs > 0 ? "bad" : totals.pendingJobs > 0 ? "warn" : "good"}
+      <KpiCard
+        label="Inventory risk"
+        value={fmtNum(riskCount)}
+        sub={`${fmtNum(inv?.outOfStockCount ?? 0)} out of stock`}
+        accentBg={riskCount > 0}
       />
-      <MetricCard
-        label="Opportunities"
-        value={fmt(actionableOps.length)}
-        sub={`${fmt(flagCounts.opportunity)} Amazon expansion`}
-        accent={actionableOps.length > 0 ? "warn" : "good"}
-      />
-    </section>
+    </div>
   );
 }
 
@@ -390,161 +271,157 @@ async function PriorityStackSection() {
   const [status, alerts, crossChannel, inventory] = await Promise.all([
     getStatus(), getAlerts(), getCrossChannel(), getInventory(),
   ]);
-  const integrations = status?.integrations ?? [];
-  const priorityItems = buildPriorityItems(integrations, alerts, crossChannel, inventory);
+  const priorityItems = buildPriorityItems(status?.integrations ?? [], alerts, crossChannel, inventory);
+
   return (
-    <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+    <div className="ss-card" style={{ overflow: "hidden" }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 16px", borderBottom: "1px solid var(--ss-line)",
+      }}>
         <div>
-          <h2 className="text-sm font-semibold text-zinc-100">{"Today's Priority Stack"}</h2>
-          <p className="mt-0.5 text-xs text-zinc-500">Ranked by sync risk, alert severity, stock risk, and growth upside.</p>
+          <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 13, fontWeight: 600 }}>
+            {"Today's Priority Stack"}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 2 }}>
+            Ranked by sync risk, alert severity, stock risk, and growth upside
+          </div>
         </div>
-        <Link href="/alerts" className="text-xs text-zinc-400 hover:text-zinc-200">Triage alerts</Link>
+        <Link href="/alerts" style={{ fontSize: 12, color: "var(--ss-orange)", textDecoration: "none" }}>
+          Triage alerts
+        </Link>
       </div>
+
       {priorityItems.length === 0 ? (
-        <p className="px-4 py-8 text-sm text-zinc-500">No urgent work found. Channel data is quiet.</p>
-      ) : (
-        <div className="divide-y divide-zinc-800">
-          {priorityItems.map((item, index) => (
-            <div key={item.id} className="grid gap-3 px-4 py-3 md:grid-cols-[28px_140px_minmax(0,1fr)_120px] md:items-center">
-              <div className="font-mono text-xs text-zinc-500">{index + 1}</div>
-              <span className={`w-fit rounded border px-2 py-0.5 text-xs font-medium ${PRIORITY_TONE[item.tone]}`}>{item.label}</span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-zinc-100">{item.title}</p>
-                <p className="mt-0.5 truncate text-xs text-zinc-500">{item.detail}</p>
-              </div>
-              <Link href={item.href} className="rounded border border-zinc-700 px-3 py-1.5 text-center text-xs font-medium text-zinc-300 hover:bg-zinc-800">
-                {item.action}
-              </Link>
-            </div>
-          ))}
+        <div style={{ padding: "24px 16px", fontSize: 13, color: "var(--ss-ink-3)" }}>
+          No urgent work found. Channel data is quiet.
         </div>
+      ) : (
+        priorityItems.map((item, i) => (
+          <div key={item.id} style={{
+            display: "grid",
+            gridTemplateColumns: "28px auto 1fr auto",
+            gap: 14, padding: "12px 16px",
+            borderBottom: i === priorityItems.length - 1 ? "none" : "1px solid var(--ss-line)",
+            alignItems: "center",
+          }}>
+            <div className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-4)" }}>{i + 1}</div>
+            <TonePill tone={item.tone}>{item.label}</TonePill>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ss-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.title}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.detail}
+              </div>
+            </div>
+            <Link href={item.href} className="ss-btn ss-btn-sm" style={{ flexShrink: 0 }}>
+              {item.action}
+            </Link>
+          </div>
+        ))
       )}
-    </section>
+    </div>
   );
 }
 
 async function RevenueAtRiskSection() {
   const inventory = await getInventory();
   const riskVariants = (inventory?.variants ?? []).filter((v) => v.status !== "ok");
+  const display = riskVariants.length > 0 ? riskVariants : (inventory?.variants ?? []).slice(0, 5);
+
+  const statusStyle: Record<string, string> = {
+    out_of_stock: "ss-pill ss-pill-red",
+    stock_risk:   "ss-pill ss-pill-orange",
+    low_stock:    "ss-pill ss-pill-amber",
+    ok:           "ss-pill ss-pill-sage",
+  };
+
   return (
-    <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-100">Revenue At Risk</h2>
-          <p className="mt-0.5 text-xs text-zinc-500">Fast-moving or unavailable variants from live inventory and 90-day sales.</p>
-        </div>
-        <Link href="/inventory" className="text-xs text-zinc-400 hover:text-zinc-200">Open inventory</Link>
+    <div className="ss-card" style={{ overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--ss-line)" }}>
+        <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 13, fontWeight: 600 }}>Revenue At Risk</div>
+        <Link href="/inventory" style={{ fontSize: 12, color: "var(--ss-orange)", textDecoration: "none" }}>Open inventory</Link>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-          <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Variant</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Available</th>
-              <th className="px-4 py-3 text-right">Sold 90d</th>
-              <th className="px-4 py-3 text-right">Days Cover</th>
-              <th className="px-4 py-3 text-right">Revenue</th>
-            </tr>
-          </thead>
+      <div style={{ overflowX: "auto" }}>
+        <table className="ss-tbl" style={{ minWidth: 640 }}>
+          <thead><tr>
+            <th>Variant</th>
+            <th>Status</th>
+            <th style={{ textAlign: "right" }}>Available</th>
+            <th style={{ textAlign: "right" }}>Sold 90d</th>
+            <th style={{ textAlign: "right" }}>Days cover</th>
+            <th style={{ textAlign: "right" }}>Revenue</th>
+          </tr></thead>
           <tbody>
-            {(riskVariants.length > 0 ? riskVariants : (inventory?.variants ?? []).slice(0, 5)).slice(0, 8).map((variant) => (
-              <tr key={variant.variantId} className="border-b border-zinc-800/60 hover:bg-zinc-800/40">
-                <td className="px-4 py-3">
-                  <Link href={`/products/${variant.productId}`} className="font-medium text-zinc-100 hover:underline">
-                    {variant.title ?? variant.canonicalSku}
+            {display.slice(0, 7).map((v) => (
+              <tr key={v.variantId}>
+                <td>
+                  <Link href={`/products/${v.productId}`} style={{ fontWeight: 500, color: "var(--ss-ink)", textDecoration: "none" }}>
+                    {v.title ?? v.canonicalSku}
                   </Link>
-                  <p className="mt-1 font-mono text-xs text-zinc-500">{variant.sku}{variant.size ? ` · ${variant.size}` : ""}</p>
+                  <div className="ss-num" style={{ fontSize: 11, color: "var(--ss-ink-3)", marginTop: 2 }}>
+                    {v.sku}{v.size ? ` · ${v.size}` : ""}
+                  </div>
                 </td>
-                <td className="px-4 py-3">
-                  <span className={`rounded border px-2 py-0.5 text-xs font-medium ${
-                    variant.status === "out_of_stock" ? "border-red-500 bg-red-950 text-red-400"
-                      : variant.status === "ok" ? "border-emerald-500 bg-emerald-950 text-emerald-400"
-                      : "border-amber-500 bg-amber-950 text-amber-400"
-                  }`}>{variant.status.replace(/_/g, " ")}</span>
-                </td>
-                <td className={`px-4 py-3 text-right font-mono ${variant.available <= 0 ? "text-red-400" : "text-zinc-300"}`}>{fmt(variant.available)}</td>
-                <td className="px-4 py-3 text-right font-mono text-zinc-300">{fmt(variant.unitsSold)}</td>
-                <td className="px-4 py-3 text-right font-mono text-zinc-300">{variant.daysOfCover === null ? "-" : variant.daysOfCover}</td>
-                <td className="px-4 py-3 text-right font-mono text-emerald-400">{currency(variant.revenueCents)}</td>
+                <td><span className={statusStyle[v.status] ?? "ss-pill"}>{v.status.replace(/_/g, " ")}</span></td>
+                <td className="ss-num" style={{ textAlign: "right", color: v.available <= 0 ? "var(--ss-red)" : "var(--ss-ink-2)" }}>{fmtNum(v.available)}</td>
+                <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmtNum(v.unitsSold)}</td>
+                <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{v.daysOfCover ?? "—"}</td>
+                <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-sage-ink)", fontWeight: 600 }}>{currency(v.revenueCents)}</td>
               </tr>
             ))}
-            {(inventory?.variants ?? []).length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-zinc-500">No inventory data found.</td></tr>
+            {display.length === 0 && (
+              <tr><td colSpan={6} style={{ padding: "24px 16px", textAlign: "center", color: "var(--ss-ink-3)", fontSize: 13 }}>No inventory data.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
   );
 }
 
 async function CrossChannelSection() {
   const crossChannel = await getCrossChannel();
-  const actionableOps = crossChannel.filter((row) => row.flag !== "ok");
-  const flagCounts = crossChannel.reduce<Record<CrossChannelRow["flag"], number>>(
-    (acc, row) => { acc[row.flag] += 1; return acc; },
-    { no_revenue: 0, opportunity: 0, no_listing: 0, ok: 0 },
-  );
+  const actionable = crossChannel.filter((r) => r.flag !== "ok")
+    .sort((a, b) => (b.revenueCents + b.gscImpressions * 10) - (a.revenueCents + a.gscImpressions * 10))
+    .slice(0, 4);
+
   return (
-    <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-100">Cross-Channel Opportunities</h2>
-          <p className="mt-0.5 text-xs text-zinc-500">Top products needing channel action</p>
-        </div>
-        <Link href="/cross-channel" className="text-xs text-zinc-400 hover:text-zinc-200">View all</Link>
+    <div className="ss-card" style={{ overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--ss-line)" }}>
+        <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 13, fontWeight: 600 }}>Cross-Channel Opportunities</div>
+        <Link href="/cross-channel" style={{ fontSize: 12, color: "var(--ss-orange)", textDecoration: "none" }}>View all</Link>
       </div>
-      {actionableOps.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-zinc-500">No actionable opportunities found.</p>
+      {actionable.length === 0 ? (
+        <div style={{ padding: "24px 16px", fontSize: 13, color: "var(--ss-ink-3)" }}>No actionable opportunities found.</div>
       ) : (
-        <div className="divide-y divide-zinc-800/60">
-          {actionableOps
-            .slice()
-            .sort((a, b) => (b.revenueCents + b.gscImpressions * 10) - (a.revenueCents + a.gscImpressions * 10))
-            .slice(0, 3)
-            .map((row) => {
-              const meta = FLAG_META[row.flag];
-              const actionText = row.flag === "no_revenue" ? "Fix product page"
-                : row.flag === "opportunity" ? "List on Amazon" : "Fix Merchant listing";
-              return (
-                <div key={row.productId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-zinc-100">{row.title ?? row.canonicalSku}</p>
-                    <div className="mt-1 flex items-center gap-3">
-                      <span className={`rounded border px-1.5 py-0.5 text-xs font-medium ${meta.className}`}>{meta.label}</span>
-                      <span className="font-mono text-xs text-zinc-500">
-                        {row.revenueCents > 0 ? currency(row.revenueCents) : "no revenue"}
-                        {row.gscImpressions > 0 ? ` · ${fmt(row.gscImpressions)} impr.` : ""}
-                      </span>
-                    </div>
-                  </div>
-                  <Link href={`/products/${row.productId}`} className="shrink-0 rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800">
-                    {actionText}
-                  </Link>
+        actionable.map((row, i) => {
+          const meta = FLAG_META[row.flag];
+          return (
+            <div key={row.productId} style={{
+              display: "grid", gridTemplateColumns: "1fr auto", gap: 12,
+              padding: "12px 16px", borderBottom: i === actionable.length - 1 ? "none" : "1px solid var(--ss-line)",
+              alignItems: "center",
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ss-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {row.title ?? row.canonicalSku}
                 </div>
-              );
-            })}
-        </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                  <TonePill tone={meta.tone}>{meta.label}</TonePill>
+                  <span className="ss-num" style={{ fontSize: 11, color: "var(--ss-ink-3)" }}>
+                    {row.revenueCents > 0 ? currency(row.revenueCents) : "no revenue"}
+                    {row.gscImpressions > 0 ? ` · ${fmtNum(row.gscImpressions)} impr.` : ""}
+                  </span>
+                </div>
+              </div>
+              <Link href={`/products/${row.productId}`} className="ss-btn ss-btn-sm">Analyze</Link>
+            </div>
+          );
+        })
       )}
-      {actionableOps.length > 0 && (
-        <div className="flex items-center gap-4 border-t border-zinc-800 px-4 py-2.5">
-          {(["no_revenue", "opportunity", "no_listing"] as const)
-            .filter((f) => flagCounts[f] > 0)
-            .map((f) => (
-              <span key={f} className={`text-xs font-medium ${FLAG_META[f].className} rounded border px-2 py-0.5`}>
-                {flagCounts[f]} {FLAG_META[f].label.toLowerCase()}
-              </span>
-            ))}
-          {actionableOps.length > 3 && (
-            <Link href="/cross-channel" className="ml-auto text-xs text-zinc-500 hover:text-zinc-300">
-              +{actionableOps.length - 3} more
-            </Link>
-          )}
-        </div>
-      )}
-    </section>
+    </div>
   );
 }
 
@@ -552,18 +429,31 @@ async function TopActionSection() {
   const [status, alerts, crossChannel, inventory] = await Promise.all([
     getStatus(), getAlerts(), getCrossChannel(), getInventory(),
   ]);
-  const integrations = status?.integrations ?? [];
-  const priorityItems = buildPriorityItems(integrations, alerts, crossChannel, inventory);
-  const aiAction = getAiNextBestAction(priorityItems);
+  const priorityItems = buildPriorityItems(status?.integrations ?? [], alerts, crossChannel, inventory);
+  const top = priorityItems[0];
+  const aiAction = top
+    ? { title: top.title, detail: top.detail, href: top.href, action: top.action }
+    : { title: "No urgent action", detail: "Core systems are quiet. Review cross-channel opportunities for growth work.", href: "/cross-channel", action: "Review opportunities" };
+
   return (
-    <section className={`rounded border p-4 ${priorityItems.length > 0 ? PRIORITY_TONE[priorityItems[0].tone] : "border-zinc-800 bg-zinc-900"}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Top Action</p>
-      <h2 className="mt-3 text-base font-semibold text-zinc-100">{aiAction.title}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{aiAction.detail}</p>
-      <Link href={aiAction.href} className="mt-4 inline-flex rounded border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700">
+    <div className="ss-card" style={{
+      padding: 20,
+      background: "linear-gradient(135deg, var(--ss-bg-card) 0%, var(--ss-orange-soft) 200%)",
+      borderColor: "var(--ss-orange-soft)",
+    }}>
+      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ss-orange-ink)", fontWeight: 600, marginBottom: 8 }}>
+        Top Action
+      </div>
+      <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ss-ink)", marginBottom: 8 }}>
+        {aiAction.title}
+      </div>
+      <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--ss-ink-3)", marginBottom: 16 }}>
+        {aiAction.detail}
+      </div>
+      <Link href={aiAction.href} className="ss-btn ss-btn-primary ss-btn-sm">
         {aiAction.action} →
       </Link>
-    </section>
+    </div>
   );
 }
 
@@ -576,70 +466,81 @@ async function ChannelHealthSection() {
       variants: Math.max(acc.variants, i.variant_count),
       pendingJobs: acc.pendingJobs + i.pending_jobs,
       failedJobs: acc.failedJobs + i.failed_jobs,
-      openAlerts: acc.openAlerts + i.open_alerts,
     }),
-    { products: 0, variants: 0, pendingJobs: 0, failedJobs: 0, openAlerts: 0 },
+    { products: 0, variants: 0, pendingJobs: 0, failedJobs: 0 },
   );
+
   return (
-    <section className="rounded border border-zinc-800 bg-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <h2 className="text-sm font-semibold text-zinc-100">Channel Health</h2>
-        <Link href="/operations" className="text-xs text-zinc-400 hover:text-zinc-200">Operations</Link>
+    <div className="ss-card" style={{ overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--ss-line)" }}>
+        <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 13, fontWeight: 600 }}>Channel Health</div>
+        <Link href="/operations" style={{ fontSize: 12, color: "var(--ss-orange)", textDecoration: "none" }}>Operations</Link>
       </div>
-      <div className="divide-y divide-zinc-800">
-        {integrations.map((integration) => (
-          <Link
-            key={integration.id}
-            href={PLATFORM_HREFS[integration.platform] ?? "/operations"}
-            className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-zinc-800/40"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-zinc-100">{PLATFORM_LABELS[integration.platform] ?? integration.platform}</p>
-              <p className="mt-0.5 font-mono text-xs text-zinc-500">{relativeTime(integration.last_synced_at)}</p>
+      {integrations.map((integration) => (
+        <Link key={integration.id} href={PLATFORM_HREFS[integration.platform] ?? "/operations"}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 16px", borderBottom: "1px solid var(--ss-line)", textDecoration: "none" }}
+          className="channel-health-row">
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ss-ink)" }}>
+              {PLATFORM_LABELS[integration.platform] ?? integration.platform}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {integration.open_alerts > 0 && <span className="font-mono text-xs text-amber-400">{integration.open_alerts}</span>}
-              <StatusPill status={integrationStatus(integration)} />
+            <div className="ss-num" style={{ fontSize: 11, color: "var(--ss-ink-3)", marginTop: 2 }}>
+              {relativeTime(integration.last_synced_at)}
             </div>
-          </Link>
-        ))}
-        {integrations.length === 0 && <p className="px-4 py-6 text-sm text-zinc-500">No integrations connected.</p>}
-      </div>
-      <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-2.5">
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-zinc-500">{fmt(totals.products)} products · {fmt(totals.variants)} variants</span>
-          {gsc && <span className="text-xs text-zinc-500">{fmt(gsc.impressions)} GSC impr.</span>}
-        </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            {integration.open_alerts > 0 && (
+              <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-amber-ink)", fontWeight: 600 }}>
+                {integration.open_alerts}
+              </span>
+            )}
+            <StatusPill status={integrationStatus(integration)} />
+          </div>
+        </Link>
+      ))}
+      {integrations.length === 0 && (
+        <div style={{ padding: "24px 16px", fontSize: 13, color: "var(--ss-ink-3)" }}>No integrations connected.</div>
+      )}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: "1px solid var(--ss-line)" }}>
+        <span className="ss-num" style={{ fontSize: 11, color: "var(--ss-ink-3)" }}>
+          {fmtNum(totals.products)} products · {fmtNum(totals.variants)} variants
+          {gsc ? ` · ${fmtK(gsc.impressions)} GSC impr.` : ""}
+        </span>
         <StatusPill status={status?.ok ? "active" : "error"} label={status?.ok ? "API online" : "API offline"} />
       </div>
       {totals.failedJobs > 0 && (
-        <p className="border-t border-zinc-800 px-4 py-2 text-xs text-red-400">
-          {fmt(totals.failedJobs)} failed {totals.failedJobs === 1 ? "job" : "jobs"} — <Link href="/operations" className="underline hover:text-red-300">clear in Operations</Link>
-        </p>
+        <div style={{ padding: "8px 16px", borderTop: "1px solid var(--ss-line)", fontSize: 12, color: "var(--ss-red)" }}>
+          {fmtNum(totals.failedJobs)} failed {totals.failedJobs === 1 ? "job" : "jobs"} —{" "}
+          <Link href="/operations" style={{ color: "var(--ss-red)", textDecoration: "underline" }}>clear in Operations</Link>
+        </div>
       )}
-    </section>
+    </div>
   );
 }
 
-// ─── Page (sync shell — streams sections independently) ──────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function CommandCenterPage() {
   return (
     <>
       <AutoRefresh intervalMs={30_000} />
-      <div className="flex flex-col gap-6">
-        <PageHeader section="Commerce Hub" title="Command Center" meta="Live operating cockpit" />
 
+      <Topbar title="Command Center" sub="Live operating cockpit" />
+
+      <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* KPI strip */}
         <Suspense fallback={
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)}
-          </section>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+            {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
+          </div>
         }>
-          <MetricsRow />
+          <KpiStrip />
         </Suspense>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="flex flex-col gap-6">
+        {/* Main 2-col layout */}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 340px", gap: 16, alignItems: "start" }}>
+          {/* Left column */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <Suspense fallback={<SectionSkeleton rows={5} />}>
               <PriorityStackSection />
             </Suspense>
@@ -651,11 +552,12 @@ export default function CommandCenterPage() {
             </Suspense>
           </div>
 
-          <aside className="flex flex-col gap-6">
+          {/* Right sidebar */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <Suspense fallback={
-              <div className="rounded border border-zinc-800 bg-zinc-900 p-4">
+              <div className="ss-card" style={{ padding: 20 }}>
                 <Skeleton className="mb-3 h-3 w-20" />
-                <Skeleton className="mb-2 h-5 w-48" />
+                <Skeleton className="mb-2 h-6 w-48" />
                 <Skeleton className="mb-1 h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="mt-4 h-7 w-28" />
@@ -666,7 +568,7 @@ export default function CommandCenterPage() {
             <Suspense fallback={<SectionSkeleton rows={3} />}>
               <ChannelHealthSection />
             </Suspense>
-          </aside>
+          </div>
         </div>
       </div>
     </>

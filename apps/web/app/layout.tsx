@@ -6,20 +6,21 @@ import { AiDrawer } from "./components/ai-drawer";
 
 export const metadata: Metadata = {
   title: "Sunday Stripe Hub",
-  description: "Commerce operations hub"
+  description: "Commerce operations hub",
 };
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>
         <DrawerProvider>
-          <SidebarNav />
-          {/* Offset for fixed sidebar (desktop) and fixed top bar (mobile) */}
-          <div className="pt-12 lg:pl-56 lg:pt-0">
-            <main className="min-h-dvh px-4 py-5 lg:px-6 lg:py-6">
+          {/* Shell: dark sidebar (220px) + light main */}
+          <div className="flex h-dvh overflow-hidden">
+            <SidebarNav />
+            {/* Main content — light, grid bg, scrollable */}
+            <main className="ss-main-bg flex-1 overflow-y-auto lg:block">
               {children}
             </main>
           </div>

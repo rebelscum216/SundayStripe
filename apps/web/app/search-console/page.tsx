@@ -1,125 +1,102 @@
-type GscSummary = {
-  clicks: number;
-  impressions: number;
-  ctr: number;
-  position: number;
-  row_count: number;
-};
-
-import { MetricCard } from "../components/metric-card";
-import { PageHeader } from "../components/page-header";
+import Link from "next/link";
 import { AlmostPage1Table, type AlmostPage1Row } from "./almost-page-1-table";
 import { QuickWinsTable } from "./quick-wins-table";
 
-type GscRow = {
-  query?: string;
-  url?: string;
-  clicks: number;
-  impressions: number;
-  ctr: number;
-  position: number;
-};
+type GscSummary = { clicks: number; impressions: number; ctr: number; position: number; row_count: number };
+type GscRow = { query?: string; url?: string; clicks: number; impressions: number; ctr: number; position: number };
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:3001";
 
 async function getSummary(): Promise<GscSummary | null> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/search-console/summary`, { cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as GscSummary;
-  } catch {
-    return null;
-  }
+    return res.ok ? (await res.json()) as GscSummary : null;
+  } catch { return null; }
 }
-
 async function getQueries(): Promise<GscRow[]> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/search-console/queries`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return (await res.json()) as GscRow[];
-  } catch {
-    return [];
-  }
+    return res.ok ? (await res.json()) as GscRow[] : [];
+  } catch { return []; }
 }
-
 async function getPages(): Promise<GscRow[]> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/search-console/pages`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return (await res.json()) as GscRow[];
-  } catch {
-    return [];
-  }
+    return res.ok ? (await res.json()) as GscRow[] : [];
+  } catch { return []; }
 }
-
 async function getAlmostPage1(): Promise<AlmostPage1Row[]> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/search-console/almost-page-1`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return (await res.json()) as AlmostPage1Row[];
-  } catch {
-    return [];
-  }
+    return res.ok ? (await res.json()) as AlmostPage1Row[] : [];
+  } catch { return []; }
 }
 
-function positionClass(position: number) {
-  if (position <= 3) return "text-emerald-400 font-semibold";
-  if (position <= 10) return "text-zinc-100";
-  if (position <= 20) return "text-amber-400";
-  return "text-zinc-500";
+function fmtNum(n: number) { return new Intl.NumberFormat("en").format(n); }
+function fmtK(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : fmtNum(n); }
+
+function positionColor(p: number) {
+  if (p <= 3) return "var(--ss-sage-ink)";
+  if (p <= 10) return "var(--ss-ink-2)";
+  if (p <= 20) return "var(--ss-amber-ink)";
+  return "var(--ss-ink-4)";
 }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat("en").format(n);
+function PosBadge({ pos }: { pos: number }) {
+  const bg = pos <= 3 ? "var(--ss-sage-soft)" : pos <= 10 ? "var(--ss-bg-elev)" : pos <= 20 ? "var(--ss-amber-soft)" : "var(--ss-bg-elev)";
+  return (
+    <span className="ss-num" style={{
+      display: "inline-block", padding: "2px 7px", borderRadius: 4,
+      background: bg, color: positionColor(pos),
+      fontSize: 11, fontWeight: 600,
+    }}>
+      #{pos.toFixed(1)}
+    </span>
+  );
 }
 
-function fmtPct(n: number) {
-  return `${n.toFixed(1)}%`;
+function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="ss-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)", fontWeight: 500 }}>
+        {label}
+      </div>
+      <div className="ss-num" style={{ fontSize: 26, fontWeight: 600, fontFamily: "var(--ss-font-display)", letterSpacing: "-0.02em", color: "var(--ss-ink)" }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{sub}</div>}
+    </div>
+  );
 }
 
-function fmtPos(n: number) {
-  return n.toFixed(1);
-}
-
-function PerformanceTable({
-  rows,
-  keyLabel,
-  keyField,
-}: {
-  rows: GscRow[];
-  keyLabel: string;
-  keyField: "query" | "url";
+function QueryTable({ rows, keyLabel, keyField }: {
+  rows: GscRow[]; keyLabel: string; keyField: "query" | "url";
 }) {
   if (rows.length === 0) {
-    return (
-      <p className="px-4 py-6 text-sm text-zinc-400">No data yet - run the seed script first.</p>
-    );
+    return <div style={{ padding: "24px 16px", fontSize: 13, color: "var(--ss-ink-3)" }}>No data yet.</div>;
   }
-
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left text-sm">
-        <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-medium uppercase tracking-wide text-zinc-400">
-          <tr>
-            <th className="px-4 py-3">{keyLabel}</th>
-            <th className="px-4 py-3 text-right">Clicks</th>
-            <th className="px-4 py-3 text-right">Impressions</th>
-            <th className="px-4 py-3 text-right">CTR</th>
-            <th className="px-4 py-3 text-right">Position</th>
-          </tr>
-        </thead>
+    <div style={{ overflowX: "auto" }}>
+      <table className="ss-tbl" style={{ minWidth: 540 }}>
+        <thead><tr>
+          <th style={{ width: "45%" }}>{keyLabel}</th>
+          <th style={{ textAlign: "right" }}>Clicks</th>
+          <th style={{ textAlign: "right" }}>Impressions</th>
+          <th style={{ textAlign: "right" }}>CTR</th>
+          <th style={{ textAlign: "right" }}>Position</th>
+        </tr></thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr className="border-b border-zinc-800/60 hover:bg-zinc-800/40" key={i}>
-              <td className="max-w-xs truncate px-4 py-2.5 font-mono text-xs text-zinc-300">
-                {row[keyField] ?? "-"}
+            <tr key={i}>
+              <td>
+                <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 320, display: "block" }}>
+                  {row[keyField] ?? "—"}
+                </span>
               </td>
-              <td className="px-4 py-2.5 text-right font-mono text-zinc-300">{fmt(row.clicks)}</td>
-              <td className="px-4 py-2.5 text-right font-mono text-zinc-300">{fmt(row.impressions)}</td>
-              <td className="px-4 py-2.5 text-right font-mono text-zinc-300">{fmtPct(row.ctr)}</td>
-              <td className={`px-4 py-2.5 text-right font-mono ${positionClass(row.position)}`}>
-                {fmtPos(row.position)}
-              </td>
+              <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmtNum(row.clicks)}</td>
+              <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmtK(row.impressions)}</td>
+              <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.ctr.toFixed(1)}%</td>
+              <td style={{ textAlign: "right" }}><PosBadge pos={row.position} /></td>
             </tr>
           ))}
         </tbody>
@@ -129,88 +106,114 @@ function PerformanceTable({
 }
 
 export default async function SearchConsolePage() {
-  const [summary, queries, pages, almostPage1] = await Promise.all([getSummary(), getQueries(), getPages(), getAlmostPage1()]);
+  const [summary, queries, pages, almostPage1] = await Promise.all([
+    getSummary(), getQueries(), getPages(), getAlmostPage1(),
+  ]);
 
   const quickWins = pages.filter((p) => p.position >= 5 && p.position <= 20 && p.impressions >= 50);
   const topQueryStrings = queries.slice(0, 10).map((q) => q.query ?? "").filter(Boolean);
-
   const isEmpty = !summary || summary.row_count === 0;
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader section="Analytics" title="Search Console" meta="90-day window" />
+    <>
+      {/* Topbar */}
+      <div className="ss-topbar-blur sticky top-0 z-10 flex items-center gap-3 border-b px-6 py-3"
+        style={{ borderColor: "var(--ss-line)" }}>
+        <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ss-ink)" }}>
+          SEO Opportunities
+        </div>
+        <div style={{ fontSize: 13, color: "var(--ss-ink-3)" }}>
+          <span style={{ margin: "0 6px", color: "var(--ss-ink-4)" }}>/</span>
+          90-day window
+        </div>
+        <div style={{ flex: 1 }} />
+        <span className="ss-pill ss-pill-orange">{quickWins.length} quick wins</span>
+        <span className="ss-pill ss-pill-amber">{almostPage1.length} almost page 1</span>
+      </div>
 
+      <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
         {isEmpty ? (
-          <div className="rounded border border-zinc-800 bg-zinc-900 px-6 py-10">
-            <p className="text-sm font-medium text-zinc-100">No data synced yet.</p>
-            <p className="mt-1 text-sm text-zinc-400">
-              Run the seed script to pull data from Google Search Console:
-            </p>
-            <pre className="mt-3 rounded border border-zinc-800 bg-zinc-950 px-4 py-3 text-xs text-zinc-300">
+          <div className="ss-card" style={{ padding: 24 }}>
+            <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 15, fontWeight: 600, color: "var(--ss-ink)", marginBottom: 8 }}>
+              No data synced yet
+            </div>
+            <div style={{ fontSize: 13, color: "var(--ss-ink-3)", marginBottom: 16 }}>
+              Run the seed script to pull 90 days of data from Google Search Console:
+            </div>
+            <pre style={{ background: "var(--ss-bg-elev)", border: "1px solid var(--ss-line)", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "var(--ss-ink-2)", fontFamily: "var(--ss-font-mono)" }}>
               cd apps/api && npx tsx src/scripts/seed-gsc.ts
             </pre>
           </div>
         ) : (
           <>
-            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <MetricCard label="Total Clicks" value={fmt(summary.clicks)} sub="90 days" />
-              <MetricCard label="Total Impressions" value={fmt(summary.impressions)} sub="90 days" />
-              <MetricCard label="Avg CTR" value={fmtPct(summary.ctr)} />
-              <MetricCard label="Avg Position" value={fmtPos(summary.position)} />
-            </section>
+            {/* KPI strip */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+              <KpiCard label="Total Clicks · 90d" value={fmtNum(summary!.clicks)} />
+              <KpiCard label="Total Impressions · 90d" value={fmtK(summary!.impressions)} />
+              <KpiCard label="Avg CTR" value={`${summary!.ctr.toFixed(1)}%`} />
+              <KpiCard label="Avg Position" value={`#${summary!.position.toFixed(1)}`} />
+            </div>
 
-            {/* Quick Wins: pages already ranking — fix CTR via better title/meta */}
+            {/* Quick Wins — pos 5–20, improve title/meta for CTR */}
             {quickWins.length > 0 && (
-              <section className="overflow-hidden rounded border border-amber-200/40 bg-zinc-900">
-                <div className="border-b border-amber-200/40 bg-amber-500/5 px-4 py-3">
-                  <div className="flex items-baseline justify-between gap-4">
+              <div className="ss-card" style={{ overflow: "hidden", borderColor: "var(--ss-orange-soft)" }}>
+                <div style={{
+                  padding: "14px 16px", borderBottom: "1px solid var(--ss-orange-soft)",
+                  background: "linear-gradient(135deg, var(--ss-bg-card) 0%, var(--ss-orange-soft) 500%)",
+                }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
                     <div>
-                      <h2 className="text-base font-semibold text-amber-300">
+                      <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 14, fontWeight: 600, color: "var(--ss-ink)", display: "flex", alignItems: "center", gap: 8 }}>
                         Quick Wins
-                        <span className="ml-2 font-mono text-sm font-normal text-amber-500/70">
-                          {quickWins.length} {quickWins.length === 1 ? "page" : "pages"} at position 5–20
-                        </span>
-                      </h2>
-                      <p className="mt-0.5 text-xs text-zinc-400">
-                        These pages already rank — the position is fine. A stronger title or meta description will improve click-through rate without needing more backlinks.
-                      </p>
+                        <span className="ss-pill ss-pill-orange">{quickWins.length} pages · pos 5–20</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 4, maxWidth: 560 }}>
+                        These pages already rank — a stronger title or meta description lifts CTR without needing more backlinks.
+                      </div>
                     </div>
                   </div>
                 </div>
                 <QuickWinsTable quickWins={quickWins} topQueries={topQueryStrings} embedded />
-              </section>
+              </div>
             )}
 
-            {/* Almost Page 1: queries close to rank 10 — small push gets to page 1 */}
+            {/* Almost Page 1 */}
             <AlmostPage1Table rows={almostPage1} />
 
-            <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="border-b border-zinc-800 px-4 py-3">
-                <h2 className="text-sm font-semibold text-zinc-100">
-                  All Queries
-                  <span className="ml-2 font-mono text-xs font-normal text-zinc-500">
-                    {queries.length} ranked queries, 90-day window
-                  </span>
-                </h2>
-                <p className="mt-0.5 text-xs text-zinc-500">Full reference. Use this to spot new opportunities or track changes after edits.</p>
+            {/* Query explorer */}
+            <div className="ss-card" style={{ overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--ss-line)" }}>
+                <div>
+                  <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 13, fontWeight: 600, color: "var(--ss-ink)" }}>
+                    Query Explorer
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 2 }}>
+                    {queries.length} ranked queries · 90-day window
+                  </div>
+                </div>
+                <span className="ss-pill">{fmtNum(queries.length)}</span>
               </div>
-              <PerformanceTable rows={queries} keyLabel="Query" keyField="query" />
-            </section>
+              <QueryTable rows={queries} keyLabel="Query" keyField="query" />
+            </div>
 
-            <section className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-              <div className="border-b border-zinc-800 px-4 py-3">
-                <h2 className="text-sm font-semibold text-zinc-100">
-                  All Pages
-                  <span className="ml-2 font-mono text-xs font-normal text-zinc-500">
-                    {pages.length} indexed pages, 90-day window
-                  </span>
-                </h2>
-                <p className="mt-0.5 text-xs text-zinc-500">Full reference. Quick Wins above shows the highest-priority subset.</p>
+            {/* Pages */}
+            <div className="ss-card" style={{ overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--ss-line)" }}>
+                <div>
+                  <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 13, fontWeight: 600, color: "var(--ss-ink)" }}>
+                    All Pages
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 2 }}>
+                    {pages.length} indexed pages · 90-day window
+                  </div>
+                </div>
+                <span className="ss-pill">{fmtNum(pages.length)}</span>
               </div>
-              <PerformanceTable rows={pages} keyLabel="Page" keyField="url" />
-            </section>
+              <QueryTable rows={pages} keyLabel="Page" keyField="url" />
+            </div>
           </>
         )}
-    </div>
+      </div>
+    </>
   );
 }
