@@ -10,6 +10,7 @@ type ConnectionIntegration = {
   detail: string;
   lastSyncedAt: string | null;
   openAlerts: number;
+  capabilities: string[];
   missingSteps: string[];
 };
 
@@ -98,6 +99,19 @@ export default async function SettingsPage() {
                   </span>
                 )}
               </div>
+
+              {integration.capabilities?.length > 0 && (
+                <ul className="mt-3 flex flex-wrap gap-1.5">
+                  {integration.capabilities.map((cap) => (
+                    <li
+                      key={cap}
+                      className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400"
+                    >
+                      {cap}
+                    </li>
+                  ))}
+                </ul>
+              )}
 
               {integration.missingSteps.length > 0 && (
                 <ul className="mt-4 space-y-1 border-t border-zinc-800 pt-3">

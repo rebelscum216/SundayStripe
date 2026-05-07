@@ -246,15 +246,46 @@ export class AppController {
     const searchConsole = activeByPlatform.get("search_console");
     const amazon = activeByPlatform.get("amazon_sp");
 
+    const [
+      [{ productCount }],
+      [{ orderCount }],
+      [{ amazonListingCount }],
+      [{ merchantListingCount }],
+      [{ gscRowCount }],
+    ] = await Promise.all([
+      this.db.select({ productCount: count() }).from(products),
+      this.db.select({ orderCount: count() }).from(orders),
+      this.db
+        .select({ amazonListingCount: count() })
+        .from(channelListings)
+        .innerJoin(integrationAccounts, eq(channelListings.integrationAccountId, integrationAccounts.id))
+        .where(eq(integrationAccounts.platform, "amazon_sp")),
+      this.db
+        .select({ merchantListingCount: count() })
+        .from(channelListings)
+        .innerJoin(integrationAccounts, eq(channelListings.integrationAccountId, integrationAccounts.id))
+        .where(eq(integrationAccounts.platform, "merchant")),
+      this.db.select({ gscRowCount: count() }).from(searchPerformance),
+    ]);
+
     return {
       integrations: [
         {
           key: "shopify",
           label: "Shopify",
           status: shopify ? "connected" : "missing",
-          detail: shopify?.shopDomain ? `shop: ${shopify.shopDomain}` : "Shopify store not connected",
+          detail: shopify?.shopDomain
+            ? `${shopify.shopDomain} · ${productCount} products · ${orderCount} orders`
+            : "Shopify store not connected",
           lastSyncedAt: shopify?.lastSyncedAt?.toISOString() ?? null,
           openAlerts: openAlertsByPlatform.get("shopify") ?? 0,
+          capabilities: [
+            "Product & variant sync",
+            "Inventory tracking by location",
+            "Order history",
+            "Real-time webhooks",
+            "Price update actions",
+          ],
           missingSteps: shopify ? [] : ["Add SHOPIFY_ACCESS_TOKEN and run initial sync"],
         },
         {
@@ -263,11 +294,17 @@ export class AppController {
           status: merchant ? (merchantCredentialsConfigured ? "connected" : "partial") : "missing",
           detail: merchant
             ? merchantCredentialsConfigured
-              ? "Service account configured"
+              ? `Account ${this.config.get("GOOGLE_MERCHANT_ID")} · ${merchantListingCount} listings synced`
               : "Service account credentials missing"
             : "Merchant account not connected",
           lastSyncedAt: merchant?.lastSyncedAt?.toISOString() ?? null,
           openAlerts: openAlertsByPlatform.get("merchant") ?? 0,
+          capabilities: [
+            "Product feed status monitoring",
+            "Disapproval & issue alerts",
+            "Item-level diagnostic detail",
+            "Daily scheduled re-sync",
+          ],
           missingSteps: [
             merchant ? null : "Connect a Merchant Center account",
             merchantCredentialsConfigured ? null : "Add service account credentials",
@@ -279,11 +316,18 @@ export class AppController {
           status: searchConsole ? (gscTokenConfigured ? "connected" : "partial") : "missing",
           detail: searchConsole
             ? gscTokenConfigured
-              ? "OAuth token configured"
+              ? `${this.config.get("GSC_SITE") ?? "property configured"} · ${gscRowCount.toLocaleString()} performance rows`
               : "OAuth token missing"
             : "Search Console property not connected",
           lastSyncedAt: searchConsole?.lastSyncedAt?.toISOString() ?? null,
           openAlerts: openAlertsByPlatform.get("search_console") ?? 0,
+          capabilities: [
+            "90-day click & impression history",
+            "Top queries by clicks/position",
+            "Top pages performance",
+            "Almost-page-1 opportunity detection",
+            "Daily scheduled re-sync",
+          ],
           missingSteps: [
             searchConsole ? null : "Connect a Search Console property",
             gscTokenConfigured ? null : "Add OAuth token credentials",
@@ -295,11 +339,18 @@ export class AppController {
           status: amazon ? (amazonSellerConfigured ? "connected" : "partial") : "missing",
           detail: amazon
             ? amazonSellerConfigured
-              ? "Seller account configured"
+              ? `Seller ${this.config.get("AMAZON_SELLER_ID")} · ${amazonListingCount} listings synced`
               : "Seller account details missing"
             : "Amazon seller account not connected",
           lastSyncedAt: amazon?.lastSyncedAt?.toISOString() ?? null,
           openAlerts: openAlertsByPlatform.get("amazon_sp") ?? 0,
+          capabilities: [
+            "Listing quality scores (title, bullets, description, images)",
+            "ASIN-to-product matching",
+            "Listing quality alerts",
+            "AI-powered listing rewrites",
+            "Daily scheduled re-sync",
+          ],
           missingSteps: [
             amazon ? null : "Connect an Amazon seller account",
             amazonSellerConfigured ? null : "Add seller account details",
@@ -309,9 +360,17 @@ export class AppController {
           key: "openai",
           label: "OpenAI",
           status: openAiConfigured ? "connected" : "missing",
-          detail: openAiConfigured ? "API key configured" : "AI provider not configured",
+          detail: openAiConfigured ? "GPT-4o · AI features active" : "AI provider not configured",
           lastSyncedAt: null,
           openAlerts: 0,
+          capabilities: [
+            "AI product descriptions",
+            "Alert explanations & bulk triage",
+            "Amazon listing rewrites",
+            "Cross-channel opportunity analysis",
+            "Page SEO optimization",
+            "Product fix assistant",
+          ],
           missingSteps: openAiConfigured ? [] : ["Add an AI provider API key"],
         },
       ],
