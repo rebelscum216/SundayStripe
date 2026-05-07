@@ -12,19 +12,19 @@ export default function Loading() {
         <Skeleton className="h-8 w-32" />
       </div>
 
-      <div className="overflow-hidden rounded border border-zinc-800 bg-zinc-900">
-        <div className="border-b border-zinc-800 px-4 py-3">
+      <div className="ss-card" style={{ overflow: "hidden" }}>
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ss-line)" }}>
           <Skeleton className="h-4 w-24" />
         </div>
-        <table className="w-full border-collapse">
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <tbody>
             {Array.from({ length: 10 }).map((_, i) => (
-              <tr key={i} className="border-b border-zinc-800/60">
-                <td className="px-4 py-3"><Skeleton className="h-4 w-48" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-5 w-16" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-12" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+              <tr key={i} style={{ borderBottom: "1px solid var(--ss-line)" }}>
+                <td style={{ padding: "10px 12px" }}><Skeleton className="h-4 w-48" /></td>
+                <td style={{ padding: "10px 12px" }}><Skeleton className="h-4 w-24" /></td>
+                <td style={{ padding: "10px 12px" }}><Skeleton className="h-5 w-16" /></td>
+                <td style={{ padding: "10px 12px" }}><Skeleton className="h-4 w-12" /></td>
+                <td style={{ padding: "10px 12px" }}><Skeleton className="h-4 w-20" /></td>
               </tr>
             ))}
           </tbody>

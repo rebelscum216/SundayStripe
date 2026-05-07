@@ -1,21 +1,24 @@
 type PageHeaderProps = {
-  section: string;
+  section?: string;
   title: string;
   meta?: string;
+  children?: React.ReactNode;
 };
 
-export function PageHeader({ section, title, meta }: PageHeaderProps) {
+export function PageHeader({ section, title, meta, children }: PageHeaderProps) {
   return (
-    <header className="flex flex-col gap-3 border-b border-zinc-800 pb-5 md:flex-row md:items-end md:justify-between">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          {section}
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold text-zinc-100 md:text-4xl">
-          {title}
-        </h1>
+    <div className="ss-topbar-blur sticky top-0 z-10 flex items-center gap-3 border-b px-6 py-3"
+      style={{ borderColor: "var(--ss-line)" }}>
+      <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ss-ink)" }}>
+        {title}
       </div>
-      {meta && <span className="font-mono text-sm text-zinc-400">{meta}</span>}
-    </header>
+      {(section || meta) && (
+        <div style={{ fontSize: 13, color: "var(--ss-ink-3)" }}>
+          <span style={{ margin: "0 6px", color: "var(--ss-ink-4)" }}>/</span>
+          {meta ?? section}
+        </div>
+      )}
+      {children && <><div style={{ flex: 1 }} />{children}</>}
+    </div>
   );
 }
