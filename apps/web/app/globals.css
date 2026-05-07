@@ -115,6 +115,67 @@ body {
   -webkit-backdrop-filter: blur(8px);
 }
 
+.ss-topbar-search {
+  display: none;
+  align-items: center;
+  width: 320px;
+  height: 32px;
+  gap: 8px;
+  padding: 0 9px;
+  border: 1px solid var(--ss-line);
+  border-radius: 7px;
+  background: var(--ss-bg-card);
+  color: var(--ss-ink-4);
+  flex-shrink: 0;
+}
+
+.ss-topbar-search:focus-within {
+  border-color: var(--ss-line-strong);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ss-orange) 18%, transparent);
+  color: var(--ss-ink-3);
+}
+
+.ss-topbar-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ss-ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.ss-topbar-search input::placeholder {
+  color: var(--ss-ink-4);
+  opacity: 1;
+}
+
+.ss-topbar-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.ss-topbar-search kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--ss-line);
+  border-radius: 5px;
+  background: var(--ss-bg-elev);
+  color: var(--ss-ink-3);
+  font-family: var(--ss-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+@media screen and (min-width: 1024px) {
+  .ss-topbar-search {
+    display: flex;
+  }
+}
+
 /* ── Cards ── */
 .ss-card {
   background: var(--ss-bg-card);
@@ -194,3 +255,29 @@ body {
 .ss-delta-up   { color: var(--ss-sage-ink); }
 .ss-delta-down { color: var(--ss-red-ink); }
 .ss-delta-flat { color: var(--ss-ink-3); }
+
+/* ── Topbar search ── */
+.ss-topbar-search {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--ss-bg-elev);
+  border: 1px solid var(--ss-line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--ss-ink-3);
+  width: 280px;
+  cursor: text;
+}
+.ss-topbar-search input {
+  background: none; border: none; outline: none;
+  flex: 1; font-size: 13px; color: var(--ss-ink-3);
+  font-family: var(--ss-font-sans);
+  min-width: 0;
+}
+.ss-topbar-search input::placeholder { color: var(--ss-ink-4); }
+.ss-topbar-search kbd {
+  font-family: var(--ss-font-mono); font-size: 11px;
+  color: var(--ss-ink-3); border: 1px solid var(--ss-line);
+  border-radius: 4px; padding: 1px 5px;
+  background: var(--ss-bg); white-space: nowrap;
+}
