@@ -112,8 +112,11 @@ export default async function SearchConsolePage() {
   ]);
 
   const quickWins = pages.filter((p) => p.position >= 5 && p.position <= 20 && p.impressions >= 50);
+  const lowCtr = queries.filter((q) => q.position <= 5 && q.ctr < 0.02 && q.impressions >= 100);
   const topQueryStrings = queries.slice(0, 10).map((q) => q.query ?? "").filter(Boolean);
   const isEmpty = !summary || summary.row_count === 0;
+  const totalPotential = almostPage1.reduce((s, r) => s + r.potentialExtraClicks, 0);
+  const totalOpportunities = almostPage1.length + quickWins.length + lowCtr.length;
 
   return (
     <>
@@ -148,6 +151,47 @@ export default async function SearchConsolePage() {
           </div>
         ) : (
           <>
+            {/* Opportunity hero banner */}
+            {totalOpportunities > 0 && (
+              <div className="ss-card" style={{
+                padding: 20,
+                display: "grid",
+                gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
+                gap: 24,
+                alignItems: "center",
+                background: "linear-gradient(135deg, var(--ss-bg-card) 0%, color-mix(in oklab, var(--ss-orange-soft) 40%, var(--ss-bg-card)) 100%)",
+                borderColor: "var(--ss-orange-soft)",
+              }}>
+                <div>
+                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ss-ink-3)", fontWeight: 500, marginBottom: 6 }}>
+                    Clicks within reach
+                  </div>
+                  <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 28, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: 8, color: "var(--ss-ink)" }}>
+                    <span className="ss-num" style={{ color: "var(--ss-orange)" }}>+{fmtNum(totalPotential)}</span>{" "}
+                    <span style={{ fontSize: 18 }}>est. clicks/mo</span>
+                  </div>
+                  <div style={{ color: "var(--ss-ink-3)", fontSize: 13 }}>
+                    Across {totalOpportunities} ranked opportunities. Apply the top 3 to capture the majority of available lift.
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ss-ink-3)", marginBottom: 6 }}>Quick wins</div>
+                  <div className="ss-num" style={{ fontFamily: "var(--ss-font-display)", fontSize: 22, fontWeight: 600, color: "var(--ss-ink)" }}>{quickWins.length}</div>
+                  <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 2 }}>Pos 5–20, high impressions</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ss-ink-3)", marginBottom: 6 }}>Almost page 1</div>
+                  <div className="ss-num" style={{ fontFamily: "var(--ss-font-display)", fontSize: 22, fontWeight: 600, color: "var(--ss-ink)" }}>{almostPage1.length}</div>
+                  <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 2 }}>Pos 11–20, one push away</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ss-ink-3)", marginBottom: 6 }}>Low CTR</div>
+                  <div className="ss-num" style={{ fontFamily: "var(--ss-font-display)", fontSize: 22, fontWeight: 600, color: "var(--ss-ink)" }}>{lowCtr.length}</div>
+                  <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 2 }}>Top 5, under 2% CTR</div>
+                </div>
+              </div>
+            )}
+
             {/* KPI strip */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
               <KpiCard label="Total Clicks · 90d" value={fmtNum(summary!.clicks)} />
