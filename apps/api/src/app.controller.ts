@@ -3315,7 +3315,9 @@ Sort groups by priority (critical first). Be specific about root causes.`,
 
   private async isRedisReachable(): Promise<boolean> {
     const redis = new Redis(this.config.get<string>("REDIS_URL", "redis://localhost:6379"), {
-      maxRetriesPerRequest: 1
+      maxRetriesPerRequest: 0,
+      connectTimeout: 1500,
+      retryStrategy: () => null,
     });
 
     try {
