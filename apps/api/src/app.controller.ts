@@ -272,6 +272,7 @@ export class AppController {
       integrations: [
         {
           key: "shopify",
+          id: shopify?.id ?? null,
           label: "Shopify",
           status: shopify ? "connected" : "missing",
           detail: shopify?.shopDomain
@@ -290,6 +291,7 @@ export class AppController {
         },
         {
           key: "merchant",
+          id: merchant?.id ?? null,
           label: "Google Merchant Center",
           status: merchant ? (merchantCredentialsConfigured ? "connected" : "partial") : "missing",
           detail: merchant
@@ -312,6 +314,7 @@ export class AppController {
         },
         {
           key: "search_console",
+          id: searchConsole?.id ?? null,
           label: "Google Search Console",
           status: searchConsole ? (gscTokenConfigured ? "connected" : "partial") : "missing",
           detail: searchConsole
@@ -335,6 +338,7 @@ export class AppController {
         },
         {
           key: "amazon_sp",
+          id: amazon?.id ?? null,
           label: "Amazon",
           status: amazon ? (amazonSellerConfigured ? "connected" : "partial") : "missing",
           detail: amazon
@@ -358,6 +362,7 @@ export class AppController {
         },
         {
           key: "openai",
+          id: null,
           label: "OpenAI",
           status: openAiConfigured ? "connected" : "missing",
           detail: openAiConfigured ? "GPT-4o · AI features active" : "AI provider not configured",

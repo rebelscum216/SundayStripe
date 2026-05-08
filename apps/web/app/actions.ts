@@ -36,6 +36,22 @@ export async function triggerSync(integrationId: string) {
   );
   revalidatePath("/");
   revalidatePath("/operations");
+  revalidatePath("/settings");
+}
+
+export async function triggerSyncMany(integrationIds: string[]) {
+  const uniqueIds = Array.from(new Set(integrationIds.filter(Boolean)));
+  await Promise.all(
+    uniqueIds.map(async (integrationId) => {
+      await assertOk(
+        await fetch(`${apiBaseUrl}/api/integrations/${integrationId}/sync`, { method: "POST" }),
+        "Trigger sync",
+      );
+    }),
+  );
+  revalidatePath("/");
+  revalidatePath("/operations");
+  revalidatePath("/settings");
 }
 
 export async function resolveAlert(alertId: string) {

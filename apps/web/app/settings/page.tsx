@@ -1,10 +1,12 @@
 import { PageHeader } from "../components/page-header";
 import { StatusPill } from "../components/status-pill";
+import { SyncAllConnectionsButton, SyncConnectionButton } from "./connections-actions";
 
 type ConnectionStatus = "connected" | "missing" | "partial";
 
 type ConnectionIntegration = {
   key: "shopify" | "merchant" | "search_console" | "amazon_sp" | "openai";
+  id: string | null;
   label: string;
   status: ConnectionStatus;
   detail: string;
@@ -64,10 +66,15 @@ function formatRelativeTime(value: string | null) {
 
 export default async function SettingsPage() {
   const integrations = await getConnections();
+  const syncableIntegrationIds = integrations
+    .map((integration) => integration.id)
+    .filter((id): id is string => Boolean(id));
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader section="System" title="Connections" meta="Integration readiness" />
+      <PageHeader section="System" title="Connections" meta="Integration readiness">
+        <SyncAllConnectionsButton integrationIds={syncableIntegrationIds} />
+      </PageHeader>
 
       <section className="grid gap-4 lg:grid-cols-2">
         {integrations.map((integration) => {
@@ -89,7 +96,10 @@ export default async function SettingsPage() {
                     <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>{integration.detail}</p>
                   </div>
                 </div>
-                <StatusPill status={pill.status} label={pill.label} />
+                <div className="flex items-center gap-2">
+                  <StatusPill status={pill.status} label={pill.label} />
+                  {integration.id && <SyncConnectionButton integrationId={integration.id} />}
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-3" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
