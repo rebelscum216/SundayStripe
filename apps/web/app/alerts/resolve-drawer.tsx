@@ -5,12 +5,34 @@ import { useTransition } from "react";
 import { resolveAlert } from "../actions";
 import { useDrawer } from "../components/drawer-context";
 
+type EnforcementAction = { action?: string };
 type Issue = {
+  // Amazon SP-API shape
   code?: string;
-  description?: string;
+  message?: string;
   severity?: string;
+  attributeNames?: string[];
+  categories?: string[];
+  enforcements?: { actions?: EnforcementAction[] };
+  // Merchant / legacy shape
+  description?: string;
   attribute?: string;
   resolution?: string;
+};
+
+const CATEGORY_HINT: Record<string, string> = {
+  MISSING_ATTRIBUTE: "Add the missing attribute(s) to your listing.",
+  INVALID_VALUE: "Correct the invalid attribute value in your listing.",
+  UNRECOGNIZED_VALUE: "Replace the unrecognized value with a valid option.",
+  BELOW_THRESHOLD_VALUE: "Increase the value to meet Amazon's minimum requirement.",
+  CONFLICT: "Resolve the conflicting attribute values.",
+};
+
+const ACTION_LABEL: Record<string, string> = {
+  SEARCH_SUPPRESSED: "Search suppressed",
+  DETAIL_PAGE_REMOVED: "Detail page removed",
+  BUYABILITY_SUSPENDED: "Buyability suspended",
+  GRADING_REQUIRED: "Grading required",
 };
 
 export type ResolveAlertInfo = {
@@ -62,28 +84,45 @@ function ResolveContent({ alert }: { alert: ResolveAlertInfo }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
             {alert.issues.length} {alert.issues.length === 1 ? "Issue" : "Issues"}
           </p>
-          {alert.issues.map((issue, i) => (
-            <div key={i} className="flex flex-col gap-1.5 rounded border border-zinc-700 bg-zinc-800 p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                {issue.severity && (
-                  <span className={`text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[issue.severity.toLowerCase()] ?? "text-zinc-400"}`}>
-                    {issue.severity}
-                  </span>
+          {alert.issues.map((issue, i) => {
+            const body = issue.message ?? issue.description;
+            const attrs = issue.attributeNames?.length
+              ? issue.attributeNames.join(", ")
+              : (issue.attribute ?? null);
+            const hint = issue.resolution
+              ?? (issue.categories?.[0] ? CATEGORY_HINT[issue.categories[0]] : null);
+            const impacts = issue.enforcements?.actions
+              ?.map((a) => a.action ? (ACTION_LABEL[a.action] ?? a.action.replace(/_/g, " ").toLowerCase()) : null)
+              .filter(Boolean) ?? [];
+
+            return (
+              <div key={i} className="flex flex-col gap-1.5 rounded border border-zinc-700 bg-zinc-800 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {issue.severity && (
+                    <span className={`text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[issue.severity.toLowerCase()] ?? "text-zinc-400"}`}>
+                      {issue.severity}
+                    </span>
+                  )}
+                  {attrs && (
+                    <span className="font-mono text-xs text-zinc-400">{attrs}</span>
+                  )}
+                  {impacts.map((label, j) => (
+                    <span key={j} className="rounded bg-red-950 px-1.5 py-0.5 text-xs font-medium text-red-400">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+                {body && (
+                  <p className="leading-relaxed text-zinc-200">{body}</p>
                 )}
-                {(issue.attribute ?? issue.code) && (
-                  <span className="font-mono text-xs text-zinc-500">{issue.attribute ?? issue.code}</span>
+                {hint && (
+                  <p className="mt-0.5 border-t border-zinc-700 pt-1.5 text-xs text-zinc-400">
+                    → {hint}
+                  </p>
                 )}
               </div>
-              {issue.description && (
-                <p className="leading-relaxed text-zinc-300">{issue.description}</p>
-              )}
-              {issue.resolution && (
-                <p className="mt-0.5 border-t border-zinc-700 pt-1.5 text-xs text-zinc-500">
-                  → {issue.resolution}
-                </p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <p className="text-xs text-zinc-500">No issue details available for this alert.</p>
