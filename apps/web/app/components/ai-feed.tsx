@@ -4,6 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import type { AiAction } from "../page";
 
+function ChevronIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.35, transition: "opacity 0.1s" }}>
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   "seo-rewrite": (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -105,41 +113,50 @@ export function AiFeed({ actions }: { actions: AiAction[] }) {
               borderBottom: isLast ? "none" : "1px solid var(--ss-line)",
               alignItems: "center",
             }}>
-              {/* Icon tile */}
-              <div style={{
-                width: 28, height: 28, borderRadius: 6,
-                background: tileColors.bg,
-                display: "grid", placeItems: "center",
-                color: tileColors.color,
-                flexShrink: 0,
-              }}>
-                {icon}
-              </div>
+              {/* Icon tile + content — clickable link to detail */}
+              <Link href={action.href} style={{
+                display: "flex", alignItems: "center", gap: 12,
+                minWidth: 0, flex: 1, textDecoration: "none",
+                cursor: "pointer",
+              }}
+                className="ss-ai-feed-link"
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: 6,
+                  background: tileColors.bg,
+                  display: "grid", placeItems: "center",
+                  color: tileColors.color,
+                  flexShrink: 0,
+                }}>
+                  {icon}
+                </div>
 
-              {/* Content */}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ss-ink)", marginBottom: 2 }}>
-                  {action.title}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
-                  {action.reason}
-                </div>
-                {action.preview && (
-                  <div style={{
-                    marginTop: 6, fontSize: 11,
-                    fontFamily: "var(--ss-font-mono)",
-                    display: "flex", gap: 8, alignItems: "center",
-                  }}>
-                    <span style={{ color: "var(--ss-red-ink)", textDecoration: "line-through" }}>
-                      {action.preview.from}
-                    </span>
-                    <ArrowIcon />
-                    <span style={{ color: "var(--ss-sage-ink)" }}>
-                      {action.preview.to}
-                    </span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ss-ink)", marginBottom: 2 }}>
+                    {action.title}
                   </div>
-                )}
-              </div>
+                  <div style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+                    {action.reason}
+                  </div>
+                  {action.preview && (
+                    <div style={{
+                      marginTop: 6, fontSize: 11,
+                      fontFamily: "var(--ss-font-mono)",
+                      display: "flex", gap: 8, alignItems: "center",
+                    }}>
+                      <span style={{ color: "var(--ss-red-ink)", textDecoration: "line-through" }}>
+                        {action.preview.from}
+                      </span>
+                      <ArrowIcon />
+                      <span style={{ color: "var(--ss-sage-ink)" }}>
+                        {action.preview.to}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <ChevronIcon />
+              </Link>
 
               {/* Impact */}
               <div>

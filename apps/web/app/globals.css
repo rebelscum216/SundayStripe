@@ -153,8 +153,22 @@ body {
 
 .ss-ai-feed-row {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+}
+
+.ss-ai-feed-link {
+  border-radius: 6px;
+  margin: -4px;
+  padding: 4px;
+}
+
+.ss-ai-feed-link:hover {
+  background: var(--ss-bg-elev);
+}
+
+.ss-ai-feed-link:hover svg:last-child {
+  opacity: 0.7 !important;
 }
 
 @media screen and (min-width: 640px) {
@@ -192,8 +206,9 @@ body {
   }
 
   .ss-ai-feed-row {
-    grid-template-columns: 32px minmax(0, 1fr) 200px auto;
+    grid-template-columns: minmax(0, 1fr) 200px auto;
     gap: 14px;
+    align-items: center;
   }
 }
 
