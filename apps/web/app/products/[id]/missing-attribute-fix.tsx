@@ -28,6 +28,24 @@ const PLATFORM_LABELS: Record<string, string> = {
   amazon_sp: "Amazon",
 };
 
+const fieldStyle = {
+  border: "1px solid var(--ss-line-strong)",
+  background: "var(--ss-bg-card)",
+  color: "var(--ss-ink)",
+  borderRadius: 7,
+  boxShadow: "0 1px 0 rgba(26, 24, 21, 0.03)",
+} as const;
+
+const helperStyle = {
+  fontSize: 12,
+  color: "var(--ss-amber-ink)",
+} as const;
+
+const messageStyle = (state: "error" | "saved" | "idle" | "saving") => ({
+  fontSize: 12,
+  color: state === "error" ? "var(--ss-red-ink)" : "var(--ss-sage-ink)",
+});
+
 function VariantBarcodeRow({
   productId,
   variant,
@@ -67,9 +85,9 @@ function VariantBarcodeRow({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <span className="font-mono text-xs text-zinc-400">{variant.sku}</span>
+        <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{variant.sku}</span>
         {variant.title !== variant.sku && (
-          <span className="text-xs text-zinc-500">{variant.title}</span>
+          <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{variant.title}</span>
         )}
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -79,19 +97,20 @@ function VariantBarcodeRow({
           onChange={(e) => setValue(e.target.value)}
           placeholder="Enter barcode / GTIN"
           disabled={state === "saved"}
-          className="h-9 flex-1 rounded border border-amber-700 bg-zinc-950 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-500 focus:outline-none disabled:opacity-50"
+          className="h-9 flex-1 px-3 text-sm disabled:opacity-50"
+          style={fieldStyle}
         />
         <button
           type="button"
           onClick={update}
           disabled={state === "saving" || state === "saved" || !value.trim()}
-          className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+          className="ss-btn ss-btn-sm ss-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
         >
           {state === "saving" ? "Saving..." : state === "saved" ? "Saved ✓" : "Update & push"}
         </button>
       </div>
       {message && (
-        <p className={`text-xs ${state === "error" ? "text-red-400" : "text-emerald-400"}`}>
+        <p style={messageStyle(state)}>
           {message}
         </p>
       )}
@@ -119,7 +138,8 @@ function GtinExemptToggle({ productId }: { productId: string }) {
       type="button"
       onClick={markExempt}
       disabled={state !== "idle"}
-      className="self-start text-xs text-zinc-500 underline-offset-2 hover:text-zinc-300 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+      className="self-start underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+      style={{ fontSize: 12, color: "var(--ss-ink-3)" }}
     >
       {state === "saving" ? "Saving…" : state === "done" ? "Marked exempt" : "No barcode — mark as GTIN exempt (print-on-demand)"}
     </button>
@@ -165,7 +185,7 @@ function SeoUpdateRow({
     <div className="mt-2 flex flex-col gap-2 sm:mt-0 sm:min-w-[360px]">
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-zinc-500">SEO Title <span className="text-zinc-600">(max 60 chars)</span></label>
+          <label style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>SEO Title <span style={{ color: "var(--ss-ink-4)" }}>(max 60 chars)</span></label>
           <input
             type="text"
             value={seoTitle}
@@ -173,11 +193,12 @@ function SeoUpdateRow({
             maxLength={60}
             placeholder="Enter SEO title"
             disabled={state === "saved"}
-            className="h-9 rounded border border-amber-700 bg-zinc-950 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-500 focus:outline-none disabled:opacity-50"
+            className="h-9 px-3 text-sm disabled:opacity-50"
+            style={fieldStyle}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-zinc-500">Meta Description <span className="text-zinc-600">(max 160 chars, optional)</span></label>
+          <label style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>Meta Description <span style={{ color: "var(--ss-ink-4)" }}>(max 160 chars, optional)</span></label>
           <input
             type="text"
             value={seoDescription}
@@ -185,7 +206,8 @@ function SeoUpdateRow({
             maxLength={160}
             placeholder="Enter meta description"
             disabled={state === "saved"}
-            className="h-9 rounded border border-zinc-700 bg-zinc-950 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-zinc-600 focus:outline-none disabled:opacity-50"
+            className="h-9 px-3 text-sm disabled:opacity-50"
+            style={fieldStyle}
           />
         </div>
       </div>
@@ -193,13 +215,13 @@ function SeoUpdateRow({
         type="button"
         onClick={update}
         disabled={state === "saving" || state === "saved" || !seoTitle.trim()}
-        className="self-start rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+        className="ss-btn ss-btn-sm ss-btn-primary self-start disabled:cursor-not-allowed disabled:opacity-60"
       >
         {state === "saving" ? "Saving..." : state === "saved" ? "Saved ✓" : "Update & push"}
       </button>
-      <p className="text-xs text-amber-500/70">Updates Shopify SEO metafields now.</p>
+      <p style={helperStyle}>Updates Shopify SEO metafields now.</p>
       {message && (
-        <p className={`text-xs ${state === "error" ? "text-red-400" : "text-emerald-400"}`}>{message}</p>
+        <p style={messageStyle(state)}>{message}</p>
       )}
     </div>
   );
@@ -252,22 +274,23 @@ function DescriptionRow({
         placeholder="Write a product description (2–3 sentences about the product, materials, and use case)"
         rows={4}
         disabled={state === "saved"}
-        className="w-full rounded border border-amber-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-500 focus:outline-none disabled:opacity-50"
+        className="w-full px-3 py-2 text-sm disabled:opacity-50"
+        style={fieldStyle}
       />
       <div className="flex items-center justify-between">
-        <p className="text-xs text-amber-500/70">Plain text — pushes to Shopify and queues downstream syncs.</p>
-        <span className="text-xs text-zinc-600">{value.length} chars</span>
+        <p style={helperStyle}>Plain text — pushes to Shopify and queues downstream syncs.</p>
+        <span style={{ fontSize: 12, color: "var(--ss-ink-4)" }}>{value.length} chars</span>
       </div>
       <button
         type="button"
         onClick={update}
         disabled={state === "saving" || state === "saved" || !value.trim()}
-        className="self-start rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+        className="ss-btn ss-btn-sm ss-btn-primary self-start disabled:cursor-not-allowed disabled:opacity-60"
       >
         {state === "saving" ? "Saving..." : state === "saved" ? "Saved ✓" : "Update & push"}
       </button>
       {message && (
-        <p className={`text-xs ${state === "error" ? "text-red-400" : "text-emerald-400"}`}>{message}</p>
+        <p style={messageStyle(state)}>{message}</p>
       )}
     </div>
   );
@@ -337,7 +360,7 @@ export function MissingAttributeFix({ productId, attribute, label, platforms, va
     return (
       <a
         href="#ai-actions"
-        className="rounded border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+        className="ss-btn ss-btn-sm"
       >
         Open fix tools
       </a>
@@ -345,29 +368,30 @@ export function MissingAttributeFix({ productId, attribute, label, platforms, va
   }
 
   return (
-    <div className="mt-2 flex flex-col gap-2 sm:mt-0 sm:min-w-[360px]">
+    <div className="mt-2 flex flex-col gap-3 sm:mt-0 sm:min-w-[420px]">
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder={`Enter ${label.toLowerCase()}`}
-          className="h-9 flex-1 rounded border border-amber-700 bg-zinc-950 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-amber-500 focus:outline-none"
+          className="h-9 flex-1 px-3 text-sm"
+          style={fieldStyle}
         />
         <button
           type="button"
           onClick={updateAttribute}
           disabled={state === "saving" || !value.trim()}
-          className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+          className="ss-btn ss-btn-sm ss-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
         >
           {state === "saving" ? "Updating..." : "Update & push"}
         </button>
       </div>
-      <p className="text-xs text-amber-500/70">
+      <p style={helperStyle}>
         Updates Shopify now, then queues Merchant and Amazon to re-check this listing.
       </p>
       {message && (
-        <p className={`text-xs ${state === "error" ? "text-red-400" : "text-emerald-400"}`}>
+        <p style={messageStyle(state)}>
           {message}
         </p>
       )}

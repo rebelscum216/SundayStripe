@@ -278,16 +278,23 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
 
       {/* Missing attributes */}
       {missingAttributes.length > 0 && (
-        <div className="ss-card" style={{ padding: 16, borderColor: "var(--ss-amber-soft)", background: "color-mix(in oklab, var(--ss-amber-soft) 35%, var(--ss-bg-card))" }}>
-          <p style={{ marginBottom: 8, fontSize: 14, fontWeight: 600, color: "var(--ss-amber-ink)" }}>
+        <div
+          className="ss-card"
+          style={{
+            padding: "22px 26px",
+            borderColor: "var(--ss-amber-soft)",
+            background: "color-mix(in oklab, var(--ss-amber-soft) 25%, var(--ss-bg-card))",
+          }}
+        >
+          <p style={{ marginBottom: 16, fontSize: 14, fontWeight: 600, color: "var(--ss-amber-ink)" }}>
             {missingAttributes.length} missing attribute{missingAttributes.length !== 1 ? "s" : ""}
             <span style={{ marginLeft: 8, fontWeight: 400, color: "var(--ss-ink-3)" }}>— required for channel listing quality</span>
           </p>
-          <ul className="space-y-1">
+          <ul className="space-y-3">
             {missingAttributes.map((item) => (
               <li
                 key={item.attr}
-                className="flex flex-col justify-between gap-3 pt-3 first:pt-0 sm:flex-row sm:items-start"
+                className="flex flex-col justify-between gap-4 pt-4 first:pt-0 sm:flex-row sm:items-start"
                 style={{ borderTop: "1px solid color-mix(in oklab, var(--ss-amber-soft) 55%, transparent)" }}
               >
                 <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
