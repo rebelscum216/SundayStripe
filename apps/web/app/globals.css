@@ -408,6 +408,7 @@ body {
 /* ── Pill / chip ── */
 .ss-pill {
   display: inline-flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
   height: 20px; padding: 0 7px;
   border-radius: 10px;
   font-size: 11px; font-weight: 500;
@@ -415,6 +416,7 @@ body {
   background: var(--ss-bg-elev);
   color: var(--ss-ink-2);
   border: 1px solid var(--ss-line);
+  white-space: nowrap;
 }
 .ss-pill-orange { background: var(--ss-orange-soft); color: var(--ss-orange-ink); border-color: transparent; }
 .ss-pill-sage   { background: var(--ss-sage-soft);   color: var(--ss-sage-ink);   border-color: transparent; }

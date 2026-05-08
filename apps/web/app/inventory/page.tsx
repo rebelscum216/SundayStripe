@@ -190,7 +190,7 @@ export default async function InventoryPage() {
                 <thead>
                   <tr>
                     <th>Variant</th>
-                    <th>Status</th>
+                    <th style={{ minWidth: 120 }}>Status</th>
                     <th style={{ textAlign: "right" }}>Available</th>
                     <th style={{ textAlign: "right" }}>On Hand</th>
                     <th style={{ textAlign: "right" }}>Committed</th>
@@ -212,7 +212,7 @@ export default async function InventoryPage() {
                           {variant.size && <span>{variant.size}</span>}
                         </div>
                       </td>
-                      <td>{statusBadge(variant.status)}</td>
+                      <td style={{ minWidth: 120 }}>{statusBadge(variant.status)}</td>
                       <td className="ss-num" style={{ textAlign: "right", color: variant.available <= 0 ? "var(--ss-red-ink)" : "var(--ss-ink-2)" }}>{formatNumber(variant.available)}</td>
                       <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(variant.onHand)}</td>
                       <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{formatNumber(variant.committed)}</td>
