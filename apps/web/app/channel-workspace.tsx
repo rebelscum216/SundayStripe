@@ -139,6 +139,126 @@ function gapHref(platform: Platform) {
   return "/products";
 }
 
+function AmazonListingArtwork({ listing }: { listing: AmazonUnmatchedListing }) {
+  return listing.imageUrl ? (
+    <img
+      src={listing.imageUrl}
+      alt=""
+      className="h-12 w-12 object-cover"
+      style={{ borderRadius: 7, border: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)" }}
+    />
+  ) : (
+    <div className="h-12 w-12" style={{ borderRadius: 7, border: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)" }} />
+  );
+}
+
+function AmazonUnmatchedListings({
+  amazonUnmatched,
+}: {
+  amazonUnmatched: AmazonUnmatchedResponse;
+}) {
+  return (
+    <section className="ss-card" style={{ overflow: "hidden", borderColor: "var(--ss-amber-soft)" }}>
+      <div className="flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
+        <div>
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>Unmatched Amazon listings</h2>
+          <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>
+            Click a listing to inspect details, suggested fixes, and import options.
+          </p>
+        </div>
+        <div className="ss-num" style={{ textAlign: "right", fontSize: 12, color: "var(--ss-ink-3)" }}>
+          <div>{formatNumber(amazonUnmatched.unmatchedCount)} unmatched</div>
+          <div>{formatNumber(amazonUnmatched.fetchedListings)} fetched live</div>
+        </div>
+      </div>
+
+      <div>
+        {amazonUnmatched.items.slice(0, 50).map((listing, index) => (
+          <details
+            key={listing.sku}
+            style={{
+              borderTop: index === 0 ? "0" : "1px solid var(--ss-line)",
+              background: "var(--ss-bg-card)",
+            }}
+          >
+            <summary
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(320px, 1fr) 180px 140px 90px",
+                alignItems: "center",
+                gap: 16,
+                padding: "12px 16px",
+                cursor: "pointer",
+                listStyle: "none",
+              }}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <AmazonListingArtwork listing={listing} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--ss-ink)" }}>
+                    {listing.title ?? listing.sku}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "var(--ss-amber-ink)" }}>Needs product link/import</div>
+                </div>
+              </div>
+              <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>{listing.sku}</span>
+              <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{listing.asin ?? "-"}</span>
+              <span className="ss-pill">Details</span>
+            </summary>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 16,
+                padding: "0 16px 16px 80px",
+              }}
+            >
+              <div className="ss-card" style={{ padding: 14, background: "var(--ss-bg-elev)" }}>
+                <h3 style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>
+                  Listing details
+                </h3>
+                <dl style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "8px 12px", marginTop: 12, fontSize: 13 }}>
+                  <dt style={{ color: "var(--ss-ink-3)" }}>Seller SKU</dt>
+                  <dd className="ss-num" style={{ color: "var(--ss-ink)" }}>{listing.sku}</dd>
+                  <dt style={{ color: "var(--ss-ink-3)" }}>ASIN</dt>
+                  <dd className="ss-num" style={{ color: "var(--ss-ink)" }}>{listing.asin ?? "Not provided"}</dd>
+                  <dt style={{ color: "var(--ss-ink-3)" }}>Type</dt>
+                  <dd style={{ color: "var(--ss-ink)" }}>{listing.productType ?? "Unknown"}</dd>
+                  <dt style={{ color: "var(--ss-ink-3)" }}>Status</dt>
+                  <dd><span className={STATUS_CLASS[listing.status.toLowerCase()] ?? STATUS_CLASS.unlisted}>{listing.status}</span></dd>
+                </dl>
+              </div>
+
+              <div className="ss-card" style={{ padding: 14, borderColor: "var(--ss-amber-soft)", background: "color-mix(in oklab, var(--ss-amber-soft) 20%, var(--ss-bg-card))" }}>
+                <h3 style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-amber-ink)" }}>
+                  Suggestions
+                </h3>
+                <ul style={{ marginTop: 10, paddingLeft: 18, color: "var(--ss-ink-2)", fontSize: 13, lineHeight: 1.6 }}>
+                  <li>Match this Amazon seller SKU to an existing Shopify variant SKU when possible.</li>
+                  <li>Verify the ASIN and product type before importing, especially for apparel variants.</li>
+                  <li>Import only if this listing should become a local catalog product.</li>
+                </ul>
+                <form action={importAmazonListing.bind(null, listing)} style={{ marginTop: 14 }}>
+                  <button type="submit" className="ss-btn ss-btn-sm ss-btn-primary">
+                    Import listing
+                  </button>
+                </form>
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+
+      {amazonUnmatched.items.length > 50 && (
+        <div style={{ borderTop: "1px solid var(--ss-line)", padding: "12px 16px", fontSize: 12, color: "var(--ss-ink-3)" }}>
+          Showing first 50 unmatched listings.
+        </div>
+      )}
+    </section>
+  );
+}
+
 export async function ChannelWorkspace({
   platform,
   title,
@@ -294,81 +414,7 @@ export async function ChannelWorkspace({
       </section>
 
       {platform === "amazon_sp" && amazonUnmatched.items.length > 0 && (
-        <section className="ss-card" style={{ overflow: "hidden", borderColor: "var(--ss-amber-soft)" }}>
-          <div className="flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
-            <div>
-              <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>Unmatched Amazon listings</h2>
-              <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>
-                Live SP-API listings with seller SKUs that do not match a local Shopify variant SKU.
-              </p>
-            </div>
-            <div className="ss-num" style={{ textAlign: "right", fontSize: 12, color: "var(--ss-ink-3)" }}>
-              <div>{formatNumber(amazonUnmatched.unmatchedCount)} unmatched</div>
-              <div>{formatNumber(amazonUnmatched.fetchedListings)} fetched live</div>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="ss-tbl" style={{ minWidth: 900 }}>
-              <thead>
-                <tr>
-                  <th>Amazon listing</th>
-                  <th>Seller SKU</th>
-                  <th>ASIN</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {amazonUnmatched.items.slice(0, 50).map((listing) => (
-                  <tr key={listing.sku}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        {listing.imageUrl ? (
-                          <img
-                            src={listing.imageUrl}
-                            alt=""
-                            className="h-10 w-10 object-cover"
-                            style={{ borderRadius: 6, border: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)" }}
-                          />
-                        ) : (
-                          <div className="h-10 w-10" style={{ borderRadius: 6, border: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)" }} />
-                        )}
-                        <div>
-                          <div style={{ fontWeight: 500, color: "var(--ss-ink)" }}>{listing.title ?? listing.sku}</div>
-                          <div style={{ marginTop: 4, fontSize: 12, color: "var(--ss-amber-ink)" }}>Needs product link/import</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>{listing.sku}</td>
-                    <td className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{listing.asin ?? "-"}</td>
-                    <td style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{listing.productType ?? "-"}</td>
-                    <td>
-                      <span className={STATUS_CLASS[listing.status.toLowerCase()] ?? STATUS_CLASS.unlisted}>
-                        {listing.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <form action={importAmazonListing.bind(null, listing)}>
-                        <button
-                          type="submit"
-                          className="ss-btn ss-btn-sm ss-btn-primary"
-                        >
-                          Import
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {amazonUnmatched.items.length > 50 && (
-            <div style={{ borderTop: "1px solid var(--ss-line)", padding: "12px 16px", fontSize: 12, color: "var(--ss-ink-3)" }}>
-              Showing first 50 unmatched listings.
-            </div>
-          )}
-        </section>
+        <AmazonUnmatchedListings amazonUnmatched={amazonUnmatched} />
       )}
 
       {/* Not listed */}
