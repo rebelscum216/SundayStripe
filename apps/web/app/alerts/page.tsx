@@ -70,17 +70,24 @@ function getPlatform(alert: Alert) {
   return alert.platform ?? alert.sourcePlatform ?? alert.source_platform ?? "unknown";
 }
 
-function getProductTitle(alert: Alert) {
+function getProductName(alert: Alert): string {
   const payload = getPayload(alert);
   return (
     alert.productTitle ??
     alert.product_title ??
     payload?.title ??
     payload?.merchant_product_name ??
+    null
+  ) ?? "";
+}
+
+function getEntityRef(alert: Alert): string | null {
+  const payload = getPayload(alert);
+  return (
     alert.entityRef ??
     alert.entity_ref ??
     payload?.offer_id ??
-    "Unknown product"
+    null
   );
 }
 
@@ -246,9 +253,18 @@ export default async function AlertsPage() {
                   <tbody>
                     {rows.map((alert) => {
                       const platform = getPlatform(alert);
+                      const productName = getProductName(alert);
+                      const entityRef = getEntityRef(alert);
+                      const displayName = productName || entityRef || "Unknown product";
+                      const showRef = entityRef && entityRef !== displayName;
                       return (
                         <tr key={alert.id}>
-                          <td style={{ color: "var(--ss-ink)", fontWeight: 500 }}>{getProductTitle(alert)}</td>
+                          <td>
+                            <div style={{ fontWeight: 500, color: "var(--ss-ink)", fontSize: 13 }}>{displayName}</div>
+                            {showRef && (
+                              <div className="ss-num" style={{ fontSize: 11, color: "var(--ss-ink-4)", marginTop: 2 }}>{entityRef}</div>
+                            )}
+                          </td>
                           <td>
                             <span className="ss-pill">
                               {platformLabels[platform] ?? platform}
