@@ -85,6 +85,7 @@ type ProductDetail = {
     descriptionHtml: string | null;
     seoTitle: string | null;
     seoDescription: string | null;
+    featuredImageUrl: string | null;
     gtinExempt: boolean;
     sourceOfTruth: string;
     sourceUpdatedAt: string | null;
@@ -288,17 +289,36 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           ← Products
         </a>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-3" style={{ borderBottom: "1px solid var(--ss-line)", paddingBottom: 20 }}>
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>Product</p>
-            <h1 className="mt-1 text-3xl md:text-4xl" style={{ fontFamily: "var(--ss-font-display)", fontWeight: 600, color: "var(--ss-ink)", letterSpacing: "-0.02em" }}>
-              {product.title ?? product.canonicalSku}
-            </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="ss-num" style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>{product.canonicalSku}</span>
-              {product.brand && <span style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>{product.brand}</span>}
-              <span className="ss-pill">
-                source: {product.sourceOfTruth}
-              </span>
+          <div className="flex items-start gap-5">
+            {product.featuredImageUrl && (
+              <img
+                src={product.featuredImageUrl}
+                alt={product.title ?? product.canonicalSku}
+                width={96}
+                height={96}
+                style={{
+                  width: 96,
+                  height: 96,
+                  objectFit: "cover",
+                  borderRadius: 10,
+                  border: "1px solid var(--ss-line)",
+                  flexShrink: 0,
+                  background: "var(--ss-bg-elev)",
+                }}
+              />
+            )}
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>Product</p>
+              <h1 className="mt-1 text-3xl md:text-4xl" style={{ fontFamily: "var(--ss-font-display)", fontWeight: 600, color: "var(--ss-ink)", letterSpacing: "-0.02em" }}>
+                {product.title ?? product.canonicalSku}
+              </h1>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <span className="ss-num" style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>{product.canonicalSku}</span>
+                {product.brand && <span style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>{product.brand}</span>}
+                <span className="ss-pill">
+                  source: {product.sourceOfTruth}
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-5 text-right">

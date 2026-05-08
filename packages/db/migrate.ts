@@ -14,6 +14,7 @@ const migrations = [
   "drizzle/0004_listing_quality_score.sql",
   "drizzle/0005_ai_recommendations.sql",
   "drizzle/0006_gtin_exempt.sql",
+  "drizzle/0007_product_image.sql",
 ];
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const dbUrl = new URL(databaseUrl);

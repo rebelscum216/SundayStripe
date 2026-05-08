@@ -63,6 +63,7 @@ type ShopifyProduct = {
   descriptionHtml: string | null;
   seoTitleMetafield: { value: string } | null;
   seoDescriptionMetafield: { value: string } | null;
+  featuredImage: { url: string } | null;
   variants: {
     edges: Array<{
       node: ShopifyVariant;
@@ -118,6 +119,7 @@ const PRODUCT_SYNC_WITH_INVENTORY_QUERY = `#graphql
           seoDescriptionMetafield: metafield(namespace: "global", key: "description_tag") {
             value
           }
+          featuredImage { url }
           variants(first: 100) {
             edges {
               node {
@@ -167,6 +169,7 @@ const PRODUCT_SYNC_WITHOUT_INVENTORY_QUERY = `#graphql
           seoDescriptionMetafield: metafield(namespace: "global", key: "description_tag") {
             value
           }
+          featuredImage { url }
           variants(first: 100) {
             edges {
               node {
@@ -401,6 +404,7 @@ export class ShopifyInitialSyncService {
         descriptionHtml: product.descriptionHtml,
         seoTitle,
         seoDescription,
+        featuredImageUrl: product.featuredImage?.url ?? null,
         sourceOfTruth: 'shopify',
         sourceUpdatedAt: product.updatedAt ? new Date(product.updatedAt) : null,
         updatedAt: new Date(),
@@ -412,6 +416,7 @@ export class ShopifyInitialSyncService {
           descriptionHtml: product.descriptionHtml,
           seoTitle,
           seoDescription,
+          featuredImageUrl: product.featuredImage?.url ?? null,
           sourceUpdatedAt: product.updatedAt ? new Date(product.updatedAt) : null,
           updatedAt: new Date(),
         },

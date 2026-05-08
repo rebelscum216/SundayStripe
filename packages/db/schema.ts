@@ -50,6 +50,7 @@ export const products = pgTable(
     descriptionHtml: text("description_html"),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
+    featuredImageUrl: text("featured_image_url"),
     gtinExempt: boolean("gtin_exempt").notNull().default(false),
     sourceOfTruth: text("source_of_truth").notNull().default("shopify"),
     sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
