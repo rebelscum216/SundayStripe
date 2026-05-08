@@ -48,6 +48,38 @@ type AmazonListingsResponse = {
   nextToken?: string;
 };
 
+type AmazonMoney = {
+  CurrencyCode?: string;
+  Amount?: string;
+};
+
+type AmazonOrder = {
+  AmazonOrderId: string;
+  PurchaseDate?: string;
+  LastUpdateDate?: string;
+  OrderStatus?: string;
+  OrderTotal?: AmazonMoney;
+};
+
+type AmazonOrdersResponse = {
+  Orders?: AmazonOrder[];
+  NextToken?: string;
+};
+
+type AmazonOrderItem = {
+  OrderItemId: string;
+  SellerSKU?: string;
+  ASIN?: string;
+  Title?: string;
+  QuantityOrdered?: number;
+  ItemPrice?: AmazonMoney;
+};
+
+type AmazonOrderItemsResponse = {
+  OrderItems?: AmazonOrderItem[];
+  NextToken?: string;
+};
+
 export type AmazonListing = {
   sku: string;
   asin: string | null;
@@ -57,6 +89,24 @@ export type AmazonListing = {
   imageUrl: string | null;
   issues: unknown[];
   qualityScore: number; // enriched after SKU match via getListingAttributes()
+};
+
+export type AmazonSalesOrder = {
+  id: string;
+  purchaseDate: string;
+  status: string | null;
+  totalAmount: string | null;
+  currency: string | null;
+};
+
+export type AmazonSalesOrderItem = {
+  id: string;
+  sku: string | null;
+  asin: string | null;
+  title: string | null;
+  quantity: number;
+  totalAmount: string | null;
+  currency: string | null;
 };
 
 const AMAZON_AUTH_URL = 'https://api.amazon.com/auth/o2/token';
@@ -89,18 +139,107 @@ export class AmazonApiService {
     };
   }
 
-  async getListingDetail(sku: string): Promise<{ attributes?: AmazonListingAttributes; issues?: unknown[] }> {
+  async getListingDetail(sku: string): Promise<{ attributes?: AmazonListingAttributes; issues?: unknown[]; productType?: string | null }> {
     const sellerId = this.config.getOrThrow<string>('AMAZON_SELLER_ID');
     const marketplaceId = this.config.getOrThrow<string>('AMAZON_MARKETPLACE_ID');
-    const params = new URLSearchParams({ marketplaceIds: marketplaceId, includedData: 'attributes,issues' });
+    const params = new URLSearchParams({ marketplaceIds: marketplaceId, includedData: 'summaries,attributes,issues' });
     try {
-      const data = await this.get<{ attributes?: AmazonListingAttributes; issues?: unknown[] }>(
+      const data = await this.get<{ summaries?: Array<{ productType?: string }>; attributes?: AmazonListingAttributes; issues?: unknown[] }>(
         `/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?${params.toString()}`,
       );
-      return { attributes: data.attributes, issues: data.issues };
+      return { attributes: data.attributes, issues: data.issues, productType: data.summaries?.[0]?.productType ?? null };
     } catch {
       return {};
     }
+  }
+
+  async patchListingAttribute(sku: string, productType: string, attributeName: string, value: string): Promise<void> {
+    const sellerId = this.config.getOrThrow<string>('AMAZON_SELLER_ID');
+    const marketplaceId = this.config.getOrThrow<string>('AMAZON_MARKETPLACE_ID');
+    const token = await this.getAccessToken();
+
+    const body = {
+      productType,
+      patches: [
+        {
+          op: 'add',
+          path: `/attributes/${attributeName}`,
+          value: [{ value, marketplace_id: marketplaceId }],
+        },
+      ],
+    };
+
+    const response = await fetch(
+      `${AMAZON_SP_API_BASE_URL}/listings/2021-08-01/items/${encodeURIComponent(sellerId)}/${encodeURIComponent(sku)}?marketplaceIds=${marketplaceId}`,
+      {
+        method: 'PATCH',
+        headers: { 'x-amz-access-token': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Amazon PATCH attribute failed ${response.status}: ${text}`);
+    }
+  }
+
+  async fetchOrdersPage(
+    createdAfter: string,
+    nextToken?: string,
+  ): Promise<{ orders: AmazonSalesOrder[]; nextToken?: string }> {
+    const marketplaceId = this.config.getOrThrow<string>('AMAZON_MARKETPLACE_ID');
+    const params = new URLSearchParams();
+
+    if (nextToken) {
+      params.set('NextToken', nextToken);
+    } else {
+      params.set('MarketplaceIds', marketplaceId);
+      params.set('CreatedAfter', createdAfter);
+      params.set('OrderStatuses', 'Unshipped,PartiallyShipped,Shipped');
+      params.set('MaxResultsPerPage', '100');
+    }
+
+    const data = await this.get<AmazonOrdersResponse>(`/orders/v0/orders?${params.toString()}`);
+    return {
+      orders: (data.Orders ?? []).map((order) => ({
+        id: order.AmazonOrderId,
+        purchaseDate: order.PurchaseDate ?? order.LastUpdateDate ?? new Date().toISOString(),
+        status: order.OrderStatus ?? null,
+        totalAmount: order.OrderTotal?.Amount ?? null,
+        currency: order.OrderTotal?.CurrencyCode ?? null,
+      })),
+      nextToken: data.NextToken,
+    };
+  }
+
+  async fetchOrderItems(orderId: string): Promise<AmazonSalesOrderItem[]> {
+    const items: AmazonSalesOrderItem[] = [];
+    let nextToken: string | undefined;
+
+    do {
+      const params = new URLSearchParams();
+      if (nextToken) params.set('NextToken', nextToken);
+      const query = params.toString();
+      const data = await this.get<AmazonOrderItemsResponse>(
+        `/orders/v0/orders/${encodeURIComponent(orderId)}/orderItems${query ? `?${query}` : ''}`,
+      );
+
+      items.push(
+        ...(data.OrderItems ?? []).map((item) => ({
+          id: item.OrderItemId,
+          sku: item.SellerSKU ?? null,
+          asin: item.ASIN ?? null,
+          title: item.Title ?? null,
+          quantity: item.QuantityOrdered ?? 0,
+          totalAmount: item.ItemPrice?.Amount ?? null,
+          currency: item.ItemPrice?.CurrencyCode ?? null,
+        })),
+      );
+      nextToken = data.NextToken;
+    } while (nextToken);
+
+    return items;
   }
 
   private async get<T>(path: string, attempt = 1): Promise<T> {

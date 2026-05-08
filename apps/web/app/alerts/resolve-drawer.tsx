@@ -115,11 +115,19 @@ function ResolveContent({ alert }: { alert: ResolveAlertInfo }) {
                 {body && (
                   <p className="leading-relaxed text-zinc-200">{body}</p>
                 )}
-                {hint && (
+                {hint && alert.productId ? (
+                  <Link
+                    href={`/products/${alert.productId}#open-issues`}
+                    onClick={close}
+                    className="mt-0.5 border-t border-zinc-700 pt-1.5 text-xs text-blue-400 hover:text-blue-300 block"
+                  >
+                    → {hint}
+                  </Link>
+                ) : hint ? (
                   <p className="mt-0.5 border-t border-zinc-700 pt-1.5 text-xs text-zinc-400">
                     → {hint}
                   </p>
-                )}
+                ) : null}
               </div>
             );
           })}

@@ -2600,6 +2600,25 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     };
   }
 
+  @Patch("products/:id/amazon-attribute")
+  async patchAmazonAttribute(
+    @Param("id") id: string,
+    @Body() body: { sku: string; attributeName: string; value: string },
+  ) {
+    const { sku, attributeName, value } = body;
+    if (!sku?.trim() || !attributeName?.trim() || !value?.trim()) {
+      throw new BadRequestException("sku, attributeName, and value are required");
+    }
+
+    const detail = await this.amazonApi.getListingDetail(sku);
+    if (!detail.productType) {
+      throw new BadRequestException(`Could not determine product type for SKU ${sku}`);
+    }
+
+    await this.amazonApi.patchListingAttribute(sku, detail.productType, attributeName, value.trim());
+    return { ok: true, sku, attributeName, value: value.trim() };
+  }
+
   @Patch("products/:id/variants/:variantId/barcode")
   async updateVariantBarcode(
     @Param("id") id: string,

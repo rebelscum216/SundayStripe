@@ -6,6 +6,7 @@ import { AiDescribeButton } from "./ai-describe";
 import { MissingAttributeFix } from "./missing-attribute-fix";
 import { ProductFixAssistant } from "./product-fix-assistant";
 import { QualityScoreBadge } from "../quality-score-badge";
+import { AmazonAttributeFix } from "./amazon-attribute-fix";
 
 type RevenueData = {
   periodDays: number;
@@ -34,10 +35,28 @@ type Variant = {
 };
 type Issue = {
   code?: string;
-  description?: string;
   severity?: string;
+  // Amazon SP-API fields
+  message?: string;
+  attributeNames?: string[];
+  categories?: string[];
+  enforcements?: { actions?: { action?: string }[] };
+  // Merchant / legacy fields
+  description?: string;
   attribute?: string;
   resolution?: string;
+};
+
+const ISSUE_ACTION_LABEL: Record<string, string> = {
+  SEARCH_SUPPRESSED: "Search suppressed",
+  DETAIL_PAGE_REMOVED: "Detail page removed",
+  BUYABILITY_SUSPENDED: "Buyability suspended",
+};
+
+const ISSUE_CATEGORY_HINT: Record<string, string> = {
+  MISSING_ATTRIBUTE: "Add the missing attribute to your listing.",
+  INVALID_VALUE: "Correct the invalid attribute value.",
+  UNRECOGNIZED_VALUE: "Replace with a valid option.",
 };
 type AlertPayload = {
   title?: string;
@@ -244,7 +263,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     missingAttributes.push({ attr: "description", label: "Description", detail: "Improves search ranking and listing quality.", platforms: ["shopify", "merchant", "amazon_sp"], currentDescription: product.descriptionHtml ?? null });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="ss-content-stack">
       {/* Header */}
       <div>
         <a href="/products" style={{ fontSize: 14, color: "var(--ss-ink-3)", textDecoration: "none" }}>
@@ -478,11 +497,19 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
 
       {/* Open alerts */}
       {alerts.length > 0 && (
-        <section className="flex flex-col gap-3">
+        <section id="open-issues" className="flex flex-col gap-3">
           <SectionHeader title="Open Issues" count={alerts.length} />
           {alerts.map((alert) => {
             const payload = alert.payloadJson;
             const issues = payload?.issues ?? [];
+            const isAmazon = (alert.sourcePlatform ?? "") === "amazon_sp";
+            const amazonSkus = isAmazon
+              ? variants.flatMap((v) =>
+                  v.listings
+                    .filter((l) => l.platform === "amazon_sp" && l.platformListingId)
+                    .map((l) => ({ variantId: v.id, sku: l.platformListingId! }))
+                )
+              : [];
             return (
               <div key={alert.id} className="ss-card" style={{ padding: 16 }}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -502,31 +529,54 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   <div className="flex items-center gap-3">
                     <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{formatDate(alert.createdAt)}</span>
                     <form action={resolveAlert.bind(null, alert.id)}>
-                      <button
-                        type="submit"
-                        className="ss-btn ss-btn-sm"
-                      >
-                        Dismiss
-                      </button>
+                      <button type="submit" className="ss-btn ss-btn-sm">Dismiss</button>
                     </form>
                   </div>
                 </div>
                 {issues.length > 0 && (
-                  <ul className="mt-3 space-y-2" style={{ borderTop: "1px solid var(--ss-line)", paddingTop: 12 }}>
-                    {issues.map((issue, i) => (
-                      <li key={i} className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: ISSUE_SEV_COLOR[String(issue.severity ?? "").toLowerCase()] ?? "var(--ss-ink-3)" }}>
-                            {issue.severity ?? "issue"}
-                          </span>
-                          {issue.attribute && (
-                            <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{issue.attribute}</span>
+                  <ul className="mt-3 space-y-3" style={{ borderTop: "1px solid var(--ss-line)", paddingTop: 12 }}>
+                    {issues.map((issue, i) => {
+                      const body = issue.message ?? issue.description;
+                      const attrs = issue.attributeNames?.length
+                        ? issue.attributeNames.join(", ")
+                        : (issue.attribute ?? null);
+                      const hint = issue.resolution
+                        ?? (issue.categories?.[0] ? ISSUE_CATEGORY_HINT[issue.categories[0]] : null);
+                      const impacts = issue.enforcements?.actions
+                        ?.map((a) => a.action ? (ISSUE_ACTION_LABEL[a.action] ?? null) : null)
+                        .filter((x): x is string => x !== null) ?? [];
+                      const isMissingAttr = issue.categories?.includes("MISSING_ATTRIBUTE") && issue.attributeNames?.length;
+
+                      return (
+                        <li key={i} className="flex flex-col gap-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: ISSUE_SEV_COLOR[String(issue.severity ?? "").toLowerCase()] ?? "var(--ss-ink-3)" }}>
+                              {issue.severity ?? "issue"}
+                            </span>
+                            {attrs && (
+                              <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{attrs}</span>
+                            )}
+                            {impacts.map((label, j) => (
+                              <span key={j} style={{ fontSize: 11, fontWeight: 600, color: "var(--ss-red-ink)", background: "var(--ss-red-soft)", borderRadius: 4, padding: "1px 6px" }}>
+                                {label}
+                              </span>
+                            ))}
+                          </div>
+                          {body && <p style={{ fontSize: 14, color: "var(--ss-ink-2)" }}>{body}</p>}
+                          {hint && !isMissingAttr && (
+                            <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>→ {hint}</p>
                           )}
-                        </div>
-                        {issue.description && <p style={{ fontSize: 14, color: "var(--ss-ink-2)" }}>{issue.description}</p>}
-                        {issue.resolution && <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{issue.resolution}</p>}
-                      </li>
-                    ))}
+                          {isMissingAttr && amazonSkus.length > 0 && issue.attributeNames?.map((attrName) => (
+                            <AmazonAttributeFix
+                              key={attrName}
+                              productId={product.id}
+                              attributeName={attrName}
+                              skus={amazonSkus}
+                            />
+                          ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
