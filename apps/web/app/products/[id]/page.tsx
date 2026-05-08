@@ -262,6 +262,24 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   if (!product.descriptionHtml || product.descriptionHtml.trim().length < 10)
     missingAttributes.push({ attr: "description", label: "Description", detail: "Improves search ranking and listing quality.", platforms: ["shopify", "merchant", "amazon_sp"], currentDescription: product.descriptionHtml ?? null });
 
+  const amazonSkus = variants.flatMap((v) =>
+    v.listings
+      .filter((l) => l.platform === "amazon_sp" && l.platformListingId)
+      .map((l) => ({ variantId: v.id, sku: l.platformListingId! }))
+  );
+
+  const amazonMissingAttrNames = [
+    ...new Set(
+      alerts
+        .filter((a) => (a.sourcePlatform ?? "") === "amazon_sp")
+        .flatMap((a) => (a.payloadJson?.issues ?? []) as Issue[])
+        .filter((i) => i.categories?.includes("MISSING_ATTRIBUTE") && i.attributeNames?.length)
+        .flatMap((i) => i.attributeNames ?? []),
+    ),
+  ];
+
+  const totalMissing = missingAttributes.length + (amazonSkus.length > 0 ? amazonMissingAttrNames.length : 0);
+
   return (
     <div className="ss-content-stack">
       {/* Header */}
@@ -297,7 +315,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
       </div>
 
       {/* Missing attributes */}
-      {missingAttributes.length > 0 && (
+      {totalMissing > 0 && (
         <div
           className="ss-card"
           style={{
@@ -307,7 +325,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           }}
         >
           <p style={{ marginBottom: 16, fontSize: 14, fontWeight: 600, color: "var(--ss-amber-ink)" }}>
-            {missingAttributes.length} missing attribute{missingAttributes.length !== 1 ? "s" : ""}
+            {totalMissing} missing attribute{totalMissing !== 1 ? "s" : ""}
             <span style={{ marginLeft: 8, fontWeight: 400, color: "var(--ss-ink-3)" }}>— required for channel listing quality</span>
           </p>
           <ul className="space-y-3">
@@ -330,6 +348,25 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   currentSeoTitle={item.currentSeoTitle}
                   currentSeoDescription={item.currentSeoDescription}
                   currentDescription={item.currentDescription}
+                />
+              </li>
+            ))}
+            {amazonSkus.length > 0 && amazonMissingAttrNames.map((attrName) => (
+              <li
+                key={`amazon-${attrName}`}
+                className="flex flex-col justify-between gap-4 pt-4 sm:flex-row sm:items-start"
+                style={{ borderTop: "1px solid color-mix(in oklab, var(--ss-amber-soft) 55%, transparent)" }}
+              >
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--ss-amber-ink)" }}>
+                    {attrName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>Required by Amazon — search suppressed until added.</span>
+                </div>
+                <AmazonAttributeFix
+                  productId={product.id}
+                  attributeName={attrName}
+                  skus={amazonSkus}
                 />
               </li>
             ))}
