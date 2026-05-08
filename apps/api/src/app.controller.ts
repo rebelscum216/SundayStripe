@@ -1006,8 +1006,12 @@ export class AppController {
         payloadJson: alerts.payloadJson,
         status: alerts.status,
         createdAt: alerts.createdAt,
+        productTitle: products.title,
       })
       .from(alerts)
+      .leftJoin(channelListings, eq(alerts.entityRef, channelListings.platformListingId))
+      .leftJoin(variants, eq(channelListings.variantId, variants.id))
+      .leftJoin(products, eq(variants.productId, products.id))
       .where(eq(alerts.status, "open"))
       .orderBy(desc(alerts.createdAt))
       .limit(200);
