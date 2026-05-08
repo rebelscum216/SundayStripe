@@ -1,5 +1,6 @@
-import { resolveAlert } from "../actions";
 import { PageHeader } from "../components/page-header";
+import { ResolveDrawerButton } from "./resolve-drawer";
+import type { ResolveAlertInfo } from "./resolve-drawer";
 
 type Severity = "critical" | "high" | "medium" | "low";
 
@@ -12,6 +13,7 @@ type Alert = {
   platform?: string | null;
   sourcePlatform?: string | null;
   source_platform?: string | null;
+  productId?: string | null;
   productTitle?: string | null;
   product_title?: string | null;
   entityRef?: string | null;
@@ -127,14 +129,17 @@ function countSeverity(alerts: Alert[], severity: Severity) {
   return alerts.filter((alert) => normalizeSeverity(alert.severity) === severity).length;
 }
 
-function ResolveButton({ alertId }: { alertId: string }) {
-  return (
-    <form action={resolveAlert.bind(null, alertId)}>
-      <button type="submit" className="ss-btn ss-btn-sm">
-        Resolve
-      </button>
-    </form>
-  );
+function buildResolveInfo(alert: Alert): ResolveAlertInfo {
+  const payload = getPayload(alert);
+  return {
+    id: alert.id,
+    productTitle: getProductName(alert) || getEntityRef(alert) || "Unknown product",
+    entityRef: getEntityRef(alert),
+    platform: platformLabels[getPlatform(alert)] ?? getPlatform(alert),
+    ruleName: getRuleName(alert),
+    issues: payload?.issues ?? [],
+    productId: alert.productId ?? null,
+  };
 }
 
 export default async function AlertsPage() {
@@ -275,7 +280,7 @@ export default async function AlertsPage() {
                             {formatSince(alert.createdAt ?? alert.created_at)}
                           </td>
                           <td>
-                            <ResolveButton alertId={alert.id} />
+                            <ResolveDrawerButton alert={buildResolveInfo(alert)} />
                           </td>
                         </tr>
                       );

@@ -1043,6 +1043,7 @@ export class AppController {
         status: alerts.status,
         createdAt: alerts.createdAt,
         productTitle: products.title,
+        productId: products.id,
       })
       .from(alerts)
       .leftJoin(channelListings, eq(alerts.entityRef, channelListings.platformListingId))
