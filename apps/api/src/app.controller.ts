@@ -12,6 +12,7 @@ import type { Sql } from "postgres";
 import type * as schema from "@sunday-stripe/db";
 import { DATABASE_CONNECTION, DRIZZLE_DATABASE } from "./database/database.constants.js";
 import { AmazonApiService } from "./amazon/amazon-api.service.js";
+import { AmazonOrdersSyncService } from "./amazon/amazon-orders-sync.service.js";
 import { AmazonSyncService } from "./amazon/amazon-sync.service.js";
 import { MerchantApiService, type MerchantProduct } from "./merchant/merchant-api.service.js";
 import { MerchantSyncService } from "./merchant/merchant-sync.service.js";
@@ -100,6 +101,7 @@ export class AppController {
     private readonly config: ConfigService,
     private readonly amazonApi: AmazonApiService,
     private readonly amazonSync: AmazonSyncService,
+    private readonly amazonOrdersSync: AmazonOrdersSyncService,
     private readonly merchantApi: MerchantApiService,
     private readonly merchantSync: MerchantSyncService,
     private readonly shopifyOAuth: ShopifyOAuthService,
@@ -621,6 +623,64 @@ export class AppController {
     };
   }
 
+  @Get("amazon/sales")
+  async getAmazonSales() {
+    const [summary] = await this.db
+      .select({
+        orderCount: count(),
+        revenueCents: sql<number>`coalesce(sum(${orders.totalPriceCents}), 0)::int`,
+      })
+      .from(orders)
+      .innerJoin(integrationAccounts, eq(orders.integrationAccountId, integrationAccounts.id))
+      .where(
+        and(
+          eq(integrationAccounts.platform, "amazon_sp"),
+          sql`${orders.createdAt} > now() - interval '90 days'`,
+        ),
+      );
+
+    const [lineSummary] = await this.db
+      .select({
+        unitsSold: sql<number>`coalesce(sum(${orderLineItems.quantity}), 0)::int`,
+      })
+      .from(orderLineItems)
+      .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
+      .innerJoin(integrationAccounts, eq(orders.integrationAccountId, integrationAccounts.id))
+      .where(
+        and(
+          eq(integrationAccounts.platform, "amazon_sp"),
+          sql`${orders.createdAt} > now() - interval '90 days'`,
+        ),
+      );
+
+    const recentOrders = await this.db
+      .select({
+        id: orders.shopifyOrderId,
+        createdAt: orders.createdAt,
+        status: orders.financialStatus,
+        totalPriceCents: orders.totalPriceCents,
+        currency: orders.currency,
+      })
+      .from(orders)
+      .innerJoin(integrationAccounts, eq(orders.integrationAccountId, integrationAccounts.id))
+      .where(eq(integrationAccounts.platform, "amazon_sp"))
+      .orderBy(desc(orders.createdAt))
+      .limit(10);
+
+    return {
+      orderCount: summary?.orderCount ?? 0,
+      unitsSold: lineSummary?.unitsSold ?? 0,
+      revenueCents: summary?.revenueCents ?? 0,
+      recentOrders: recentOrders.map((order) => ({
+        id: order.id,
+        createdAt: order.createdAt.toISOString(),
+        status: order.status,
+        totalPriceCents: order.totalPriceCents,
+        currency: order.currency,
+      })),
+    };
+  }
+
   @Post("amazon/import-listing")
   async importAmazonListing(
     @Body()
@@ -787,6 +847,7 @@ export class AppController {
         descriptionHtml: product.descriptionHtml,
         seoTitle: product.seoTitle ?? null,
         seoDescription: product.seoDescription ?? null,
+        featuredImageUrl: product.featuredImageUrl ?? null,
         sourceOfTruth: product.sourceOfTruth,
         sourceUpdatedAt: product.sourceUpdatedAt?.toISOString() ?? null,
         updatedAt: product.updatedAt?.toISOString() ?? null,
@@ -2734,12 +2795,19 @@ Sort groups by priority (critical first). Be specific about root causes.`,
 
     if (!integration) throw new NotFoundException(`Integration ${id} not found`);
 
+    if (integration.platform === "amazon_sp") {
+      const jobs = await Promise.all([
+        this.enqueueAndRunSync(integration.id, "amazon_initial_sync", (syncJobId) => this.amazonSync.run(syncJobId)),
+        this.enqueueAndRunSync(integration.id, "amazon_orders_sync", (syncJobId) => this.amazonOrdersSync.run(syncJobId)),
+      ]);
+      return { ok: true, syncJobIds: jobs.map((job) => job.id) };
+    }
+
     const syncConfig: Record<string, { jobType: string; runner: (id: string) => Promise<void> }> = {
       shopify: { jobType: "shopify_initial_sync", runner: (id) => this.shopifyInitialSync.run(id) },
       shopify_orders: { jobType: "shopify_orders_sync", runner: (id) => this.shopifyOrdersSync.run(id) },
       merchant: { jobType: "merchant_initial_sync", runner: (id) => this.merchantSync.run(id) },
       search_console: { jobType: "gsc_initial_sync", runner: (id) => this.gscSync.run(id) },
-      amazon_sp: { jobType: "amazon_initial_sync", runner: (id) => this.amazonSync.run(id) },
     };
 
     const syncHandler = syncConfig[integration.platform];
@@ -2753,6 +2821,20 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     syncHandler.runner(syncJob.id).catch(() => {});
 
     return { ok: true, syncJobId: syncJob.id };
+  }
+
+  private async enqueueAndRunSync(
+    integrationAccountId: string,
+    jobType: string,
+    runner: (syncJobId: string) => Promise<void>,
+  ) {
+    const [syncJob] = await this.db
+      .insert(syncJobs)
+      .values({ integrationAccountId, jobType, state: "pending" })
+      .returning({ id: syncJobs.id });
+
+    runner(syncJob.id).catch(() => {});
+    return syncJob;
   }
 
   @Get("operations/jobs/failed")

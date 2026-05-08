@@ -4,6 +4,7 @@ import { ChannelBadge } from "./components/channel-badge";
 import { MetricCard } from "./components/metric-card";
 import { PageHeader } from "./components/page-header";
 import { StatusPill } from "./components/status-pill";
+import { SyncNowButton } from "./operations/operations-actions";
 import { QualityScoreBadge } from "./products/quality-score-badge";
 
 type Platform = "shopify" | "merchant" | "amazon_sp";
@@ -18,6 +19,7 @@ type Product = {
   channels: Array<{ platform: string; status: string }>;
 };
 type IntegrationStatus = {
+  id?: string;
   platform: string;
   status: string;
   last_synced_at?: string | null;
@@ -41,6 +43,18 @@ type AmazonUnmatchedResponse = {
   fetchedListings: number;
   unmatchedCount: number;
   items: AmazonUnmatchedListing[];
+};
+type AmazonSalesResponse = {
+  orderCount: number;
+  unitsSold: number;
+  revenueCents: number;
+  recentOrders: Array<{
+    id: string;
+    createdAt: string;
+    status: string | null;
+    totalPriceCents: number;
+    currency: string;
+  }>;
 };
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:3001";
@@ -98,8 +112,26 @@ async function getAmazonUnmatchedListings() {
   }
 }
 
+async function getAmazonSales() {
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/amazon/sales`, { cache: "no-store" });
+    if (!response.ok) return { orderCount: 0, unitsSold: 0, revenueCents: 0, recentOrders: [] };
+    return (await response.json()) as AmazonSalesResponse;
+  } catch {
+    return { orderCount: 0, unitsSold: 0, revenueCents: 0, recentOrders: [] };
+  }
+}
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en").format(value);
+}
+
+function formatCurrency(cents: number, currency = "USD") {
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
 }
 
 function formatDate(value: string | null | undefined) {
@@ -259,6 +291,57 @@ function AmazonUnmatchedListings({
   );
 }
 
+function AmazonSalesPanel({ sales }: { sales: AmazonSalesResponse }) {
+  return (
+    <section className="ss-card" style={{ overflow: "hidden" }}>
+      <div className="flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
+        <div>
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--ss-ink)" }}>Amazon sales</h2>
+          <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>
+            Last 90 days from synced Amazon orders.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="ss-pill ss-pill-sage">{formatCurrency(sales.revenueCents)}</span>
+          <span className="ss-pill">{formatNumber(sales.orderCount)} orders</span>
+          <span className="ss-pill">{formatNumber(sales.unitsSold)} units</span>
+        </div>
+      </div>
+
+      {sales.recentOrders.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="ss-tbl" style={{ minWidth: 640 }}>
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th style={{ textAlign: "right" }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sales.recentOrders.map((order) => (
+                <tr key={order.id}>
+                  <td className="ss-num" style={{ color: "var(--ss-ink)" }}>{order.id}</td>
+                  <td><span className="ss-pill">{order.status ?? "Unknown"}</span></td>
+                  <td className="ss-num" style={{ color: "var(--ss-ink-3)" }}>{formatDate(order.createdAt)}</td>
+                  <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-sage-ink)" }}>
+                    {formatCurrency(order.totalPriceCents, order.currency)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div style={{ padding: 16, fontSize: 13, color: "var(--ss-ink-3)" }}>
+          No Amazon orders synced yet. Use Sync channel to pull the latest Amazon orders.
+        </div>
+      )}
+    </section>
+  );
+}
+
 export async function ChannelWorkspace({
   platform,
   title,
@@ -268,12 +351,15 @@ export async function ChannelWorkspace({
   title: string;
   meta: string;
 }) {
-  const [products, statuses, amazonUnmatched] = await Promise.all([
+  const [products, statuses, amazonUnmatched, amazonSales] = await Promise.all([
     getProducts(),
     getStatus(),
     platform === "amazon_sp"
       ? getAmazonUnmatchedListings()
       : Promise.resolve({ fetchedListings: 0, unmatchedCount: 0, items: [] }),
+    platform === "amazon_sp"
+      ? getAmazonSales()
+      : Promise.resolve({ orderCount: 0, unitsSold: 0, revenueCents: 0, recentOrders: [] }),
   ]);
   const integration = statuses.find((status) => status.platform === platform);
   const pendingJobs = integration?.pendingJobs ?? integration?.pending_jobs ?? 0;
@@ -293,10 +379,10 @@ export async function ChannelWorkspace({
         <MetricCard label="Listed products" value={formatNumber(listedProducts.length)} sub={`${formatNumber(products.length)} total products`} />
         <MetricCard label="Needs attention" value={formatNumber(issueProducts.length)} accent={issueProducts.length > 0 ? "warn" : "good"} sub="Listings, attributes, or quality" />
         <MetricCard
-          label={platform === "amazon_sp" ? "Unmatched Amazon" : "Not listed"}
-          value={formatNumber(platform === "amazon_sp" ? amazonUnmatched.unmatchedCount : notListedProducts.length)}
-          accent={(platform === "amazon_sp" ? amazonUnmatched.unmatchedCount : notListedProducts.length) > 0 ? "warn" : "good"}
-          sub={platform === "amazon_sp" ? `${formatNumber(notListedProducts.length)} catalog products not linked` : undefined}
+          label={platform === "amazon_sp" ? "Amazon sales" : "Not listed"}
+          value={platform === "amazon_sp" ? formatCurrency(amazonSales.revenueCents) : formatNumber(notListedProducts.length)}
+          accent={platform === "amazon_sp" ? "good" : notListedProducts.length > 0 ? "warn" : "good"}
+          sub={platform === "amazon_sp" ? `${formatNumber(amazonSales.orderCount)} orders · ${formatNumber(amazonSales.unitsSold)} units` : undefined}
         />
         <MetricCard label="Open alerts" value={formatNumber(openAlerts)} accent={openAlerts > 0 ? "bad" : "good"} sub={`${formatNumber(failedJobs)} failed jobs`} />
       </div>
@@ -314,12 +400,16 @@ export async function ChannelWorkspace({
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/operations"
-              className="ss-btn ss-btn-sm ss-btn-primary"
-            >
-              Sync channel
-            </Link>
+            {integration?.id ? (
+              <SyncNowButton integrationId={integration.id} />
+            ) : (
+              <Link
+                href="/operations"
+                className="ss-btn ss-btn-sm ss-btn-primary"
+              >
+                Sync channel
+              </Link>
+            )}
             <Link
               href={gapHref(platform)}
               className="ss-btn ss-btn-sm"
@@ -329,6 +419,8 @@ export async function ChannelWorkspace({
           </div>
         </div>
       </section>
+
+      {platform === "amazon_sp" && <AmazonSalesPanel sales={amazonSales} />}
 
       {/* Listed products */}
       <section className="ss-card" style={{ overflow: "hidden" }}>

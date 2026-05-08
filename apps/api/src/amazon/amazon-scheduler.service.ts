@@ -7,7 +7,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { Queue } from 'bullmq';
 import type * as schema from '@sunday-stripe/db';
 import { DRIZZLE_DATABASE } from '../database/database.constants.js';
-import { AMAZON_SYNC_QUEUE, type AmazonInitialSyncJob } from './amazon.types.js';
+import { AMAZON_SYNC_QUEUE, type AmazonSyncJob } from './amazon.types.js';
 
 type Db = PostgresJsDatabase<typeof schema>;
 
@@ -17,7 +17,7 @@ export class AmazonSchedulerService {
 
   constructor(
     @Inject(DRIZZLE_DATABASE) private readonly db: Db,
-    @InjectQueue(AMAZON_SYNC_QUEUE) private readonly amazonQueue: Queue<AmazonInitialSyncJob>,
+    @InjectQueue(AMAZON_SYNC_QUEUE) private readonly amazonQueue: Queue<AmazonSyncJob>,
   ) {}
 
   @Cron('0 6 * * *')
@@ -35,20 +35,25 @@ export class AmazonSchedulerService {
     }
 
     for (const integration of integrations) {
-      const [syncJob] = await this.db
-        .insert(syncJobs)
-        .values({
-          integrationAccountId: integration.id,
-          jobType: 'amazon_initial_sync',
-          state: 'pending',
-        })
-        .returning({ id: syncJobs.id });
-
-      await this.amazonQueue.add('amazon_initial_sync', { syncJobId: syncJob.id });
-
-      this.logger.log(
-        `Scheduled Amazon sync enqueued integrationAccountId=${integration.id} syncJobId=${syncJob.id}`,
-      );
+      await this.enqueueAmazonJob(integration.id, 'amazon_initial_sync');
+      await this.enqueueAmazonJob(integration.id, 'amazon_orders_sync');
     }
+  }
+
+  private async enqueueAmazonJob(integrationAccountId: string, jobType: 'amazon_initial_sync' | 'amazon_orders_sync') {
+    const [syncJob] = await this.db
+      .insert(syncJobs)
+      .values({
+        integrationAccountId,
+        jobType,
+        state: 'pending',
+      })
+      .returning({ id: syncJobs.id });
+
+    await this.amazonQueue.add(jobType, { syncJobId: syncJob.id });
+
+    this.logger.log(
+      `Scheduled Amazon sync enqueued integrationAccountId=${integrationAccountId} jobType=${jobType} syncJobId=${syncJob.id}`,
+    );
   }
 }
