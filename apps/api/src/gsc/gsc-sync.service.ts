@@ -39,9 +39,10 @@ export class GscSyncService {
       const { startDate, endDate } = this.dateRange(PERIOD_DAYS);
       this.logger.log(`GSC sync ${startDate} → ${endDate} site=${siteUrl}`);
 
-      const [queryRows, pageRows] = await Promise.all([
+      const [queryRows, pageRows, queryPageRows] = await Promise.all([
         this.gscApi.querySearchAnalytics(siteUrl, ['query'], startDate, endDate),
         this.gscApi.querySearchAnalytics(siteUrl, ['page'], startDate, endDate),
+        this.gscApi.querySearchAnalytics(siteUrl, ['query', 'page'], startDate, endDate, 5000),
       ]);
 
       const domain = siteUrl.replace('sc-domain:', '');
@@ -62,11 +63,21 @@ export class GscSyncService {
         upserted++;
       }
 
+      for (const row of queryPageRows) {
+        const query = row.keys[0];
+        const rawUrl = row.keys[1];
+        const url = rawUrl.startsWith(domainPrefix)
+          ? rawUrl.slice(domainPrefix.length) || '/'
+          : rawUrl;
+        await this.upsertRow(integration.id, integration.workspaceId, 'query_page', `${query}\t${url}`, row);
+        upserted++;
+      }
+
       await this.db
         .update(syncJobs)
         .set({
           state: 'done',
-          payloadJson: { query_count: queryRows.length, page_count: pageRows.length, upserted },
+          payloadJson: { query_count: queryRows.length, page_count: pageRows.length, query_page_count: queryPageRows.length, upserted },
           finishedAt: new Date(),
           errorJson: null,
         })

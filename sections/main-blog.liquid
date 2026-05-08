@@ -22,25 +22,60 @@
       {{ blog.title | escape }}
     </h1>
 
-    <div class="blog-articles {% if section.settings.layout == 'collage' %}blog-articles--collage{% endif %}">
+    <div class="blog-articles blog-articles--compact">
       {%- for article in blog.articles -%}
-        <div
-          class="blog-articles__article article{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}"
+        <article
+          class="blog-articles__article blog-article-row{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--slide-in{% endif %}"
           {% if settings.animations_reveal_on_scroll %}
             data-cascade
             style="--animation-order: {{ forloop.index }};"
           {% endif %}
         >
-          {%- render 'article-card',
-            article: article,
-            media_height: section.settings.image_height,
-            media_aspect_ratio: article.image.aspect_ratio,
-            show_image: section.settings.show_image,
-            show_date: section.settings.show_date,
-            show_author: section.settings.show_author,
-            show_excerpt: true
-          -%}
-        </div>
+          {%- if section.settings.show_image and article.image -%}
+            <a class="blog-article-row__media" href="{{ article.url }}" aria-label="{{ article.title | escape }}">
+              <img
+                src="{{ article.image.src | image_url: width: 360 }}"
+                srcset="
+                  {{ article.image.src | image_url: width: 180 }} 180w,
+                  {{ article.image.src | image_url: width: 240 }} 240w,
+                  {{ article.image.src | image_url: width: 360 }} 360w
+                "
+                sizes="(min-width: 750px) 180px, 112px"
+                alt="{{ article.image.src.alt | escape }}"
+                width="180"
+                height="120"
+                loading="lazy"
+              >
+            </a>
+          {%- endif -%}
+
+          <div class="blog-article-row__content">
+            <div class="blog-article-row__meta caption-with-letter-spacing">
+              {%- if section.settings.show_date -%}
+                {{ article.published_at | time_tag: format: 'date' }}
+              {%- endif -%}
+              {%- if section.settings.show_author -%}
+                <span>{{ article.author }}</span>
+              {%- endif -%}
+            </div>
+
+            <h2 class="blog-article-row__title">
+              <a href="{{ article.url }}" class="full-unstyled-link">
+                {{ article.title | escape }}
+              </a>
+            </h2>
+
+            {%- if article.excerpt.size > 0 or article.content.size > 0 -%}
+              <p class="blog-article-row__excerpt">
+                {%- if article.excerpt.size > 0 -%}
+                  {{ article.excerpt | strip_html | truncatewords: 22 }}
+                {%- else -%}
+                  {{ article.content | strip_html | truncatewords: 22 }}
+                {%- endif -%}
+              </p>
+            {%- endif -%}
+          </div>
+        </article>
       {%- endfor -%}
     </div>
 

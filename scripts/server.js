@@ -5,6 +5,21 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 
+const ENV_PATH = path.join(__dirname, '..', '.env')
+if (fs.existsSync(ENV_PATH)) {
+  const env = fs.readFileSync(ENV_PATH, 'utf8')
+  for (const line of env.split(/\r?\n/)) {
+    if (!line || line.trim().startsWith('#')) continue
+    const index = line.indexOf('=')
+    if (index < 0) continue
+    const key = line.slice(0, index).trim()
+    const value = line.slice(index + 1).trim().replace(/^['"]|['"]$/g, '')
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value
+    }
+  }
+}
+
 const API_KEY = process.env.SHOPIFY_API_KEY
 const API_SECRET = process.env.SHOPIFY_API_SECRET
 const SHOP = process.env.SHOPIFY_SHOP
@@ -15,7 +30,7 @@ if (!API_KEY || !API_SECRET || !SHOP) {
 const PORT = process.env.PORT || 3000
 const HOST = process.env.HOST || `http://localhost:${PORT}`
 const TOKEN_PATH = path.join(os.homedir(), '.config', 'shopify', 'token.json')
-const SCOPES = 'read_products,write_products,read_content,write_content,read_orders,read_inventory,write_inventory'
+const SCOPES = process.env.SHOPIFY_SCOPES || 'read_products,write_products,read_content,write_content,read_orders,read_inventory,write_inventory'
 
 const server = http.createServer((req, res) => {
   const parsed = url.parse(req.url, true)

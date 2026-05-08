@@ -39,6 +39,13 @@ function fmtPct(n: number) {
   return `${n.toFixed(1)}%`;
 }
 
+const fieldStyle = {
+  border: "1px solid var(--ss-line-strong)",
+  background: "var(--ss-bg-card)",
+  color: "var(--ss-ink)",
+  borderRadius: 7,
+} as const;
+
 function QueryRow({ row }: { row: AlmostPage1Row }) {
   const [state, setState] = useState<RowState>({ status: "idle" });
 
@@ -101,17 +108,17 @@ function QueryRow({ row }: { row: AlmostPage1Row }) {
   const productId = state.status === "done" ? (state.result.productId ?? row.matchedProductId) : row.matchedProductId;
 
   return (
-    <li className="border border-zinc-800 bg-zinc-900">
+    <li style={{ background: "var(--ss-bg-card)" }}>
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="font-mono text-sm font-medium text-zinc-100">&ldquo;{row.query}&rdquo;</span>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
-            <span>pos <span className="font-semibold text-amber-400">{row.position.toFixed(1)}</span></span>
+          <span className="ss-num" style={{ fontSize: 14, fontWeight: 500, color: "var(--ss-ink)" }}>&ldquo;{row.query}&rdquo;</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+            <span>pos <span style={{ fontWeight: 600, color: "var(--ss-amber-ink)" }}>{row.position.toFixed(1)}</span></span>
             <span>{fmt(row.impressions)} impr.</span>
             <span>{fmt(row.clicks)} clicks</span>
             <span>{fmtPct(row.ctr)} CTR</span>
             {row.potentialExtraClicks > 0 && (
-              <span className="font-medium text-emerald-400">
+              <span style={{ fontWeight: 500, color: "var(--ss-sage-ink)" }}>
                 +{fmt(row.potentialExtraClicks)} potential clicks at #1
               </span>
             )}
@@ -119,7 +126,8 @@ function QueryRow({ row }: { row: AlmostPage1Row }) {
           {row.matchedProductTitle && (
             <a
               href={`/products/${row.matchedProductId}`}
-              className="mt-0.5 text-xs text-blue-400 underline underline-offset-2 hover:text-blue-300"
+              className="mt-0.5 underline underline-offset-2"
+              style={{ fontSize: 12, color: "var(--ss-orange)" }}
             >
               {row.matchedProductTitle}
             </a>
@@ -129,32 +137,27 @@ function QueryRow({ row }: { row: AlmostPage1Row }) {
         <button
           onClick={handleOptimize}
           disabled={state.status === "loading" || state.status === "done"}
-          className={`shrink-0 border px-3 py-1.5 text-xs font-semibold transition-colors ${
-            state.status === "loading"
-              ? "cursor-wait border-blue-500 bg-blue-600 text-white"
-              : state.status === "done"
-                ? "cursor-default border-zinc-700 bg-zinc-800 text-zinc-500"
-                : "border-amber-500/60 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-          }`}
+          className={`ss-btn ss-btn-sm shrink-0 ${state.status === "loading" ? "ss-btn-primary cursor-wait" : ""} ${state.status === "done" ? "cursor-default opacity-60" : ""}`}
+          style={state.status === "idle" ? { borderColor: "var(--ss-amber)", color: "var(--ss-amber-ink)", background: "var(--ss-bg-card)" } : undefined}
         >
           {state.status === "loading" ? "Optimizing…" : state.status === "done" ? "Done" : "AI Optimize"}
         </button>
       </div>
 
       {state.status === "done" && (
-        <div className="border-t border-zinc-800 bg-zinc-950 px-4 py-4 space-y-4">
+        <div className="space-y-4 px-4 py-4" style={{ borderTop: "1px solid var(--ss-line)", background: "var(--ss-bg-elev)" }}>
           <div className="flex items-start justify-between gap-2">
-            <p className="text-xs italic text-zinc-400">{state.result.reasoning}</p>
+            <p style={{ fontSize: 12, fontStyle: "italic", color: "var(--ss-ink-3)" }}>{state.result.reasoning}</p>
             {state.result.cached && (
-              <span className="shrink-0 border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-500">cached</span>
+              <span className="ss-pill shrink-0">cached</span>
             )}
           </div>
 
           <div className="space-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">SEO Title</p>
-                <span className={`text-xs ${state.editTitle.length > 60 ? "text-red-400" : "text-zinc-500"}`}>
+                <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>SEO Title</p>
+                <span style={{ fontSize: 12, color: state.editTitle.length > 60 ? "var(--ss-red-ink)" : "var(--ss-ink-3)" }}>
                   {state.editTitle.length}/60
                 </span>
               </div>
@@ -162,14 +165,15 @@ function QueryRow({ row }: { row: AlmostPage1Row }) {
                 type="text"
                 value={state.editTitle}
                 onChange={(e) => setState({ ...state, editTitle: e.target.value })}
-                className="w-full border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-zinc-500 focus:outline-none"
+                className="w-full px-3 py-2 text-sm focus:outline-none"
+                style={fieldStyle}
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Meta Description</p>
-                <span className={`text-xs ${state.editDescription.length > 160 ? "text-red-400" : "text-zinc-500"}`}>
+                <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>Meta Description</p>
+                <span style={{ fontSize: 12, color: state.editDescription.length > 160 ? "var(--ss-red-ink)" : "var(--ss-ink-3)" }}>
                   {state.editDescription.length}/160
                 </span>
               </div>
@@ -177,7 +181,8 @@ function QueryRow({ row }: { row: AlmostPage1Row }) {
                 value={state.editDescription}
                 onChange={(e) => setState({ ...state, editDescription: e.target.value })}
                 rows={3}
-                className="w-full resize-none border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-zinc-500 focus:outline-none"
+                className="w-full resize-none px-3 py-2 text-sm focus:outline-none"
+                style={fieldStyle}
               />
             </div>
           </div>
@@ -187,28 +192,22 @@ function QueryRow({ row }: { row: AlmostPage1Row }) {
               <button
                 onClick={handleApply}
                 disabled={state.applyState === "saving" || state.applyState === "saved"}
-                className={`border px-4 py-2 text-xs font-semibold transition-colors ${
-                  state.applyState === "saving"
-                    ? "cursor-wait border-blue-500 bg-blue-600 text-white"
-                    : state.applyState === "saved"
-                      ? "cursor-default border-emerald-600 bg-emerald-900/40 text-emerald-400"
-                      : "border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700"
-                }`}
+                className={`ss-btn ss-btn-sm ${state.applyState === "saving" ? "ss-btn-primary cursor-wait" : ""} ${state.applyState === "saved" ? "cursor-default opacity-70" : ""}`}
               >
                 {state.applyState === "saving" ? "Saving…" : state.applyState === "saved" ? "✓ Saved to Shopify" : "Apply to Shopify"}
               </button>
             ) : (
-              <p className="text-xs text-zinc-500">No matching product found — copy fields manually.</p>
+              <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>No matching product found — copy fields manually.</p>
             )}
             {state.applyState === "error" && (
-              <p className="text-xs text-red-400">{state.applyError}</p>
+              <p style={{ fontSize: 12, color: "var(--ss-red-ink)" }}>{state.applyError}</p>
             )}
           </div>
         </div>
       )}
 
       {state.status === "error" && (
-        <div className="border-t-2 border-red-700 bg-red-950/40 px-4 py-3 text-sm font-medium text-red-400">
+        <div className="px-4 py-3" style={{ borderTop: "2px solid var(--ss-red)", background: "var(--ss-red-soft)", color: "var(--ss-red-ink)", fontSize: 14, fontWeight: 500 }}>
           Error: {state.message}
         </div>
       )}
@@ -222,31 +221,33 @@ export function AlmostPage1Table({ rows }: { rows: AlmostPage1Row[] }) {
   const totalPotential = rows.reduce((s, r) => s + r.potentialExtraClicks, 0);
 
   return (
-    <section className="overflow-hidden rounded border border-amber-500/30 bg-zinc-900">
-      <div className="border-b border-amber-500/30 bg-amber-500/5 px-4 py-3">
+    <section className="ss-card" style={{ overflow: "hidden", borderColor: "var(--ss-amber-soft)" }}>
+      <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--ss-amber-soft)", background: "color-mix(in oklab, var(--ss-amber-soft) 28%, var(--ss-bg-card))" }}>
         <div className="flex items-baseline justify-between gap-4">
           <div>
-            <h2 className="text-base font-semibold text-amber-300">
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--ss-amber-ink)" }}>
               Almost Page 1
-              <span className="ml-2 font-mono text-sm font-normal text-amber-500/80">
+              <span className="ss-num" style={{ marginLeft: 8, fontSize: 14, fontWeight: 400, color: "var(--ss-amber-ink)" }}>
                 {rows.length} {rows.length === 1 ? "query" : "queries"} at position 11–20
               </span>
             </h2>
-            <p className="mt-0.5 text-xs text-zinc-400">
+            <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>
               These queries have proven search demand. Small copy improvements can move them onto page 1.
             </p>
           </div>
           {totalPotential > 0 && (
             <div className="shrink-0 text-right">
-              <p className="text-lg font-bold text-emerald-400">+{fmt(totalPotential)}</p>
-              <p className="text-xs text-zinc-500">potential clicks/mo at #1</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: "var(--ss-sage-ink)" }}>+{fmt(totalPotential)}</p>
+              <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>potential clicks/mo at #1</p>
             </div>
           )}
         </div>
       </div>
-      <ul className="divide-y divide-zinc-800">
+      <ul style={{ borderTop: "0" }}>
         {rows.map((row, i) => (
-          <QueryRow key={i} row={row} />
+          <div key={i} style={{ borderTop: i === 0 ? "0" : "1px solid var(--ss-line)" }}>
+            <QueryRow row={row} />
+          </div>
         ))}
       </ul>
     </section>

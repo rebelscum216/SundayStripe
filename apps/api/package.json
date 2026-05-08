@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
+    "publish:article": "tsx src/scripts/publish-shopify-article.ts",
     "start": "node dist/main.js",
     "start:prod": "node dist/main"
   },

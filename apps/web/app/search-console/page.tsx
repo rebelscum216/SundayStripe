@@ -5,6 +5,8 @@ import { QuickWinsTable } from "./quick-wins-table";
 
 type GscSummary = { clicks: number; impressions: number; ctr: number; position: number; row_count: number };
 type GscRow = { query?: string; url?: string; clicks: number; impressions: number; ctr: number; position: number };
+type QueryPageEntry = { query: string; clicks: number; impressions: number; ctr: number; position: number };
+type ProductPageGroup = { url: string; clicks: number; impressions: number; queries: QueryPageEntry[] };
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:3001";
 
@@ -30,6 +32,12 @@ async function getAlmostPage1(): Promise<AlmostPage1Row[]> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/search-console/almost-page-1`, { cache: "no-store" });
     return res.ok ? (await res.json()) as AlmostPage1Row[] : [];
+  } catch { return []; }
+}
+async function getByProductPage(): Promise<ProductPageGroup[]> {
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/search-console/by-product-page`, { cache: "no-store" });
+    return res.ok ? (await res.json()) as ProductPageGroup[] : [];
   } catch { return []; }
 }
 
@@ -107,8 +115,8 @@ function QueryTable({ rows, keyLabel, keyField }: {
 }
 
 export default async function SearchConsolePage() {
-  const [summary, queries, pages, almostPage1] = await Promise.all([
-    getSummary(), getQueries(), getPages(), getAlmostPage1(),
+  const [summary, queries, pages, almostPage1, byProductPage] = await Promise.all([
+    getSummary(), getQueries(), getPages(), getAlmostPage1(), getByProductPage(),
   ]);
 
   const quickWins = pages.filter((p) => p.position >= 5 && p.position <= 20 && p.impressions >= 50);
@@ -222,6 +230,61 @@ export default async function SearchConsolePage() {
 
             {/* Almost Page 1 */}
             <AlmostPage1Table rows={almostPage1} />
+
+            {/* Queries by Product Page */}
+            {byProductPage.length > 0 && (
+              <div className="ss-card" style={{ overflow: "hidden" }}>
+                <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ss-line)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontFamily: "var(--ss-font-display)", fontSize: 13, fontWeight: 600, color: "var(--ss-ink)" }}>
+                        Queries by Product Page
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--ss-ink-3)", marginTop: 2 }}>
+                        Exact query → landing page mapping · {byProductPage.length} product pages
+                      </div>
+                    </div>
+                    <span className="ss-pill ss-pill-sage">{byProductPage.length} pages</span>
+                  </div>
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="ss-tbl" style={{ minWidth: 600 }}>
+                    <thead><tr>
+                      <th style={{ width: "30%" }}>Product Page</th>
+                      <th>Top Queries</th>
+                      <th style={{ textAlign: "right" }}>Clicks</th>
+                      <th style={{ textAlign: "right" }}>Impressions</th>
+                    </tr></thead>
+                    <tbody>
+                      {byProductPage.map((group, i) => (
+                        <tr key={i}>
+                          <td>
+                            <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
+                              {group.url}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 8px" }}>
+                              {group.queries.slice(0, 5).map((q, j) => (
+                                <span key={j} style={{ fontSize: 11, color: "var(--ss-ink-2)", background: "var(--ss-bg-elev)", border: "1px solid var(--ss-line)", borderRadius: 4, padding: "1px 6px", whiteSpace: "nowrap" }}>
+                                  {q.query}
+                                  <span className="ss-num" style={{ color: "var(--ss-ink-4)", marginLeft: 4 }}>#{q.position.toFixed(0)}</span>
+                                </span>
+                              ))}
+                              {group.queries.length > 5 && (
+                                <span style={{ fontSize: 11, color: "var(--ss-ink-4)" }}>+{group.queries.length - 5} more</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmtNum(group.clicks)}</td>
+                          <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmtK(group.impressions)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Query explorer */}
             <div className="ss-card" style={{ overflow: "hidden" }}>

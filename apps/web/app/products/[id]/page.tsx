@@ -54,8 +54,9 @@ type Alert = {
   payloadJson: AlertPayload | null;
   createdAt: string;
 };
-type GscRow = { url?: string; query?: string; clicks: number; impressions: number; ctr: number; position: number };
-type GscData = { handle: string; pages: GscRow[]; queries: GscRow[] };
+type GscPageRow = { url: string; clicks: number; impressions: number; ctr: number; position: number };
+type GscQueryRow = { query: string; landingUrl: string | null; clicks: number; impressions: number; ctr: number; position: number };
+type GscData = { handle: string; dataSource: "exact" | "fuzzy"; pages: GscPageRow[]; queries: GscQueryRow[] };
 type ProductDetail = {
   product: {
     id: string;
@@ -537,7 +538,12 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
       {/* Search Console */}
       {gsc && (gsc.pages.length > 0 || gsc.queries.length > 0) && (
         <section className="flex flex-col gap-4">
-          <SectionHeader title={`Search Console — /products/${gsc.handle}`} />
+          <div className="flex items-center gap-3">
+            <SectionHeader title={`Search Console — /products/${gsc.handle}`} />
+            {gsc.dataSource === "fuzzy" && (
+              <span className="ss-pill" style={{ fontSize: 10 }}>fuzzy match · resync for exact data</span>
+            )}
+          </div>
           {gsc.pages.length > 0 && (
             <div className="ss-card" style={{ overflow: "hidden" }}>
               <CardHeader title="Landing Pages" />
@@ -569,12 +575,13 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           )}
           {gsc.queries.length > 0 && (
             <div className="ss-card" style={{ overflow: "hidden" }}>
-              <CardHeader title="Search Queries" />
+              <CardHeader title={`Search Queries${gsc.dataSource === "exact" ? " — exact landing page match" : ""}`} />
               <div className="overflow-x-auto">
                 <table className="ss-tbl">
                   <thead>
                     <tr>
                       <th>Query</th>
+                      {gsc.dataSource === "exact" && <th>Landing Page</th>}
                       <th style={{ textAlign: "right" }}>Clicks</th>
                       <th style={{ textAlign: "right" }}>Impressions</th>
                       <th style={{ textAlign: "right" }}>CTR</th>
@@ -585,6 +592,11 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                     {gsc.queries.map((row, i) => (
                       <tr key={i}>
                         <td style={{ color: "var(--ss-ink-2)" }}>{row.query}</td>
+                        {gsc.dataSource === "exact" && (
+                          <td className="ss-num" style={{ fontSize: 11, color: "var(--ss-ink-4)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {row.landingUrl ?? "—"}
+                          </td>
+                        )}
                         <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.clicks}</td>
                         <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{fmt(row.impressions)}</td>
                         <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{row.ctr.toFixed(1)}%</td>

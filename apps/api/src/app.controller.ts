@@ -472,7 +472,7 @@ export class AppController {
 
     const handle = this.titleToHandle(product.title ?? product.canonicalSku);
 
-    const [pageRows, queryRows] = await Promise.all([
+    const [pageRows, queryPageRows, fuzzyQueryRows] = await Promise.all([
       this.db
         .select({
           url: searchPerformance.dimensionValue,
@@ -493,6 +493,24 @@ export class AppController {
         .limit(10),
       this.db
         .select({
+          dimensionValue: searchPerformance.dimensionValue,
+          clicks: searchPerformance.clicks,
+          impressions: searchPerformance.impressions,
+          ctr: searchPerformance.ctr,
+          position: searchPerformance.position,
+        })
+        .from(searchPerformance)
+        .where(
+          and(
+            eq(searchPerformance.workspaceId, product.workspaceId),
+            eq(searchPerformance.dimension, "query_page"),
+            sql`${searchPerformance.dimensionValue} ilike ${`%/products/${handle}%`}`,
+          ),
+        )
+        .orderBy(desc(searchPerformance.impressions))
+        .limit(30),
+      this.db
+        .select({
           query: searchPerformance.dimensionValue,
           clicks: searchPerformance.clicks,
           impressions: searchPerformance.impressions,
@@ -511,8 +529,32 @@ export class AppController {
         .limit(20),
     ]);
 
+    const exactQueries = queryPageRows.map((r) => {
+      const tab = r.dimensionValue.indexOf("\t");
+      return {
+        query: tab >= 0 ? r.dimensionValue.slice(0, tab) : r.dimensionValue,
+        landingUrl: tab >= 0 ? r.dimensionValue.slice(tab + 1) : null,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        ctr: r.ctr / 1000,
+        position: r.position / 10,
+      };
+    });
+
+    const queries = exactQueries.length > 0
+      ? exactQueries
+      : fuzzyQueryRows.map((r) => ({
+          query: r.query,
+          landingUrl: null as string | null,
+          clicks: r.clicks,
+          impressions: r.impressions,
+          ctr: r.ctr / 1000,
+          position: r.position / 10,
+        }));
+
     return {
       handle,
+      dataSource: exactQueries.length > 0 ? "exact" : "fuzzy",
       pages: pageRows.map((r) => ({
         url: r.url,
         clicks: r.clicks,
@@ -520,13 +562,7 @@ export class AppController {
         ctr: r.ctr / 1000,
         position: r.position / 10,
       })),
-      queries: queryRows.map((r) => ({
-        query: r.query,
-        clicks: r.clicks,
-        impressions: r.impressions,
-        ctr: r.ctr / 1000,
-        position: r.position / 10,
-      })),
+      queries,
     };
   }
 
@@ -1156,6 +1192,63 @@ export class AppController {
           : null,
       };
     });
+  }
+
+  @Get("search-console/by-product-page")
+  async gscByProductPage() {
+    const rows = await this.db
+      .select({
+        dimensionValue: searchPerformance.dimensionValue,
+        clicks: searchPerformance.clicks,
+        impressions: searchPerformance.impressions,
+        ctr: searchPerformance.ctr,
+        position: searchPerformance.position,
+      })
+      .from(searchPerformance)
+      .where(
+        and(
+          eq(searchPerformance.dimension, "query_page"),
+          sql`${searchPerformance.dimensionValue} ilike '%/products/%'`,
+        ),
+      )
+      .orderBy(desc(searchPerformance.impressions))
+      .limit(2000);
+
+    const byPage = new Map<string, {
+      url: string;
+      clicks: number;
+      impressions: number;
+      queries: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
+    }>();
+
+    for (const row of rows) {
+      const tab = row.dimensionValue.indexOf("\t");
+      if (tab === -1) continue;
+      const query = row.dimensionValue.slice(0, tab);
+      const url = row.dimensionValue.slice(tab + 1);
+
+      if (!byPage.has(url)) {
+        byPage.set(url, { url, clicks: 0, impressions: 0, queries: [] });
+      }
+      const entry = byPage.get(url)!;
+      entry.clicks += row.clicks;
+      entry.impressions += row.impressions;
+      entry.queries.push({
+        query,
+        clicks: row.clicks,
+        impressions: row.impressions,
+        ctr: row.ctr / 1000,
+        position: row.position / 10,
+      });
+    }
+
+    return Array.from(byPage.values())
+      .sort((a, b) => b.impressions - a.impressions)
+      .slice(0, 50)
+      .map((p) => ({
+        ...p,
+        queries: p.queries.sort((a, b) => b.impressions - a.impressions).slice(0, 10),
+      }));
   }
 
   @Get("revenue-trend")
