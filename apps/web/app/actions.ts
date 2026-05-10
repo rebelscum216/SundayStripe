@@ -11,6 +11,66 @@ async function assertOk(response: Response, action: string) {
   }
 }
 
+async function jsonOrThrow<T>(response: Response, action: string): Promise<T> {
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`${action} failed (${response.status}): ${detail || response.statusText}`);
+  }
+  return (await response.json()) as T;
+}
+
+export type OptimizePageResult = {
+  seoTitle: string;
+  metaDescription: string;
+  reasoning: string;
+  productId: string | null;
+  productTitle: string | null;
+  recommendationId: string | null;
+  cached: boolean;
+};
+
+export async function optimizePageSeo(input: {
+  url: string;
+  position: number;
+  impressions: number;
+  topQueries: string[];
+}) {
+  return jsonOrThrow<OptimizePageResult>(
+    await fetch(`${apiBaseUrl}/api/ai/optimize-page`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+    "Optimize page",
+  );
+}
+
+export async function applyProductSeo(input: {
+  productId: string;
+  seoTitle: string;
+  seoDescription: string;
+  recommendationId?: string | null;
+}) {
+  await assertOk(
+    await fetch(`${apiBaseUrl}/api/products/${input.productId}/seo`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        seoTitle: input.seoTitle,
+        seoDescription: input.seoDescription,
+      }),
+    }),
+    "Apply SEO",
+  );
+
+  if (input.recommendationId) {
+    await fetch(`${apiBaseUrl}/api/ai/recommendations/${input.recommendationId}/accept`, { method: "PATCH" });
+  }
+
+  revalidatePath("/search-console");
+  revalidatePath(`/products/${input.productId}`);
+}
+
 export async function clearFailedJobs() {
   await assertOk(
     await fetch(`${apiBaseUrl}/api/jobs/failed`, { method: "DELETE" }),

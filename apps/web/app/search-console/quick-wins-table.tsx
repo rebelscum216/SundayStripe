@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { applyProductSeo, optimizePageSeo, type OptimizePageResult } from "../actions";
 
 type GscRow = {
   query?: string;
@@ -11,22 +12,12 @@ type GscRow = {
   position: number;
 };
 
-type OptimizeResult = {
-  seoTitle: string;
-  metaDescription: string;
-  reasoning: string;
-  productId: string | null;
-  productTitle: string | null;
-  recommendationId: string | null;
-  cached: boolean;
-};
-
 type ApplyState = "idle" | "saving" | "saved" | "error";
 
 type RowState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "done"; result: OptimizeResult; editTitle: string; editDescription: string; applyState: ApplyState; applyError: string }
+  | { status: "done"; result: OptimizePageResult; editTitle: string; editDescription: string; applyState: ApplyState; applyError: string }
   | { status: "error"; message: string };
 
 function fmt(n: number) {
@@ -54,17 +45,7 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
     void (async () => {
       setState({ status: "loading" });
       try {
-        const res = await fetch("/api-proxy/ai/optimize-page", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, position: row.position, impressions: row.impressions, topQueries }),
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          setState({ status: "error", message: text || res.statusText });
-          return;
-        }
-        const result = (await res.json()) as OptimizeResult;
+        const result = await optimizePageSeo({ url, position: row.position, impressions: row.impressions, topQueries });
         setState({
           status: "done",
           result,
@@ -87,24 +68,12 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
     setState({ ...state, applyState: "saving", applyError: "" });
     void (async () => {
       try {
-        const res = await fetch(`/api-proxy/products/${productId}/seo`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ seoTitle: editTitle, seoDescription: editDescription }),
+        await applyProductSeo({
+          productId,
+          seoTitle: editTitle,
+          seoDescription: editDescription,
+          recommendationId,
         });
-        if (!res.ok) {
-          const text = await res.text();
-          setState((prev) =>
-            prev.status === "done"
-              ? { ...prev, applyState: "error", applyError: text || res.statusText }
-              : prev,
-          );
-          return;
-        }
-        // Mark recommendation accepted (best-effort — don't block on it)
-        if (recommendationId) {
-          void fetch(`/api-proxy/ai/recommendations/${recommendationId}/accept`, { method: "PATCH" });
-        }
         setState((prev) => (prev.status === "done" ? { ...prev, applyState: "saved" } : prev));
       } catch (err) {
         setState((prev) =>

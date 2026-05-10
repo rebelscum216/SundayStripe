@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { applyProductSeo, optimizePageSeo, type OptimizePageResult } from "../actions";
 
 export type AlmostPage1Row = {
   query: string;
@@ -14,21 +15,11 @@ export type AlmostPage1Row = {
   matchedPageUrl: string | null;
 };
 
-type OptimizeResult = {
-  seoTitle: string;
-  metaDescription: string;
-  reasoning: string;
-  productId: string | null;
-  productTitle: string | null;
-  recommendationId: string | null;
-  cached: boolean;
-};
-
 type ApplyState = "idle" | "saving" | "saved" | "error";
 type RowState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "done"; result: OptimizeResult; editTitle: string; editDescription: string; applyState: ApplyState; applyError: string }
+  | { status: "done"; result: OptimizePageResult; editTitle: string; editDescription: string; applyState: ApplyState; applyError: string }
   | { status: "error"; message: string };
 
 function fmt(n: number) {
@@ -55,21 +46,12 @@ function QueryRow({ row }: { row: AlmostPage1Row }) {
     void (async () => {
       setState({ status: "loading" });
       try {
-        const res = await fetch("/api-proxy/ai/optimize-page", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url,
-            position: row.position,
-            impressions: row.impressions,
-            topQueries: [row.query],
-          }),
+        const result = await optimizePageSeo({
+          url,
+          position: row.position,
+          impressions: row.impressions,
+          topQueries: [row.query],
         });
-        if (!res.ok) {
-          setState({ status: "error", message: await res.text() || res.statusText });
-          return;
-        }
-        const result = (await res.json()) as OptimizeResult;
         setState({ status: "done", result, editTitle: result.seoTitle, editDescription: result.metaDescription, applyState: "idle", applyError: "" });
       } catch (err) {
         setState({ status: "error", message: err instanceof Error ? err.message : "Unknown error" });
@@ -85,19 +67,12 @@ function QueryRow({ row }: { row: AlmostPage1Row }) {
     setState({ ...state, applyState: "saving", applyError: "" });
     void (async () => {
       try {
-        const res = await fetch(`/api-proxy/products/${productId}/seo`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ seoTitle: editTitle, seoDescription: editDescription }),
+        await applyProductSeo({
+          productId,
+          seoTitle: editTitle,
+          seoDescription: editDescription,
+          recommendationId: state.result.recommendationId,
         });
-        if (!res.ok) {
-          const errText = await res.text();
-          setState((prev) => prev.status === "done" ? { ...prev, applyState: "error", applyError: errText || res.statusText } : prev);
-          return;
-        }
-        if (state.result.recommendationId) {
-          void fetch(`/api-proxy/ai/recommendations/${state.result.recommendationId}/accept`, { method: "PATCH" });
-        }
         setState((prev) => prev.status === "done" ? { ...prev, applyState: "saved" } : prev);
       } catch (err) {
         setState((prev) => prev.status === "done" ? { ...prev, applyState: "error", applyError: err instanceof Error ? err.message : "Unknown error" } : prev);

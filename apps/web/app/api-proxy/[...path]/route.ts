@@ -44,7 +44,20 @@ async function proxy(request: Request, context: RouteContext) {
     init.body = await request.arrayBuffer();
   }
 
-  const upstream = await fetch(targetUrl, init);
+  let upstream: Response;
+  try {
+    upstream = await fetch(targetUrl, init);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return Response.json(
+      {
+        error: "API proxy request failed",
+        detail: message,
+        target: targetUrl.origin,
+      },
+      { status: 502 },
+    );
+  }
 
   return new Response(upstream.body, {
     status: upstream.status,
