@@ -206,7 +206,6 @@ export class AmazonSyncService {
         and(
           eq(channelListings.variantId, variantId),
           eq(channelListings.integrationAccountId, integration.id),
-          eq(channelListings.platformListingId, listingId),
         ),
       )
       .limit(1);
@@ -280,7 +279,8 @@ export class AmazonSyncService {
   }
 
   private getListingId(listing: AmazonListing): string {
-    return listing.asin ?? listing.sku;
+    // SP-API listings endpoint requires seller SKU, not ASIN
+    return listing.sku;
   }
 
   private getListingStatus(listing: AmazonListing): string {

@@ -175,6 +175,7 @@ export class AmazonApiService {
         method: 'PATCH',
         headers: { 'x-amz-access-token': token, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
       },
     );
 

@@ -2735,13 +2735,38 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       throw new BadRequestException("sku, attributeName, and value are required");
     }
 
-    const detail = await this.amazonApi.getListingDetail(sku);
-    if (!detail.productType) {
-      throw new BadRequestException(`Could not determine product type for SKU ${sku}`);
+    // platformListingId from the frontend may be an ASIN for data synced before the
+    // seller-SKU fix. Alert payloads always store the original seller_sku, so we use
+    // that as a fallback to resolve the correct SP-API identifier.
+    let sellerSku = sku;
+    const [productRow] = await this.db
+      .select({ workspaceId: products.workspaceId })
+      .from(products)
+      .where(eq(products.id, id))
+      .limit(1);
+    if (productRow) {
+      const [alertRow] = await this.db
+        .select({ payloadJson: alerts.payloadJson })
+        .from(alerts)
+        .where(
+          and(
+            eq(alerts.workspaceId, productRow.workspaceId),
+            eq(alerts.sourcePlatform, "amazon_sp"),
+            eq(alerts.entityRef, sku),
+          ),
+        )
+        .limit(1);
+      const payload = alertRow?.payloadJson as { seller_sku?: string } | null;
+      if (payload?.seller_sku) sellerSku = payload.seller_sku;
     }
 
-    await this.amazonApi.patchListingAttribute(sku, detail.productType, attributeName, value.trim());
-    return { ok: true, sku, attributeName, value: value.trim() };
+    const detail = await this.amazonApi.getListingDetail(sellerSku);
+    if (!detail.productType) {
+      throw new BadRequestException(`Could not determine product type for listing ${sellerSku}`);
+    }
+
+    await this.amazonApi.patchListingAttribute(sellerSku, detail.productType, attributeName, value.trim());
+    return { ok: true, sku: sellerSku, attributeName, value: value.trim() };
   }
 
   @Patch("products/:id/variants/:variantId/barcode")
