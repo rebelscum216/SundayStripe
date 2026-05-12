@@ -5,6 +5,7 @@ import { AmazonListingRewrite } from "./amazon-listing-rewrite";
 import { AiDescribeButton } from "./ai-describe";
 import { MissingAttributeFix } from "./missing-attribute-fix";
 import { ProductFixAssistant } from "./product-fix-assistant";
+import { ProductSeoOpportunity } from "./product-seo-opportunity";
 import { QualityScoreBadge } from "../quality-score-badge";
 import { AmazonAttributeFix } from "./amazon-attribute-fix";
 
@@ -206,6 +207,11 @@ function currency(cents: number) {
   return new Intl.NumberFormat("en", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
 }
 
+function firstParam(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
 const SectionHeader = ({ title, count }: { title: string; count?: number }) => (
   <h2 className="flex items-center gap-2" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>
     {title}
@@ -234,7 +240,13 @@ function CardHeader({ title, children }: { title: string; children?: ReactNode }
   );
 }
 
-export default async function ProductDetailPage({ params }: { params: { id: string } }) {
+export default async function ProductDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const [data, gsc, revenue] = await Promise.all([
     getProductDetail(params.id),
     getProductGsc(params.id),
@@ -280,6 +292,15 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   ];
 
   const totalMissing = missingAttributes.length + (amazonSkus.length > 0 ? amazonMissingAttrNames.length : 0);
+  const seoActionQuery = firstParam(searchParams?.query);
+  const seoActionUrl = firstParam(searchParams?.url);
+  const seoActionPosition = Number(firstParam(searchParams?.position));
+  const seoActionImpressions = Number(firstParam(searchParams?.impressions));
+  const showSeoOpportunity =
+    firstParam(searchParams?.ai) === "seo-rewrite" &&
+    Boolean(seoActionQuery) &&
+    Number.isFinite(seoActionPosition) &&
+    Number.isFinite(seoActionImpressions);
 
   return (
     <div className="ss-content-stack">
@@ -398,6 +419,18 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
       <section id="ai-actions" className="flex flex-col gap-3">
         <SectionHeader title="AI Actions" />
         <div className="ss-card" style={{ padding: 16 }}>
+          {showSeoOpportunity && seoActionQuery && (
+            <ProductSeoOpportunity
+              productId={product.id}
+              productTitle={product.title}
+              currentSeoTitle={product.seoTitle}
+              currentSeoDescription={product.seoDescription}
+              query={seoActionQuery}
+              url={seoActionUrl ?? `/products/${product.canonicalSku}`}
+              position={seoActionPosition}
+              impressions={seoActionImpressions}
+            />
+          )}
           {(product.seoTitle || product.seoDescription) && (
             <div className="mb-4 flex flex-col gap-2">
               <p style={{ fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>
@@ -586,7 +619,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   <div className="flex items-center gap-3">
                     <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{formatDate(alert.createdAt)}</span>
                     <form action={resolveAlert.bind(null, alert.id)}>
-                      <button type="submit" className="ss-btn ss-btn-sm">Dismiss</button>
+                      <button type="submit" className="ss-btn ss-btn-sm">Mark resolved</button>
                     </form>
                   </div>
                 </div>

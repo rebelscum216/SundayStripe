@@ -44,28 +44,31 @@ const CATEGORY_LABELS: Record<string, string> = {
   connector_error: "Connector error",
 };
 
-const SEVERITY_BORDER: Record<string, string> = {
-  critical: "border-red-800/60",
-  high: "border-red-800/40",
-  info: "border-zinc-700/60",
+const SEVERITY_BORDER_COLOR: Record<string, string> = {
+  critical: "var(--ss-red-soft)",
+  high: "var(--ss-orange-soft)",
+  info: "var(--ss-line)",
 };
 
 const SEVERITY_BADGE: Record<string, string> = {
-  critical: "border-red-500 bg-red-950 text-red-400",
-  high: "border-red-600/60 bg-red-950/60 text-red-400",
-  info: "border-zinc-600 bg-zinc-800 text-zinc-400",
+  critical: "ss-pill ss-pill-red",
+  high: "ss-pill ss-pill-red",
+  info: "ss-pill",
 };
 
 const ISSUE_SEV_COLOR: Record<string, string> = {
-  critical: "text-red-400",
-  error: "text-orange-400",
-  warning: "text-amber-400",
-  suggestion: "text-zinc-500",
+  critical: "var(--ss-red-ink)",
+  error: "var(--ss-orange)",
+  warning: "var(--ss-amber-ink)",
+  suggestion: "var(--ss-ink-3)",
 };
 
 const PLATFORMS = ["shopify", "merchant", "search_console", "amazon_sp"] as const;
 const SEVERITIES = ["critical", "high", "info"] as const;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -73,7 +76,6 @@ function formatDate(value: string) {
   const minute = date.getMinutes().toString().padStart(2, "0");
   const period = hour >= 12 ? "PM" : "AM";
   hour = hour % 12 || 12;
-
   return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}, ${hour}:${minute} ${period}`;
 }
 
@@ -90,95 +92,140 @@ function AlertRow({ alert }: { alert: Alert }) {
 
   return (
     <div
-      className={`rounded border bg-zinc-900 p-4 ${SEVERITY_BORDER[alert.severity] ?? "border-zinc-700/60"}`}
+      className="ss-card"
+      style={{
+        padding: 16,
+        borderColor:
+          SEVERITY_BORDER_COLOR[alert.severity] ?? "var(--ss-line)",
+      }}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`rounded border px-2 py-0.5 text-xs font-medium ${SEVERITY_BADGE[alert.severity] ?? SEVERITY_BADGE.info}`}
-            >
+            <span className={SEVERITY_BADGE[alert.severity] ?? "ss-pill"}>
               {alert.severity}
             </span>
-            <span className="text-xs text-zinc-500">
-              {PLATFORM_LABELS[alert.sourcePlatform ?? ""] ?? alert.sourcePlatform}
+            <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+              {PLATFORM_LABELS[alert.sourcePlatform ?? ""] ??
+                alert.sourcePlatform}
               {" · "}
               {CATEGORY_LABELS[alert.category] ?? alert.category}
             </span>
           </div>
-          <p className="font-medium text-zinc-100">{title}</p>
+          <p style={{ fontWeight: 500, color: "var(--ss-ink)" }}>{title}</p>
           {payload?.offer_id && (
-            <p className="font-mono text-xs text-zinc-500">offer: {payload.offer_id}</p>
+            <p className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+              offer: {payload.offer_id}
+            </p>
           )}
           {payload?.topic && (
-            <p className="font-mono text-xs text-zinc-500">webhook: {payload.topic}</p>
+            <p className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+              webhook: {payload.topic}
+            </p>
           )}
           {payload?.error && (
-            <p className="text-xs text-zinc-400">{payload.error}</p>
+            <p style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>{payload.error}</p>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-zinc-500">{formatDate(alert.createdAt)}</span>
+          <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+            {formatDate(alert.createdAt)}
+          </span>
           <form action={dismissAction}>
-            <button
-              type="submit"
-              className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
-            >
-              Dismiss
+            <button type="submit" className="ss-btn ss-btn-sm">
+              Mark resolved
             </button>
           </form>
         </div>
       </div>
 
       {firstIssue && (
-        <div className="mt-3 border-t border-zinc-700/60 pt-3">
-          {/* First issue always visible as a one-liner */}
+        <div
+          className="mt-3 pt-3"
+          style={{ borderTop: "1px solid var(--ss-line)" }}
+        >
           <div className="flex items-start gap-2">
             <span
-              className={`shrink-0 text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[String(firstIssue.severity ?? "").toLowerCase()] ?? "text-zinc-400"}`}
+              style={{
+                flexShrink: 0,
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color:
+                  ISSUE_SEV_COLOR[
+                    String(firstIssue.severity ?? "").toLowerCase()
+                  ] ?? "var(--ss-ink-3)",
+              }}
             >
               {firstIssue.severity ?? "issue"}
             </span>
             {firstIssue.attribute && (
-              <span className="shrink-0 font-mono text-xs text-zinc-500">{firstIssue.attribute}</span>
+              <span className="ss-num" style={{ flexShrink: 0, fontSize: 12, color: "var(--ss-ink-3)" }}>
+                {firstIssue.attribute}
+              </span>
             )}
             {firstIssue.description && (
-              <p className="text-xs text-zinc-300 leading-relaxed">{firstIssue.description}</p>
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--ss-ink-2)" }}>
+                {firstIssue.description}
+              </p>
             )}
           </div>
           {firstIssue.resolution && (
-            <p className="mt-1 text-xs text-zinc-500 pl-0">→ {firstIssue.resolution}</p>
+            <p style={{ marginTop: 4, fontSize: 12, color: "var(--ss-ink-3)" }}>
+              {firstIssue.resolution}
+            </p>
           )}
 
-          {/* Remaining issues behind toggle */}
           {extraCount > 0 && (
             <>
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
-                className="mt-2 text-xs text-zinc-500 hover:text-zinc-300"
+                className="ss-btn ss-btn-sm mt-2"
+                style={{ fontSize: 12 }}
               >
-                {expanded ? "Hide details" : `+${extraCount} more ${extraCount === 1 ? "issue" : "issues"}`}
+                {expanded
+                  ? "Hide details"
+                  : `+${extraCount} more ${extraCount === 1 ? "issue" : "issues"}`}
               </button>
               {expanded && (
-                <ul className="mt-2 space-y-2 border-t border-zinc-800 pt-2">
+                <ul
+                  className="mt-2 space-y-2 pt-2"
+                  style={{ borderTop: "1px solid var(--ss-line)" }}
+                >
                   {issues.slice(1).map((issue, i) => (
                     <li key={i} className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[String(issue.severity ?? "").toLowerCase()] ?? "text-zinc-400"}`}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            color:
+                              ISSUE_SEV_COLOR[
+                                String(issue.severity ?? "").toLowerCase()
+                              ] ?? "var(--ss-ink-3)",
+                          }}
                         >
                           {issue.severity ?? "issue"}
                         </span>
                         {issue.attribute && (
-                          <span className="font-mono text-xs text-zinc-500">{issue.attribute}</span>
+                          <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+                            {issue.attribute}
+                          </span>
                         )}
                       </div>
                       {issue.description && (
-                        <p className="text-xs text-zinc-300">{issue.description}</p>
+                        <p style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>
+                          {issue.description}
+                        </p>
                       )}
                       {issue.resolution && (
-                        <p className="text-xs text-zinc-500">→ {issue.resolution}</p>
+                        <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+                          {issue.resolution}
+                        </p>
                       )}
                     </li>
                   ))}
@@ -211,52 +258,89 @@ export function AlertsList({ alerts }: Props) {
     (byCategory[a.category] ??= []).push(a);
   }
 
-  const chipBase = "rounded-full border px-3 py-1 text-xs transition-colors";
-  const chipActive = "border-blue-500 bg-blue-950 text-blue-300";
-  const chipIdle = "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200";
+  const activeStyle = {
+    borderColor: "var(--ss-orange-soft)",
+    background: "var(--ss-orange-soft)",
+    color: "var(--ss-orange-ink)",
+  };
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Filters */}
       <div className="flex flex-wrap gap-4">
         <div className="flex flex-wrap gap-1.5">
-          <button onClick={() => setPlatform("all")} className={`${chipBase} ${platform === "all" ? chipActive : chipIdle}`}>
+          <button
+            onClick={() => setPlatform("all")}
+            className="ss-btn ss-btn-sm"
+            style={platform === "all" ? activeStyle : undefined}
+          >
             All platforms
           </button>
-          {PLATFORMS.filter((p) => alerts.some((a) => a.sourcePlatform === p)).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPlatform(p)}
-              className={`${chipBase} ${platform === p ? chipActive : chipIdle}`}
-            >
-              {PLATFORM_LABELS[p]}
-            </button>
-          ))}
+          {PLATFORMS.filter((p) => alerts.some((a) => a.sourcePlatform === p)).map(
+            (p) => (
+              <button
+                key={p}
+                onClick={() => setPlatform(p)}
+                className="ss-btn ss-btn-sm"
+                style={platform === p ? activeStyle : undefined}
+              >
+                {PLATFORM_LABELS[p]}
+              </button>
+            ),
+          )}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <button onClick={() => setSeverity("all")} className={`${chipBase} ${severity === "all" ? chipActive : chipIdle}`}>
+          <button
+            onClick={() => setSeverity("all")}
+            className="ss-btn ss-btn-sm"
+            style={severity === "all" ? activeStyle : undefined}
+          >
             All severity
           </button>
-          {SEVERITIES.filter((s) => alerts.some((a) => a.severity === s)).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSeverity(s)}
-              className={`${chipBase} ${severity === s ? chipActive : chipIdle}`}
-            >
-              {s}
-            </button>
-          ))}
+          {SEVERITIES.filter((s) => alerts.some((a) => a.severity === s)).map(
+            (s) => (
+              <button
+                key={s}
+                onClick={() => setSeverity(s)}
+                className="ss-btn ss-btn-sm"
+                style={severity === s ? activeStyle : undefined}
+              >
+                {s}
+              </button>
+            ),
+          )}
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-zinc-500">No alerts match the current filters.</p>
+        <p
+          className="py-8 text-center"
+          style={{ fontSize: 13, color: "var(--ss-ink-3)" }}
+        >
+          No alerts match the current filters.
+        </p>
       ) : (
         Object.entries(byCategory).map(([category, items]) => (
           <section key={category} className="flex flex-col gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            <h2
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: "var(--ss-ink-3)",
+              }}
+            >
               {CATEGORY_LABELS[category] ?? category}
-              <span className="ml-2 font-mono font-normal normal-case tracking-normal text-zinc-600">
+              <span
+                className="ss-num"
+                style={{
+                  marginLeft: 8,
+                  fontWeight: 400,
+                  textTransform: "none",
+                  letterSpacing: 0,
+                  color: "var(--ss-ink-4)",
+                }}
+              >
                 {items.length}
               </span>
             </h2>

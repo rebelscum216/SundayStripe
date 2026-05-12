@@ -2,18 +2,9 @@
 
 import { useState } from "react";
 import { applyProductSeo, optimizePageSeo, type OptimizePageResult } from "../actions";
-
-type GscRow = {
-  query?: string;
-  url?: string;
-  clicks: number;
-  impressions: number;
-  ctr: number;
-  position: number;
-};
+import type { AlmostPage1Row } from "./almost-page-1-table";
 
 type ApplyState = "idle" | "saving" | "saved" | "error";
-
 type RowState =
   | { status: "idle" }
   | { status: "loading" }
@@ -25,14 +16,7 @@ function fmt(n: number) {
 }
 
 function fmtPct(n: number) {
-  return `${n.toFixed(1)}%`;
-}
-
-function positionStyle(position: number) {
-  if (position <= 3) return { color: "var(--ss-sage-ink)", fontWeight: 700 };
-  if (position <= 10) return { color: "var(--ss-ink)" };
-  if (position <= 20) return { color: "var(--ss-amber-ink)" };
-  return { color: "var(--ss-ink-3)" };
+  return `${(n * 100).toFixed(1)}%`;
 }
 
 const fieldStyle = {
@@ -42,25 +26,22 @@ const fieldStyle = {
   borderRadius: 7,
 } as const;
 
-function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] }) {
+function QueryRow({ row }: { row: AlmostPage1Row }) {
   const [state, setState] = useState<RowState>({ status: "idle" });
 
-  const url = row.url ?? "";
-  const slug = url.replace(/^https?:\/\/[^/]+/, "").replace(/\/$/, "") || url;
+  const url = row.matchedPageUrl ?? row.query;
 
   function handleOptimize() {
     void (async () => {
       setState({ status: "loading" });
       try {
-        const result = await optimizePageSeo({ url, position: row.position, impressions: row.impressions, topQueries });
-        setState({
-          status: "done",
-          result,
-          editTitle: result.seoTitle,
-          editDescription: result.metaDescription,
-          applyState: "idle",
-          applyError: "",
+        const result = await optimizePageSeo({
+          url,
+          position: row.position,
+          impressions: row.impressions,
+          topQueries: [row.query],
         });
+        setState({ status: "done", result, editTitle: result.seoTitle, editDescription: result.metaDescription, applyState: "idle", applyError: "" });
       } catch (err) {
         setState({ status: "error", message: err instanceof Error ? err.message : "Unknown error" });
       }
@@ -68,9 +49,9 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
   }
 
   function handleApply() {
-    if (state.status !== "done" || !state.result.productId) return;
-    const productId = state.result.productId;
-    const recommendationId = state.result.recommendationId;
+    if (state.status !== "done") return;
+    const productId = state.result.productId ?? row.matchedProductId;
+    if (!productId) return;
     const { editTitle, editDescription } = state;
     setState({ ...state, applyState: "saving", applyError: "" });
     void (async () => {
@@ -79,49 +60,51 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
           productId,
           seoTitle: editTitle,
           seoDescription: editDescription,
-          recommendationId,
+          recommendationId: state.result.recommendationId,
         });
-        setState((prev) => (prev.status === "done" ? { ...prev, applyState: "saved" } : prev));
+        setState((prev) => prev.status === "done" ? { ...prev, applyState: "saved" } : prev);
       } catch (err) {
-        setState((prev) =>
-          prev.status === "done"
-            ? { ...prev, applyState: "error", applyError: err instanceof Error ? err.message : "Unknown error" }
-            : prev,
-        );
+        setState((prev) => prev.status === "done" ? { ...prev, applyState: "error", applyError: err instanceof Error ? err.message : "Unknown error" } : prev);
       }
     })();
   }
 
+  const productId = state.status === "done" ? (state.result.productId ?? row.matchedProductId) : row.matchedProductId;
+
   return (
     <li style={{ background: "var(--ss-bg-card)" }}>
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          {state.status === "done" && state.result.productId ? (
-            <a
-              href={`/products/${state.result.productId}`}
-              className="truncate underline underline-offset-2"
-              style={{ fontFamily: "var(--ss-font-mono)", fontSize: 12, color: "var(--ss-orange)" }}
-            >
-              {state.result.productTitle ?? slug}
-            </a>
-          ) : (
-            <span className="truncate ss-num" style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>{slug}</span>
-          )}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="ss-num" style={{ fontSize: 14, fontWeight: 500, color: "var(--ss-ink)" }}>&ldquo;{row.query}&rdquo;</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+            <span>pos <span style={{ fontWeight: 600, color: "var(--ss-sage-ink)" }}>{row.position.toFixed(1)}</span></span>
             <span>{fmt(row.impressions)} impr.</span>
             <span>{fmt(row.clicks)} clicks</span>
-            <span>{fmtPct(row.ctr)} CTR</span>
-            <span style={positionStyle(row.position)}>pos {row.position.toFixed(1)}</span>
+            <span style={{ color: "var(--ss-red-ink)", fontWeight: 500 }}>{fmtPct(row.ctr)} CTR</span>
+            {row.potentialExtraClicks > 0 && (
+              <span style={{ fontWeight: 500, color: "var(--ss-sage-ink)" }}>
+                +{fmt(row.potentialExtraClicks)} potential clicks at 5% CTR
+              </span>
+            )}
           </div>
+          {row.matchedProductTitle && (
+            <a
+              href={`/products/${row.matchedProductId}`}
+              className="mt-0.5 underline underline-offset-2"
+              style={{ fontSize: 12, color: "var(--ss-orange)" }}
+            >
+              {row.matchedProductTitle}
+            </a>
+          )}
         </div>
 
         <button
           onClick={handleOptimize}
           disabled={state.status === "loading" || state.status === "done"}
           className={`ss-btn ss-btn-sm shrink-0 ${state.status === "loading" ? "ss-btn-primary cursor-wait" : ""} ${state.status === "done" ? "cursor-default opacity-60" : ""}`}
-          style={state.status === "idle" ? { borderColor: "var(--ss-amber)", color: "var(--ss-amber-ink)", background: "var(--ss-bg-card)" } : undefined}
+          style={state.status === "idle" ? { borderColor: "var(--ss-sage)", color: "var(--ss-sage-ink)", background: "var(--ss-bg-card)" } : undefined}
         >
-          {state.status === "loading" ? "Optimizing..." : state.status === "done" ? "Done" : "Optimize with AI"}
+          {state.status === "loading" ? "Optimizing…" : state.status === "done" ? "Done" : "AI Optimize"}
         </button>
       </div>
 
@@ -169,20 +152,16 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
           </div>
 
           <div className="flex items-center gap-3">
-            {state.result.productId ? (
+            {productId ? (
               <button
                 onClick={handleApply}
                 disabled={state.applyState === "saving" || state.applyState === "saved"}
                 className={`ss-btn ss-btn-sm ${state.applyState === "saving" ? "ss-btn-primary cursor-wait" : ""} ${state.applyState === "saved" ? "cursor-default opacity-70" : ""}`}
               >
-                {state.applyState === "saving"
-                  ? "Saving..."
-                  : state.applyState === "saved"
-                    ? "Saved to Shopify"
-                    : "Apply to Shopify"}
+                {state.applyState === "saving" ? "Saving…" : state.applyState === "saved" ? "✓ Saved to Shopify" : "Apply to Shopify"}
               </button>
             ) : (
-              <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>No matching product found. Copy fields manually.</p>
+              <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>No matching product found — copy fields manually.</p>
             )}
             {state.applyState === "error" && (
               <p style={{ fontSize: 12, color: "var(--ss-red-ink)" }}>{state.applyError}</p>
@@ -200,35 +179,41 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
   );
 }
 
-export function QuickWinsTable({ quickWins, topQueries, embedded }: { quickWins: GscRow[]; topQueries: string[]; embedded?: boolean }) {
-  if (quickWins.length === 0) return null;
+export function LowCtrTable({ rows }: { rows: AlmostPage1Row[] }) {
+  if (rows.length === 0) return null;
 
-  const list = (
-    <ul>
-      {quickWins.map((row, i) => (
-        <div key={i} style={{ borderTop: i === 0 ? "0" : "1px solid var(--ss-line)" }}>
-          <OptimizeRow row={row} topQueries={topQueries} />
-        </div>
-      ))}
-    </ul>
-  );
-
-  if (embedded) return list;
+  const totalPotential = rows.reduce((s, r) => s + r.potentialExtraClicks, 0);
 
   return (
-    <section className="ss-card" style={{ overflow: "hidden", borderColor: "var(--ss-amber-soft)" }}>
-      <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--ss-amber-soft)", background: "color-mix(in oklab, var(--ss-amber-soft) 28%, var(--ss-bg-card))" }}>
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--ss-amber-ink)" }}>
-          Quick wins
-          <span className="ss-num" style={{ marginLeft: 8, fontSize: 14, fontWeight: 400, color: "var(--ss-amber-ink)" }}>
-            {quickWins.length} pages in positions 5–20
-          </span>
-        </h2>
-        <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>
-          AI-generated SEO titles and meta descriptions. Edit and apply directly to Shopify.
-        </p>
+    <section className="ss-card" style={{ overflow: "hidden", borderColor: "var(--ss-sage-soft)" }}>
+      <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--ss-sage-soft)", background: "color-mix(in oklab, var(--ss-sage-soft) 28%, var(--ss-bg-card))" }}>
+        <div className="flex items-baseline justify-between gap-4">
+          <div>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--ss-sage-ink)" }}>
+              Low CTR at Top
+              <span className="ss-num" style={{ marginLeft: 8, fontSize: 14, fontWeight: 400, color: "var(--ss-sage-ink)" }}>
+                {rows.length} {rows.length === 1 ? "query" : "queries"} ranking pos 1–5
+              </span>
+            </h2>
+            <p style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>
+              Already ranking — a stronger title or meta description captures more of the clicks you&apos;re already showing up for.
+            </p>
+          </div>
+          {totalPotential > 0 && (
+            <div className="shrink-0 text-right">
+              <p style={{ fontSize: 18, fontWeight: 700, color: "var(--ss-sage-ink)" }}>+{fmt(totalPotential)}</p>
+              <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>potential clicks/mo at 5% CTR</p>
+            </div>
+          )}
+        </div>
       </div>
-      {list}
+      <ul style={{ borderTop: "0" }}>
+        {rows.map((row, i) => (
+          <div key={i} style={{ borderTop: i === 0 ? "0" : "1px solid var(--ss-line)" }}>
+            <QueryRow row={row} />
+          </div>
+        ))}
+      </ul>
     </section>
   );
 }

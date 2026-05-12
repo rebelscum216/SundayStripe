@@ -1,18 +1,15 @@
 "use client";
 
 import { useState } from "react";
-
-type OpportunityExplanation = {
-  summary: string;
-  likelyCause: string;
-  nextBestAction: string;
-  expectedUpside: string;
-  fixes: Array<{ action: string; channel: string; reason: string }>;
-};
+import {
+  explainCrossChannelOpportunity,
+  type CrossChannelOpportunityExplanation,
+} from "../actions";
 
 export function OpportunityExplainer({ productId }: { productId: string }) {
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [explanation, setExplanation] = useState<OpportunityExplanation | null>(null);
+  const [explanation, setExplanation] =
+    useState<CrossChannelOpportunityExplanation | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function explain() {
@@ -26,13 +23,7 @@ export function OpportunityExplainer({ productId }: { productId: string }) {
     setError(null);
 
     try {
-      const res = await fetch("/api-proxy/ai/cross-channel-opportunity", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
-      });
-      if (!res.ok) throw new Error(`${res.status}`);
-      const data = (await res.json()) as OpportunityExplanation;
+      const data = await explainCrossChannelOpportunity(productId);
       setExplanation(data);
       setState("done");
     } catch (err) {

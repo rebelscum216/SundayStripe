@@ -93,7 +93,7 @@ export function AiFeed({ actions }: { actions: AiAction[] }) {
         )}
         <div style={{ flex: 1 }} />
         <Link href="/ai" className="ss-btn ss-btn-sm" style={{ textDecoration: "none" }}>
-          Configure
+          AI tools
         </Link>
       </div>
 
@@ -174,10 +174,10 @@ export function AiFeed({ actions }: { actions: AiAction[] }) {
                   className="ss-btn ss-btn-sm"
                   onClick={() => setDismissed(prev => new Set([...prev, action.id]))}
                 >
-                  Dismiss
+                  Hide for now
                 </button>
                 <Link href={action.href} className="ss-btn ss-btn-primary ss-btn-sm" style={{ textDecoration: "none" }}>
-                  {`Apply to ${action.target}`}
+                  {action.cta}
                 </Link>
               </div>
             </div>

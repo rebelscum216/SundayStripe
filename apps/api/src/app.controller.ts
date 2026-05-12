@@ -1261,6 +1261,70 @@ export class AppController {
     });
   }
 
+  @Get("search-console/low-ctr")
+  async gscLowCtr() {
+    // Queries ranked pos 1-5 with CTR under 2% and meaningful impressions
+    const rows = await this.db
+      .select({
+        query: searchPerformance.dimensionValue,
+        clicks: searchPerformance.clicks,
+        impressions: searchPerformance.impressions,
+        ctr: searchPerformance.ctr,
+        position: searchPerformance.position,
+      })
+      .from(searchPerformance)
+      .where(
+        and(
+          eq(searchPerformance.dimension, "query"),
+          sql`${searchPerformance.position} >= 10`,
+          sql`${searchPerformance.position} <= 50`,
+          sql`${searchPerformance.ctr} < 20`,
+          sql`${searchPerformance.impressions} >= 100`,
+        ),
+      )
+      .orderBy(desc(searchPerformance.impressions))
+      .limit(20);
+
+    if (rows.length === 0) return [];
+
+    const allProducts = await this.db
+      .select({ id: products.id, title: products.title, canonicalSku: products.canonicalSku })
+      .from(products);
+
+    return rows.map((r) => {
+      const query = r.query.toLowerCase();
+      const queryTokens = query.split(/\s+/).filter((t) => t.length > 2);
+
+      let bestProduct: { id: string; title: string; score: number } | null = null;
+      for (const p of allProducts) {
+        const titleLower = (p.title ?? p.canonicalSku).toLowerCase();
+        const score = queryTokens.filter((t) => titleLower.includes(t)).length;
+        if (score > 0 && (!bestProduct || score > bestProduct.score)) {
+          bestProduct = { id: p.id, title: p.title ?? p.canonicalSku, score };
+        }
+      }
+
+      const position = r.position / 10;
+      const ctr = r.ctr / 1000;
+      // Potential clicks if CTR improved to a healthy 5% for this position band
+      const potentialExtraClicks = Math.max(0, Math.round(r.impressions * 0.05) - r.clicks);
+
+      return {
+        query: r.query,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        ctr,
+        position,
+        potentialExtraClicks,
+        matchedProductId: bestProduct?.id ?? null,
+        matchedProductTitle: bestProduct?.title ?? null,
+        matchedPageUrl: bestProduct
+          ? `/products/${this.titleToHandle(bestProduct.title)}`
+          : null,
+      };
+    });
+  }
+
   @Get("search-console/by-product-page")
   async gscByProductPage() {
     const rows = await this.db

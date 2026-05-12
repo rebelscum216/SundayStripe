@@ -15,18 +15,19 @@ export function AiDrawer() {
       )}
       <aside
         aria-label="AI analysis panel"
-        className={`fixed right-0 top-0 z-40 flex h-full w-full flex-col border-l border-zinc-800 bg-zinc-900 transition-transform duration-300 ease-in-out lg:w-[380px] ${
+        className={`fixed right-0 top-0 z-40 flex h-full w-full flex-col transition-transform duration-300 ease-in-out lg:w-[420px] ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
+        style={{ borderLeft: "1px solid var(--ss-line)", background: "var(--ss-bg)" }}
       >
-        <div className="flex flex-shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <div className="flex flex-shrink-0 items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--ss-line)" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ss-ink-3)" }}>
             AI Analysis
           </span>
           <button
             onClick={close}
             aria-label="Close panel"
-            className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+            className="ss-btn ss-btn-icon"
           >
             <svg
               className="h-4 w-4"
@@ -40,7 +41,7 @@ export function AiDrawer() {
             </svg>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 text-sm text-zinc-300">
+        <div className="flex-1 overflow-y-auto p-4">
           {content}
         </div>
       </aside>

@@ -7,14 +7,12 @@ import { useDrawer } from "../components/drawer-context";
 
 type EnforcementAction = { action?: string };
 type Issue = {
-  // Amazon SP-API shape
   code?: string;
   message?: string;
   severity?: string;
   attributeNames?: string[];
   categories?: string[];
   enforcements?: { actions?: EnforcementAction[] };
-  // Merchant / legacy shape
   description?: string;
   attribute?: string;
   resolution?: string;
@@ -46,10 +44,18 @@ export type ResolveAlertInfo = {
 };
 
 const ISSUE_SEV_COLOR: Record<string, string> = {
-  critical: "text-red-400",
-  error: "text-orange-400",
-  warning: "text-amber-400",
-  suggestion: "text-zinc-500",
+  critical: "var(--ss-red-ink)",
+  error: "var(--ss-orange)",
+  warning: "var(--ss-amber-ink)",
+  suggestion: "var(--ss-ink-3)",
+};
+
+const labelStyle = {
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.06em",
+  color: "var(--ss-ink-3)",
 };
 
 function ResolveContent({ alert }: { alert: ResolveAlertInfo }) {
@@ -66,22 +72,26 @@ function ResolveContent({ alert }: { alert: ResolveAlertInfo }) {
   return (
     <div className="flex flex-col gap-4 text-sm">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Resolving alert</p>
-        <p className="mt-1 font-semibold text-zinc-100">{alert.productTitle}</p>
+        <p style={labelStyle}>Resolving alert</p>
+        <p style={{ marginTop: 4, fontWeight: 600, color: "var(--ss-ink)" }}>
+          {alert.productTitle}
+        </p>
         {alert.entityRef && (
-          <p className="mt-0.5 font-mono text-xs text-zinc-500">{alert.entityRef}</p>
+          <p className="ss-num" style={{ marginTop: 2, fontSize: 12, color: "var(--ss-ink-3)" }}>
+            {alert.entityRef}
+          </p>
         )}
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">
-            {alert.platform}
+          <span className="ss-pill">{alert.platform}</span>
+          <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+            {alert.ruleName}
           </span>
-          <span className="font-mono text-xs text-zinc-500">{alert.ruleName}</span>
         </div>
       </div>
 
       {alert.issues.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+          <p style={labelStyle}>
             {alert.issues.length} {alert.issues.length === 1 ? "Issue" : "Issues"}
           </p>
           {alert.issues.map((issue, i) => {
@@ -89,42 +99,80 @@ function ResolveContent({ alert }: { alert: ResolveAlertInfo }) {
             const attrs = issue.attributeNames?.length
               ? issue.attributeNames.join(", ")
               : (issue.attribute ?? null);
-            const hint = issue.resolution
-              ?? (issue.categories?.[0] ? CATEGORY_HINT[issue.categories[0]] : null);
-            const impacts = issue.enforcements?.actions
-              ?.map((a) => a.action ? (ACTION_LABEL[a.action] ?? a.action.replace(/_/g, " ").toLowerCase()) : null)
-              .filter(Boolean) ?? [];
+            const hint =
+              issue.resolution ??
+              (issue.categories?.[0] ? CATEGORY_HINT[issue.categories[0]] : null);
+            const impacts =
+              issue.enforcements?.actions
+                ?.map((a) =>
+                  a.action
+                    ? (ACTION_LABEL[a.action] ??
+                      a.action.replace(/_/g, " ").toLowerCase())
+                    : null,
+                )
+                .filter(Boolean) ?? [];
 
             return (
-              <div key={i} className="flex flex-col gap-1.5 rounded border border-zinc-700 bg-zinc-800 p-3">
+              <div
+                key={i}
+                className="ss-card flex flex-col gap-1.5"
+                style={{ padding: 12 }}
+              >
                 <div className="flex flex-wrap items-center gap-2">
                   {issue.severity && (
-                    <span className={`text-xs font-semibold uppercase tracking-wide ${ISSUE_SEV_COLOR[issue.severity.toLowerCase()] ?? "text-zinc-400"}`}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        color:
+                          ISSUE_SEV_COLOR[issue.severity.toLowerCase()] ??
+                          "var(--ss-ink-3)",
+                      }}
+                    >
                       {issue.severity}
                     </span>
                   )}
                   {attrs && (
-                    <span className="font-mono text-xs text-zinc-400">{attrs}</span>
+                    <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+                      {attrs}
+                    </span>
                   )}
                   {impacts.map((label, j) => (
-                    <span key={j} className="rounded bg-red-950 px-1.5 py-0.5 text-xs font-medium text-red-400">
+                    <span key={j} className="ss-pill ss-pill-red">
                       {label}
                     </span>
                   ))}
                 </div>
                 {body && (
-                  <p className="leading-relaxed text-zinc-200">{body}</p>
+                  <p style={{ lineHeight: 1.55, color: "var(--ss-ink)" }}>{body}</p>
                 )}
                 {hint && alert.productId ? (
                   <Link
                     href={`/products/${alert.productId}#open-issues`}
                     onClick={close}
-                    className="mt-0.5 border-t border-zinc-700 pt-1.5 text-xs text-blue-400 hover:text-blue-300 block"
+                    className="block"
+                    style={{
+                      marginTop: 2,
+                      paddingTop: 6,
+                      borderTop: "1px solid var(--ss-line)",
+                      fontSize: 12,
+                      color: "var(--ss-orange-ink)",
+                    }}
                   >
                     → {hint}
                   </Link>
                 ) : hint ? (
-                  <p className="mt-0.5 border-t border-zinc-700 pt-1.5 text-xs text-zinc-400">
+                  <p
+                    style={{
+                      marginTop: 2,
+                      paddingTop: 6,
+                      borderTop: "1px solid var(--ss-line)",
+                      fontSize: 12,
+                      color: "var(--ss-ink-3)",
+                    }}
+                  >
                     → {hint}
                   </p>
                 ) : null}
@@ -133,15 +181,21 @@ function ResolveContent({ alert }: { alert: ResolveAlertInfo }) {
           })}
         </div>
       ) : (
-        <p className="text-xs text-zinc-500">No issue details available for this alert.</p>
+        <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+          No issue details available for this alert.
+        </p>
       )}
 
-      <div className="flex flex-col gap-2 border-t border-zinc-800 pt-3">
+      <div
+        className="flex flex-col gap-2 pt-3"
+        style={{ borderTop: "1px solid var(--ss-line)" }}
+      >
         {alert.productId && (
           <Link
             href={`/products/${alert.productId}`}
             onClick={close}
-            className="flex items-center justify-center rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-500 hover:text-zinc-100"
+            className="ss-btn"
+            style={{ textAlign: "center", textDecoration: "none" }}
           >
             View product page →
           </Link>
@@ -150,14 +204,14 @@ function ResolveContent({ alert }: { alert: ResolveAlertInfo }) {
           type="button"
           onClick={handleResolve}
           disabled={isPending}
-          className="rounded border border-emerald-700 bg-emerald-800 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="ss-btn ss-btn-primary disabled:opacity-50"
         >
           {isPending ? "Resolving…" : "Mark Resolved"}
         </button>
         <button
           type="button"
           onClick={close}
-          className="rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+          className="ss-btn"
         >
           Cancel
         </button>

@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useDrawer } from "../../components/drawer-context";
-
-type AiResult = { description: string; seoTitle: string; seoMetaDescription: string };
+import { generateProductCopy, type AiProductCopyResult } from "../../actions";
 
 function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -16,26 +15,36 @@ function CopyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-zinc-400">{label}</span>
-        <button type="button" onClick={copy} className="text-xs text-zinc-500 hover:text-zinc-300">
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ss-ink-3)" }}>{label}</span>
+        <button type="button" onClick={copy} className="ss-btn ss-btn-sm">
           {copied ? "Copied!" : "Copy"}
         </button>
       </div>
-      <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm leading-relaxed text-zinc-200">
+      <p
+        className="px-3 py-2"
+        style={{
+          border: "1px solid var(--ss-line)",
+          borderRadius: 7,
+          background: "var(--ss-bg-card)",
+          color: "var(--ss-ink)",
+          fontSize: 13,
+          lineHeight: 1.55,
+        }}
+      >
         {value}
       </p>
     </div>
   );
 }
 
-function DescribeContent({ result }: { result: AiResult }) {
+function DescribeContent({ result }: { result: AiProductCopyResult }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          AI Generated Copy
+      <div className="ss-card" style={{ padding: 12 }}>
+        <p style={{ marginBottom: 4, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ss-ink-2)" }}>
+          AI copy draft
         </p>
-        <p className="text-xs text-zinc-500">Review before applying to Shopify.</p>
+        <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>Copy the fields you want to use, or use the SEO rewrite action when you need a reviewed Shopify update.</p>
       </div>
       <CopyField label="Description" value={result.description} />
       <CopyField label="SEO Title" value={result.seoTitle} />
@@ -51,13 +60,7 @@ export function AiDescribeButton({ productId }: { productId: string }) {
   async function generate() {
     setState("loading");
     try {
-      const res = await fetch("/api-proxy/ai/describe-product", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
-      });
-      if (!res.ok) throw new Error(`${res.status}`);
-      const data = (await res.json()) as AiResult;
+      const data = await generateProductCopy(productId);
       setState("idle");
       open(<DescribeContent result={data} />);
     } catch {
@@ -71,11 +74,11 @@ export function AiDescribeButton({ productId }: { productId: string }) {
         type="button"
         onClick={generate}
         disabled={state === "loading"}
-        className="rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+        className={`ss-btn ss-btn-sm ${state === "loading" ? "ss-btn-primary cursor-wait" : "ss-btn-primary"}`}
       >
-        {state === "loading" ? "Generating…" : "Generate copy with AI"}
+        {state === "loading" ? "Generating..." : "Generate draft copy"}
       </button>
-      {state === "error" && <span className="text-xs text-red-400">Failed — try again</span>}
+      {state === "error" && <span style={{ fontSize: 12, color: "var(--ss-red-ink)" }}>Failed. Try again.</span>}
     </div>
   );
 }

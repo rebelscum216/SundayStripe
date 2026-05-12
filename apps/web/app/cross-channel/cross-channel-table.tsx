@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { explainCrossChannelOpportunity, type CrossChannelOpportunityExplanation } from "../actions";
 
 type CrossChannelRow = {
   productId: string;
@@ -16,18 +17,10 @@ type CrossChannelRow = {
   flag: "no_revenue" | "opportunity" | "no_listing" | "ok";
 };
 
-type Explanation = {
-  summary: string;
-  likelyCause: string;
-  nextBestAction: string;
-  expectedUpside: string;
-  fixes: Array<{ action: string; channel: string; reason: string }>;
-};
-
 type RowExpansion =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "done"; data: Explanation }
+  | { status: "done"; data: CrossChannelOpportunityExplanation }
   | { status: "error"; message: string };
 
 const FLAG_META = {
@@ -69,26 +62,18 @@ function QualityDot({ score }: { score: number }) {
 function ExpandedRow({ productId }: { productId: string }) {
   const [state, setState] = useState<RowExpansion>({ status: "idle" });
 
-  if (state.status === "idle") {
+  useEffect(() => {
+    if (state.status !== "idle") return;
     void (async () => {
       setState({ status: "loading" });
       try {
-        const res = await fetch("/api-proxy/ai/cross-channel-opportunity", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productId }),
-        });
-        if (!res.ok) {
-          setState({ status: "error", message: `${res.status} ${res.statusText}` });
-          return;
-        }
-        const data = (await res.json()) as Explanation;
+        const data = await explainCrossChannelOpportunity(productId);
         setState({ status: "done", data });
       } catch (err) {
         setState({ status: "error", message: err instanceof Error ? err.message : "Unknown error" });
       }
     })();
-  }
+  }, [productId, state.status]);
 
   if (state.status === "loading") {
     return (

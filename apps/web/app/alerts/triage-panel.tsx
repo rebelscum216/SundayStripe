@@ -1,42 +1,27 @@
 "use client";
 
 import { useState } from "react";
-
-type TriageGroup = {
-  id: string;
-  title: string;
-  platform: string;
-  priority: "critical" | "high" | "medium" | "low";
-  alertIds: string[];
-  rootCause: string;
-  recommendedAction: string;
-  estimatedImpact: string;
-};
-
-type TriageResult = {
-  summary: string;
-  groups: TriageGroup[];
-  cached: boolean;
-};
+import type { CSSProperties } from "react";
+import { triageAlerts, type AlertTriageResult } from "../actions";
 
 type State =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "done"; result: TriageResult }
+  | { status: "done"; result: AlertTriageResult }
   | { status: "error"; message: string };
 
-const PRIORITY_BORDER: Record<string, string> = {
-  critical: "border-red-800/60 bg-red-950/30",
-  high: "border-orange-800/60 bg-orange-950/20",
-  medium: "border-amber-800/40 bg-amber-950/20",
-  low: "border-zinc-700 bg-zinc-800/40",
+const PRIORITY_STYLE: Record<string, CSSProperties> = {
+  critical: { borderColor: "var(--ss-red)", background: "var(--ss-red-soft)" },
+  high: { borderColor: "var(--ss-orange)", background: "var(--ss-orange-soft)" },
+  medium: { borderColor: "var(--ss-amber)", background: "var(--ss-amber-soft)" },
+  low: { borderColor: "var(--ss-line)", background: "var(--ss-bg-elev)" },
 };
 
-const PRIORITY_BADGE: Record<string, string> = {
-  critical: "border-red-500 bg-red-950 text-red-400",
-  high: "border-orange-500 bg-orange-950 text-orange-400",
-  medium: "border-amber-500 bg-amber-950 text-amber-400",
-  low: "border-zinc-600 bg-zinc-800 text-zinc-400",
+const PRIORITY_BADGE_STYLE: Record<string, CSSProperties> = {
+  critical: { borderColor: "var(--ss-red)", background: "var(--ss-red-soft)", color: "var(--ss-red-ink)" },
+  high: { borderColor: "var(--ss-orange)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" },
+  medium: { borderColor: "var(--ss-amber)", background: "var(--ss-amber-soft)", color: "var(--ss-amber-ink)" },
+  low: { borderColor: "var(--ss-line-strong)", background: "var(--ss-bg-card)", color: "var(--ss-ink-3)" },
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -54,17 +39,7 @@ export function TriagePanel({ alertCount }: { alertCount: number }) {
     void (async () => {
       setState({ status: "loading" });
       try {
-        const res = await fetch("/api-proxy/ai/triage-alerts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: "{}",
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          setState({ status: "error", message: text || res.statusText });
-          return;
-        }
-        const result = (await res.json()) as TriageResult;
+        const result = await triageAlerts();
         setState({ status: "done", result });
       } catch (err) {
         setState({ status: "error", message: err instanceof Error ? err.message : "Unknown error" });
@@ -73,25 +48,19 @@ export function TriagePanel({ alertCount }: { alertCount: number }) {
   }
 
   return (
-    <div className="rounded border border-zinc-800 bg-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+    <div className="ss-card">
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--ss-line)" }}>
         <div>
-          <p className="text-sm font-semibold text-zinc-100">AI Triage</p>
-          <p className="text-xs text-zinc-500">Group and prioritize all open alerts by root cause</p>
+          <p style={{ fontSize: 14, fontWeight: 700, color: "var(--ss-ink)" }}>AI Triage</p>
+          <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>Group and prioritize all open alerts by root cause</p>
         </div>
         <button
           onClick={handleTriage}
           disabled={state.status === "loading" || state.status === "done"}
-          className={`rounded border px-3 py-1.5 text-xs font-semibold transition-colors ${
-            state.status === "loading"
-              ? "cursor-wait border-blue-600 bg-blue-600 text-white"
-              : state.status === "done"
-                ? "cursor-default border-zinc-700 bg-zinc-800 text-zinc-500"
-                : "border-blue-600 bg-blue-600 text-white hover:bg-blue-500"
-          }`}
+          className={`ss-btn ss-btn-sm ${state.status === "loading" ? "ss-btn-primary cursor-wait" : state.status === "idle" ? "ss-btn-primary" : "cursor-default opacity-60"}`}
         >
           {state.status === "loading"
-            ? `Analyzing ${alertCount} alerts…`
+            ? `Analyzing ${alertCount} alerts...`
             : state.status === "done"
               ? "Done"
               : "Run Triage"}
@@ -101,9 +70,9 @@ export function TriagePanel({ alertCount }: { alertCount: number }) {
       {state.status === "done" && (
         <div className="space-y-3 p-4">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm italic text-zinc-400">{state.result.summary}</p>
+            <p style={{ fontSize: 13, fontStyle: "italic", color: "var(--ss-ink-3)" }}>{state.result.summary}</p>
             {state.result.cached && (
-              <span className="shrink-0 rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-500">
+              <span className="ss-pill shrink-0">
                 cached
               </span>
             )}
@@ -112,31 +81,33 @@ export function TriagePanel({ alertCount }: { alertCount: number }) {
             {state.result.groups.map((group) => (
               <div
                 key={group.id}
-                className={`rounded border p-3 ${PRIORITY_BORDER[group.priority] ?? PRIORITY_BORDER.low}`}
+                className="rounded border p-3"
+                style={PRIORITY_STYLE[group.priority] ?? PRIORITY_STYLE.low}
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span
-                    className={`rounded border px-2 py-0.5 text-xs font-semibold uppercase ${PRIORITY_BADGE[group.priority] ?? PRIORITY_BADGE.low}`}
+                    className="ss-pill"
+                    style={PRIORITY_BADGE_STYLE[group.priority] ?? PRIORITY_BADGE_STYLE.low}
                   >
                     {group.priority}
                   </span>
-                  <span className="text-xs text-zinc-500">
+                  <span style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
                     {PLATFORM_LABELS[group.platform] ?? group.platform}
                   </span>
-                  <span className="font-mono text-xs text-zinc-500">
+                  <span className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
                     {group.alertIds.length} alert{group.alertIds.length !== 1 ? "s" : ""}
                   </span>
                 </div>
-                <p className="font-semibold text-zinc-100">{group.title}</p>
-                <p className="mt-1 text-sm text-zinc-400">
-                  <span className="font-medium text-zinc-300">Root cause: </span>
+                <p style={{ fontWeight: 700, color: "var(--ss-ink)" }}>{group.title}</p>
+                <p style={{ marginTop: 4, fontSize: 13, color: "var(--ss-ink-3)" }}>
+                  <span style={{ fontWeight: 600, color: "var(--ss-ink-2)" }}>Root cause: </span>
                   {group.rootCause}
                 </p>
-                <p className="mt-1 text-sm text-zinc-400">
-                  <span className="font-medium text-zinc-300">Fix: </span>
+                <p style={{ marginTop: 4, fontSize: 13, color: "var(--ss-ink-3)" }}>
+                  <span style={{ fontWeight: 600, color: "var(--ss-ink-2)" }}>Fix: </span>
                   {group.recommendedAction}
                 </p>
-                <p className="mt-1 text-xs text-zinc-500">Impact: {group.estimatedImpact}</p>
+                <p style={{ marginTop: 4, fontSize: 12, color: "var(--ss-ink-3)" }}>Impact: {group.estimatedImpact}</p>
               </div>
             ))}
           </div>
@@ -144,7 +115,7 @@ export function TriagePanel({ alertCount }: { alertCount: number }) {
       )}
 
       {state.status === "error" && (
-        <div className="border-t border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-400">
+        <div className="px-4 py-3" style={{ borderTop: "2px solid var(--ss-red)", background: "var(--ss-red-soft)", color: "var(--ss-red-ink)", fontSize: 13, fontWeight: 600 }}>
           Error: {state.message}
         </div>
       )}

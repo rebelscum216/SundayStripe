@@ -336,6 +336,7 @@ export function MissingAttributeFix({ productId, attribute, label, platforms, va
         body: JSON.stringify({ attribute, value: trimmed, platforms }),
       });
 
+      if (response.status === 401) throw new Error("Session expired — please refresh and log in again.");
       if (!response.ok) throw new Error(await response.text());
 
       const result = (await response.json()) as UpdateResponse;
@@ -362,7 +363,7 @@ export function MissingAttributeFix({ productId, attribute, label, platforms, va
         href="#ai-actions"
         className="ss-btn ss-btn-sm"
       >
-        Open fix tools
+        Review AI action tools
       </a>
     );
   }

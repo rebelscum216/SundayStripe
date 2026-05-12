@@ -5,7 +5,8 @@ import { TopbarSearch } from "./components/topbar-search";
 import { CardSkeleton, SectionSkeleton } from "./components/skeleton";
 import { StatusPill } from "./components/status-pill";
 import { AiFeed } from "./components/ai-feed";
-import type { AlmostPage1Row } from "./search-console/almost-page-1-table";
+import { AlmostPage1Table, type AlmostPage1Row } from "./search-console/almost-page-1-table";
+import { LowCtrTable } from "./search-console/low-ctr-table";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:3001";
 
@@ -56,6 +57,7 @@ export type AiAction = {
   impact: string;
   target: string;
   href: string;
+  cta: string;
   preview?: { from: string; to: string } | null;
 };
 
@@ -82,6 +84,9 @@ async function getRevenueTrend(): Promise<RevenueTrend | null> {
 async function getAlmostPage1(): Promise<AlmostPage1Row[]> {
   try { const r = await fetch(`${apiBaseUrl}/api/search-console/almost-page-1`, { cache: "no-store" }); return r.ok ? r.json() : []; } catch { return []; }
 }
+async function getLowCtr(): Promise<AlmostPage1Row[]> {
+  try { const r = await fetch(`${apiBaseUrl}/api/search-console/low-ctr`, { cache: "no-store" }); return r.ok ? r.json() : []; } catch { return []; }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,6 +101,17 @@ function fmtNum(n: number) { return new Intl.NumberFormat("en").format(n); }
 function fmtK(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : fmtNum(n); }
 function currency(cents: number) {
   return new Intl.NumberFormat("en", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+}
+function seoActionHref(q: AlmostPage1Row) {
+  if (!q.matchedProductId) return "/search-console";
+  const params = new URLSearchParams({
+    ai: "seo-rewrite",
+    query: q.query,
+    position: q.position.toFixed(1),
+    impressions: String(q.impressions),
+  });
+  if (q.matchedPageUrl) params.set("url", q.matchedPageUrl);
+  return `/products/${q.matchedProductId}?${params.toString()}#ai-actions`;
 }
 function relativeTime(iso: string | null): string {
   if (!iso) return "never";
@@ -132,7 +148,8 @@ function buildAiActions(
       reason: `Pos ${q.position.toFixed(1)} with ${fmtK(q.impressions)} impressions but ${(q.ctr * 100).toFixed(1)}% CTR. Title likely missing the search modifier.`,
       impact: extraClicks > 0 ? `+${fmtNum(extraClicks)} clicks/mo est.` : "Higher CTR est.",
       target: "Shopify",
-      href: q.matchedProductId ? `/products/${q.matchedProductId}` : "/search-console",
+      href: seoActionHref(q),
+      cta: "Review SEO fix",
     });
   });
 
@@ -152,6 +169,7 @@ function buildAiActions(
       impact: `Restores ${listingAlerts.length} listing${listingAlerts.length !== 1 ? "s" : ""}`,
       target: "Shopify",
       href: "/alerts",
+      cta: "Review alerts",
     });
   }
 
@@ -169,6 +187,7 @@ function buildAiActions(
       impact: "+revenue/mo est.",
       target: "Amazon",
       href: `/products/${top.productId}`,
+      cta: "Review product",
     });
   }
 
@@ -185,6 +204,7 @@ function buildAiActions(
       impact: revenueAtRisk > 0 ? `${currency(revenueAtRisk)} revenue at risk` : "Recover lost sales",
       target: "Shopify",
       href: "/inventory",
+      cta: "Review inventory",
     });
   }
 
@@ -201,6 +221,7 @@ function buildAiActions(
       impact: "Restores data freshness",
       target: "Operations",
       href: "/operations",
+      cta: "Open operations",
     });
   }
 
@@ -239,6 +260,17 @@ function KpiCard({ label, value, delta, invert, sub }: {
 }
 
 // ─── Async sections ───────────────────────────────────────────────────────────
+
+async function SeoOpportunitiesSection() {
+  const [almostPage1, lowCtr] = await Promise.all([getAlmostPage1(), getLowCtr()]);
+  if (almostPage1.length === 0 && lowCtr.length === 0) return null;
+  return (
+    <div className="space-y-4">
+      <LowCtrTable rows={lowCtr} />
+      <AlmostPage1Table rows={almostPage1} />
+    </div>
+  );
+}
 
 async function KpiStrip() {
   const [gsc, inventory, revenueTrend] = await Promise.all([getGsc(), getInventory(), getRevenueTrend()]);
@@ -380,6 +412,10 @@ export default function CommandCenterPage() {
 
         <Suspense fallback={<SectionSkeleton rows={5} />}>
           <AiFeedSection />
+        </Suspense>
+
+        <Suspense fallback={<SectionSkeleton rows={6} />}>
+          <SeoOpportunitiesSection />
         </Suspense>
 
         <Suspense fallback={<SectionSkeleton rows={4} />}>
