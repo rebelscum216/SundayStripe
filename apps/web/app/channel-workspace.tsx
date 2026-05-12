@@ -421,7 +421,7 @@ export async function ChannelWorkspace({
       </section>
 
       {platform === "amazon_sp" && <AmazonSalesPanel sales={amazonSales} />}
-
+ 
       {/* Listed products */}
       <section className="ss-card" style={{ overflow: "hidden" }}>
         <div className="flex items-center justify-between" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>

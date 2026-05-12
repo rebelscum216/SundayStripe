@@ -157,7 +157,7 @@ export default async function OperationsPage() {
                   <th style={{ textAlign: "right" }}>Pending Jobs</th>
                   <th style={{ textAlign: "right" }}>Failed Jobs</th>
                   <th style={{ textAlign: "right" }}>Open Alerts</th>
-                  <th style={{ textAlign: "right" }}>Action</th>
+                  <th style={{ textAlign: "right", width: 96 }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,7 +198,7 @@ export default async function OperationsPage() {
                       <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>
                         {fmtNum(pendingJobs)}
                       </td>
-                      <td style={{ textAlign: "right" }}>
+                      <td style={{ textAlign: "right", width: 96, whiteSpace: "nowrap" }}>
                         {failedJobs > 0 ? (
                           <a href="#failed-jobs" className="ss-num" style={{ color: "var(--ss-red)", fontSize: 13 }}>
                             {fmtNum(failedJobs)}

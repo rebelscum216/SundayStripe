@@ -31,6 +31,7 @@ type Variant = {
   title: string;
   barcode: string | null;
   size: string | null;
+  color: string | null;
   listings: Listing[];
   inventory: InventoryLocation[];
 };
@@ -501,11 +502,16 @@ export default async function ProductDetailPage({
         <SectionHeader title="Variants" count={variants.length} />
         <div className="ss-card" style={{ overflow: "hidden" }}>
           <div className="overflow-x-auto">
+            {(() => {
+              const hasColor = variants.some((v) => v.color);
+              const hasSize = variants.some((v) => v.size);
+              return (
             <table className="ss-tbl" style={{ minWidth: 640 }}>
               <thead>
                 <tr>
                   <th>SKU</th>
-                  <th>Size</th>
+                  {hasColor && <th>Color</th>}
+                  {hasSize && <th>Size</th>}
                   <th>Barcode</th>
                   {platforms.map((p) => (
                     <th key={p}>{PLATFORM_LABELS[p] ?? p}</th>
@@ -522,7 +528,8 @@ export default async function ProductDetailPage({
                   return (
                     <tr key={variant.id}>
                       <td className="ss-num" style={{ fontSize: 13, color: "var(--ss-ink-2)" }}>{variant.sku}</td>
-                      <td style={{ color: "var(--ss-ink-2)" }}>{variant.size ?? "—"}</td>
+                      {hasColor && <td style={{ color: "var(--ss-ink-2)" }}>{variant.color ?? "—"}</td>}
+                      {hasSize && <td style={{ color: "var(--ss-ink-2)" }}>{variant.size ?? "—"}</td>}
                       <td className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{variant.barcode ?? "—"}</td>
                       {platforms.map((p) => {
                         const listing = listingByPlatform.get(p);
@@ -546,6 +553,8 @@ export default async function ProductDetailPage({
                 })}
               </tbody>
             </table>
+              );
+            })()}
           </div>
         </div>
       </section>

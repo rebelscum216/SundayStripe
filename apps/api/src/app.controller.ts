@@ -47,26 +47,25 @@ const STATUS_PRIORITY: Record<string, number> = {
   published: 1,
 };
 
-function getVariantSize(optionValuesJson: unknown): string | null {
-  if (!optionValuesJson || typeof optionValuesJson !== "object") {
-    return null;
-  }
-
+function getVariantOption(optionValuesJson: unknown, optionName: string): string | null {
+  if (!optionValuesJson || typeof optionValuesJson !== "object") return null;
   const selectedOptions = (optionValuesJson as { selectedOptions?: unknown }).selectedOptions;
-  if (!Array.isArray(selectedOptions)) {
-    return null;
-  }
-
-  const sizeOption = selectedOptions.find((option) => {
-    if (!option || typeof option !== "object") {
-      return false;
-    }
+  if (!Array.isArray(selectedOptions)) return null;
+  const match = selectedOptions.find((option) => {
+    if (!option || typeof option !== "object") return false;
     const name = (option as { name?: unknown }).name;
-    return typeof name === "string" && name.toLowerCase().includes("size");
+    return typeof name === "string" && name.toLowerCase().includes(optionName);
   });
-
-  const value = (sizeOption as { value?: unknown } | undefined)?.value;
+  const value = (match as { value?: unknown } | undefined)?.value;
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function getVariantSize(optionValuesJson: unknown): string | null {
+  return getVariantOption(optionValuesJson, "size");
+}
+
+function getVariantColor(optionValuesJson: unknown): string | null {
+  return getVariantOption(optionValuesJson, "color");
 }
 
 function getVariantTitle(optionValuesJson: unknown, fallbackSku: string): string {
@@ -858,6 +857,7 @@ export class AppController {
         title: getVariantTitle(v.optionValuesJson, v.sku),
         barcode: v.barcode,
         size: getVariantSize(v.optionValuesJson),
+        color: getVariantColor(v.optionValuesJson),
         optionValuesJson: v.optionValuesJson,
         listings: listingsByVariant.get(v.id) ?? [],
         inventory: Array.from((inventoryByVariant.get(v.id) ?? new Map()).entries()).map(
