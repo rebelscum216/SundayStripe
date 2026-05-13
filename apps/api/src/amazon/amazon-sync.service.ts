@@ -191,6 +191,7 @@ export class AmazonSyncService {
       variantId,
       integrationAccountId: integration.id,
       platformListingId: listingId,
+      asin: listing.asin ?? null,
       status: this.getListingStatus(listing),
       buyabilityStatus: listing.status,
       issuesJson: listing.issues,

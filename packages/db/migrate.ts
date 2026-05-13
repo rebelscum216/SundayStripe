@@ -18,6 +18,7 @@ const migrations = [
   "drizzle/0008_variant_cost.sql",
   "drizzle/0009_branded_queries.sql",
   "drizzle/0010_location_name.sql",
+  "drizzle/0011_channel_listing_asin.sql",
 ];
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const dbUrl = new URL(databaseUrl);

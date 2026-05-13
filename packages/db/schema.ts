@@ -88,6 +88,7 @@ export const channelListings = pgTable("channel_listings", {
     .notNull()
     .references(() => integrationAccounts.id, { onDelete: "cascade" }),
   platformListingId: text("platform_listing_id"),
+  asin: text("asin"),
   status: text("status"),
   buyabilityStatus: text("buyability_status"),
   issuesJson: jsonb("issues_json"),

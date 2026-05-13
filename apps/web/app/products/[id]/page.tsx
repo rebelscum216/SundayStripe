@@ -25,6 +25,7 @@ type Listing = {
   issuesJson: unknown;
   qualityScore: number | null;
   platformListingId: string | null;
+  asin: string | null;
   lastSeenAt: string | null;
 };
 type Variant = {
@@ -96,6 +97,7 @@ type ProductDetail = {
     sourceOfTruth: string;
     sourceUpdatedAt: string | null;
     updatedAt: string | null;
+    shopifyUrl: string | null;
   };
   variants: Variant[];
   alerts: Alert[];
@@ -292,6 +294,16 @@ export default async function ProductDetailPage({
       .map((l) => ({ variantId: v.id, sku: l.platformListingId! }))
   );
 
+  const uniqueAsins = [
+    ...new Set(
+      variants.flatMap((v) =>
+        v.listings
+          .filter((l) => l.platform === "amazon_sp" && l.asin)
+          .map((l) => l.asin!)
+      )
+    ),
+  ];
+
   const amazonMissingAttrNames = [
     ...new Set(
       alerts
@@ -358,6 +370,37 @@ export default async function ProductDetailPage({
                   );
                 })()}
               </div>
+              {(product.shopifyUrl || uniqueAsins.length > 0) && (
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  {product.shopifyUrl && (
+                    <a
+                      href={product.shopifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--ss-ink-3)", textDecoration: "none" }}
+                    >
+                      <span style={{ width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#96BF48", borderRadius: 3 }}>
+                        <svg width="9" height="9" viewBox="0 0 20 20" fill="white"><path d="M13.4 2.2c-.1-.4-.5-.7-.9-.6-.1 0-2.3.3-2.3.3C9.5 1.1 8.8.5 8 .5c-.1 0-.3 0-.4.1C7.3.1 6.9 0 6.5 0 5 0 4.3 1.7 4.1 2.6l-1.5.2c-.5.1-.9.5-.9 1L1 17.1c0 .5.4.9.9.9l10.9-1.9c.5-.1.9-.5.9-1l.8-12.4c0-.2-.1-.4-.1-.5zM8 1.5c.3 0 .6.2.8.5L6.5 2.3c.2-.5.7-.8 1.5-.8z"/></svg>
+                      </span>
+                      Shopify
+                    </a>
+                  )}
+                  {uniqueAsins.map((asin) => (
+                    <a
+                      key={asin}
+                      href={`https://www.amazon.com/dp/${asin}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--ss-ink-3)", textDecoration: "none" }}
+                    >
+                      <span style={{ width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#FF9900", borderRadius: 3 }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13.226-.088.39-.046.525.13.12.174.09.336-.12.48-.256.19-.6.41-1.006.654-1.244.743-2.64 1.316-4.185 1.726a17.62 17.62 0 0 1-5.097.507c-2.715-.108-5.278-.938-7.69-2.49C3.6 19.8 2.6 19.15 1.82 18.4c-.162-.15-.18-.307-.04-.45.022-.025.045-.05.067-.073.054-.067.118-.127.198-.126zm21.637-1.25c-.166.268-.362.424-.586.47-.224.044-.476-.09-.754-.42-.55-.625-1.068-1.275-1.553-1.948-.488-.672-.97-1.348-1.438-2.01-.19-.272-.274-.498-.254-.683.022-.184.15-.386.387-.606.258-.235.567-.345.927-.33.36.015.702.178 1.027.487.78.77 1.47 1.58 2.073 2.43.64.913.78 1.825.17 2.61z"/></svg>
+                      </span>
+                      Amazon {uniqueAsins.length > 1 ? `(${asin})` : ""}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-5 text-right">

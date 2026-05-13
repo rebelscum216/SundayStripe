@@ -857,6 +857,12 @@ export class AppController {
 
   @Get("products/:id")
   async getProduct(@Param("id") id: string) {
+    const [shopifyAccount] = await this.db
+      .select({ shopDomain: integrationAccounts.shopDomain })
+      .from(integrationAccounts)
+      .where(eq(integrationAccounts.platform, "shopify"))
+      .limit(1);
+
     const [product] = await this.db
       .select()
       .from(products)
@@ -884,6 +890,7 @@ export class AppController {
               issuesJson: channelListings.issuesJson,
               qualityScore: channelListings.qualityScore,
               platformListingId: channelListings.platformListingId,
+              asin: channelListings.asin,
               lastSeenAt: channelListings.lastSeenAt,
             })
             .from(channelListings)
@@ -954,6 +961,9 @@ export class AppController {
         sourceOfTruth: product.sourceOfTruth,
         sourceUpdatedAt: product.sourceUpdatedAt?.toISOString() ?? null,
         updatedAt: product.updatedAt?.toISOString() ?? null,
+        shopifyUrl: shopifyAccount?.shopDomain
+          ? `https://${shopifyAccount.shopDomain}/products/${this.titleToHandle(product.title ?? product.canonicalSku)}`
+          : null,
       },
       variants: variantRows.map((v) => ({
         id: v.id,

@@ -321,7 +321,7 @@ export class AmazonApiService {
     return {
       sku: item.sku ?? item.sellerSku ?? '',
       asin: item.asin ?? item.summaries?.find((summary) => summary.asin)?.asin ?? null,
-      status: statuses[0] ?? 'UNKNOWN',
+      status: statuses.includes('BUYABLE') ? 'BUYABLE' : (statuses[0] ?? 'UNKNOWN'),
       title: summary?.itemName ?? null,
       productType: summary?.productType ?? null,
       imageUrl: summary?.mainImage?.link ?? null,
