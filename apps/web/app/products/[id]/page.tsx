@@ -13,6 +13,7 @@ type RevenueData = {
   periodDays: number;
   unitsSold: number;
   revenueCents: number;
+  byChannel: { platform: string; unitsSold: number; revenueCents: number }[];
   topVariants: { sku: string; size: string | null; unitsSold: number; revenueCents: number }[];
 };
 type Quantity = { name: string; value: number };
@@ -24,12 +25,15 @@ type Listing = {
   issuesJson: unknown;
   qualityScore: number | null;
   platformListingId: string | null;
+  lastSeenAt: string | null;
 };
 type Variant = {
   id: string;
   sku: string;
   title: string;
   barcode: string | null;
+  weightGrams: number | null;
+  costCents: number | null;
   size: string | null;
   color: string | null;
   listings: Listing[];
@@ -134,7 +138,13 @@ const STATUS_BADGE: Record<string, string> = {
   published: "ss-pill ss-pill-sage",
   issue: "ss-pill ss-pill-amber",
   disapproved: "ss-pill ss-pill-red",
-  unlisted: "ss-pill",
+  unlisted: "ss-pill ss-pill-amber",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  published: "active",
+  unlisted: "not for sale",
+  issue: "has issues",
 };
 
 const SEVERITY_BADGE: Record<string, string> = {
@@ -337,9 +347,16 @@ export default async function ProductDetailPage({
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <span className="ss-num" style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>{product.canonicalSku}</span>
                 {product.brand && <span style={{ fontSize: 14, color: "var(--ss-ink-3)" }}>{product.brand}</span>}
-                <span className="ss-pill">
-                  source: {product.sourceOfTruth}
-                </span>
+                <span className="ss-pill">source: {product.sourceOfTruth}</span>
+                {product.sourceUpdatedAt && (() => {
+                  const daysSince = Math.floor((Date.now() - new Date(product.sourceUpdatedAt!).getTime()) / 86400000);
+                  const color = daysSince > 365 ? "var(--ss-red-ink)" : daysSince > 180 ? "var(--ss-amber-ink)" : "var(--ss-ink-3)";
+                  return (
+                    <span style={{ fontSize: 12, color }} title={`Last updated in Shopify: ${formatDate(product.sourceUpdatedAt)}`}>
+                      updated {daysSince === 0 ? "today" : daysSince === 1 ? "yesterday" : `${daysSince}d ago`}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -465,12 +482,38 @@ export default async function ProductDetailPage({
         <section className="flex flex-col gap-3">
           <SectionHeader title="Revenue — last 90 days" />
           <div className="ss-card" style={{ overflow: "hidden" }}>
+            {(() => {
+              const costBySkuMap = new Map(variants.map((v) => [v.sku, v.costCents]));
+              const totalCogs = revenue.topVariants.reduce((sum, tv) => {
+                const cost = costBySkuMap.get(tv.sku);
+                return cost != null ? sum + cost * tv.unitsSold : sum;
+              }, 0);
+              const allHaveCost = revenue.topVariants.every((tv) => costBySkuMap.get(tv.sku) != null);
+              const grossMarginCents = allHaveCost ? revenue.revenueCents - totalCogs : null;
+              const marginPct = grossMarginCents != null && revenue.revenueCents > 0
+                ? Math.round((grossMarginCents / revenue.revenueCents) * 100) : null;
+              return (
             <div className="flex items-center justify-between" style={{ borderBottom: "1px solid var(--ss-line)", padding: "12px 16px" }}>
               <div className="flex items-center gap-5">
                 <HeaderStat label="Units" value={fmt(revenue.unitsSold)} />
                 <HeaderStat label="Revenue" value={currency(revenue.revenueCents)} tone="sage" />
+                {grossMarginCents != null && (
+                  <HeaderStat label={`Gross Margin${!allHaveCost ? " (est.)" : ""}`} value={`${marginPct}%`} tone={marginPct != null && marginPct >= 30 ? "sage" : "amber"} />
+                )}
               </div>
+              {revenue.byChannel && revenue.byChannel.length > 1 && (
+                <div className="flex items-center gap-3">
+                  {revenue.byChannel.map((ch) => (
+                    <div key={ch.platform} style={{ textAlign: "right" }}>
+                      <p style={{ fontSize: 11, color: "var(--ss-ink-4)" }}>{PLATFORM_LABELS[ch.platform] ?? ch.platform}</p>
+                      <p className="ss-num" style={{ fontSize: 14, color: "var(--ss-sage-ink)" }}>{currency(ch.revenueCents)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+              );
+            })()}
             {revenue.topVariants.length > 0 && (
               <table className="ss-tbl">
                 <thead>
@@ -505,6 +548,8 @@ export default async function ProductDetailPage({
             {(() => {
               const hasColor = variants.some((v) => v.color);
               const hasSize = variants.some((v) => v.size);
+              const hasWeight = variants.some((v) => v.weightGrams != null);
+              const hasCost = variants.some((v) => v.costCents != null);
               return (
             <table className="ss-tbl" style={{ minWidth: 640 }}>
               <thead>
@@ -513,6 +558,8 @@ export default async function ProductDetailPage({
                   {hasColor && <th>Color</th>}
                   {hasSize && <th>Size</th>}
                   <th>Barcode</th>
+                  {hasWeight && <th style={{ textAlign: "right" }}>Weight</th>}
+                  {hasCost && <th style={{ textAlign: "right" }}>Cost</th>}
                   {platforms.map((p) => (
                     <th key={p}>{PLATFORM_LABELS[p] ?? p}</th>
                   ))}
@@ -531,17 +578,42 @@ export default async function ProductDetailPage({
                       {hasColor && <td style={{ color: "var(--ss-ink-2)" }}>{variant.color ?? "—"}</td>}
                       {hasSize && <td style={{ color: "var(--ss-ink-2)" }}>{variant.size ?? "—"}</td>}
                       <td className="ss-num" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{variant.barcode ?? "—"}</td>
+                      {hasWeight && (
+                        <td className="ss-num" style={{ textAlign: "right", fontSize: 12, color: "var(--ss-ink-3)" }}>
+                          {variant.weightGrams != null ? `${variant.weightGrams}g` : "—"}
+                        </td>
+                      )}
+                      {hasCost && (
+                        <td className="ss-num" style={{ textAlign: "right", fontSize: 12, color: "var(--ss-ink-3)" }}>
+                          {variant.costCents != null ? currency(variant.costCents) : <span style={{ color: "var(--ss-amber-ink)" }}>no cost</span>}
+                        </td>
+                      )}
                       {platforms.map((p) => {
                         const listing = listingByPlatform.get(p);
                         const status = listing?.status ?? "unlisted";
+                        const suppressed = listing?.buyabilityStatus === "not_buyable";
+                        const lastSeenAt = listing?.lastSeenAt ? new Date(listing.lastSeenAt) : null;
+                        const hoursSinceSync = lastSeenAt ? (Date.now() - lastSeenAt.getTime()) / 3600000 : null;
+                        const staleBadge = hoursSinceSync != null && hoursSinceSync > 72
+                          ? { color: "var(--ss-red-ink)", label: `synced ${Math.floor(hoursSinceSync / 24)}d ago` }
+                          : hoursSinceSync != null && hoursSinceSync > 24
+                          ? { color: "var(--ss-amber-ink)", label: `synced ${Math.floor(hoursSinceSync)}h ago` }
+                          : null;
                         return (
                           <td key={p}>
                             <div className="flex flex-col gap-1">
-                              <span className={STATUS_BADGE[status] ?? STATUS_BADGE.unlisted}>
-                                {status}
-                              </span>
+                              {suppressed ? (
+                                <span className="ss-pill ss-pill-amber">suppressed</span>
+                              ) : (
+                                <span className={STATUS_BADGE[status] ?? STATUS_BADGE.unlisted}>
+                                  {STATUS_LABEL[status] ?? status}
+                                </span>
+                              )}
                               {p === "amazon_sp" && listing?.qualityScore != null && (
                                 <QualityScoreBadge score={listing.qualityScore} />
+                              )}
+                              {staleBadge && (
+                                <span style={{ fontSize: 10, color: staleBadge.color }}>{staleBadge.label}</span>
                               )}
                             </div>
                           </td>

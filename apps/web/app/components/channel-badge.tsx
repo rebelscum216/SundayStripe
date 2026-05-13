@@ -1,6 +1,7 @@
 type ChannelBadgeProps = {
   platform: "shopify" | "merchant" | "amazon_sp" | "search_console";
   status?: string;
+  suppressed?: boolean;
 };
 
 const platformLabels = {
@@ -15,7 +16,7 @@ const statusStyles: Record<string, string> = {
   active: "ss-pill-sage",
   disapproved: "ss-pill-red",
   issue: "ss-pill-amber",
-  unlisted: "",
+  unlisted: "ss-pill-amber",
 };
 
 const statusDot: Record<string, string> = {
@@ -23,17 +24,27 @@ const statusDot: Record<string, string> = {
   active: "var(--ss-sage-ink)",
   disapproved: "var(--ss-red-ink)",
   issue: "var(--ss-amber-ink)",
-  unlisted: "var(--ss-ink-3)",
+  unlisted: "var(--ss-amber-ink)",
 };
 
-export function ChannelBadge({ platform, status }: ChannelBadgeProps) {
-  const style = status ? (statusStyles[status] ?? "") : "";
-  const dot = status ? (statusDot[status] ?? "var(--ss-ink-3)") : null;
+const statusTooltip: Record<string, string> = {
+  unlisted: "Exists on platform but not purchasable — check listing quality",
+  suppressed: "Published but not buyable",
+};
+
+export function ChannelBadge({ platform, status, suppressed }: ChannelBadgeProps) {
+  const effectiveStatus = suppressed ? "suppressed" : status;
+  const style = suppressed ? "ss-pill-amber" : (status ? (statusStyles[status] ?? "") : "");
+  const dot = suppressed ? "var(--ss-amber-ink)" : (status ? (statusDot[status] ?? "var(--ss-ink-3)") : null);
+
+  const tooltip = suppressed
+    ? statusTooltip.suppressed
+    : (status ? (statusTooltip[status] ?? effectiveStatus) : undefined);
 
   return (
-    <span className={`ss-pill ${style}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+    <span className={`ss-pill ${style}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }} title={tooltip}>
       {dot && <span style={{ width: 6, height: 6, borderRadius: 999, background: dot }} />}
-      {platformLabels[platform]}
+      {platformLabels[platform]}{suppressed ? " (suppressed)" : ""}
     </span>
   );
 }

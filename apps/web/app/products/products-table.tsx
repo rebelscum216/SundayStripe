@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChannelBadge as PlatformBadge } from "../components/channel-badge";
 import { QualityScoreBadge } from "./quality-score-badge";
 
-type Channel = { platform: string; status: string };
+type Channel = { platform: string; status: string; suppressed?: boolean };
 
 export type Product = {
   id: string;
@@ -16,6 +16,9 @@ export type Product = {
   missingAttributes: string[];
   amazonQualityScore: number | null;
   channels: Channel[];
+  revenueCents?: number;
+  gscClicks?: number;
+  gscImpressions?: number;
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -35,6 +38,18 @@ const ATTR_LABELS: Record<string, string> = {
 function formatDate(value: string | null) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
+}
+
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en").format(value);
 }
 
 function isKnownPlatform(platform: string): platform is "shopify" | "merchant" | "amazon_sp" | "search_console" {
@@ -57,7 +72,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "published", label: "Published" },
   { value: "issue", label: "Has Issues" },
   { value: "disapproved", label: "Disapproved" },
-  { value: "unlisted", label: "Unlisted" },
+  { value: "unlisted", label: "Not for Sale" },
   { value: "no_listings", label: "No Listings" },
 ];
 
@@ -169,6 +184,12 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
   }, [products, query, status, activeGap]);
 
   const hasActiveFilter = query.trim() || status !== "all" || activeGap;
+  const showRevenue = products.some((product) => product.revenueCents !== undefined);
+  const showGsc = products.some(
+    (product) => product.gscClicks !== undefined || product.gscImpressions !== undefined,
+  );
+  const emptyColSpan = 5 + (showRevenue ? 1 : 0) + (showGsc ? 2 : 0);
+  const tableMinWidth = 720 + (showRevenue ? 120 : 0) + (showGsc ? 200 : 0);
 
   function toggleGap(chip: GapChip) {
     const key = gapKey(chip);
@@ -256,12 +277,15 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
 
       <section className="ss-card" style={{ overflow: "hidden" }}>
         <div className="overflow-x-auto">
-          <table className="ss-tbl" style={{ minWidth: 720 }}>
+          <table className="ss-tbl" style={{ minWidth: tableMinWidth }}>
             <thead>
               <tr>
                 <th>Product</th>
                 <th style={{ textAlign: "right" }}>Variants</th>
                 <th style={{ textAlign: "right" }}>Inventory</th>
+                {showRevenue && <th style={{ textAlign: "right" }}>Revenue</th>}
+                {showGsc && <th style={{ textAlign: "right" }}>GSC Clicks</th>}
+                {showGsc && <th style={{ textAlign: "right" }}>GSC Impr.</th>}
                 <th>Channels</th>
                 <th>Amazon Score</th>
               </tr>
@@ -293,14 +317,29 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
                   </td>
                   <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>{product.variantCount}</td>
                   <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>
-                    {new Intl.NumberFormat("en").format(product.availableInventory)}
+                    {formatNumber(product.availableInventory)}
                   </td>
+                  {showRevenue && (
+                    <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>
+                      {product.revenueCents === undefined ? "-" : formatCurrency(product.revenueCents)}
+                    </td>
+                  )}
+                  {showGsc && (
+                    <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>
+                      {product.gscClicks === undefined ? "-" : formatNumber(product.gscClicks)}
+                    </td>
+                  )}
+                  {showGsc && (
+                    <td className="ss-num" style={{ textAlign: "right", color: "var(--ss-ink-2)" }}>
+                      {product.gscImpressions === undefined ? "-" : formatNumber(product.gscImpressions)}
+                    </td>
+                  )}
                   <td>
                     <div className="flex flex-wrap gap-1">
                       {product.channels.length > 0
                         ? product.channels.map((ch) =>
                             isKnownPlatform(ch.platform) ? (
-                              <PlatformBadge key={ch.platform} platform={ch.platform} status={ch.status} />
+                              <PlatformBadge key={ch.platform} platform={ch.platform} status={ch.status} suppressed={ch.suppressed} />
                             ) : (
                               <span
                                 key={ch.platform}
@@ -324,7 +363,7 @@ export function ProductsTable({ products, initialQuery, initialGap }: ProductsTa
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td style={{ padding: 24, color: "var(--ss-ink-3)" }} colSpan={6}>
+                  <td style={{ padding: 24, color: "var(--ss-ink-3)" }} colSpan={emptyColSpan}>
                     {products.length === 0 ? "No products found." : "No products match the filter."}
                   </td>
                 </tr>
