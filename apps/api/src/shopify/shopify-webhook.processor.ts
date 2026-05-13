@@ -52,11 +52,13 @@ type ShopifyVariant = {
   }>;
   inventoryItem: {
     id: string;
+    unitCost?: { amount: string; currencyCode?: string | null } | null;
     inventoryLevels?: {
       edges: Array<{
         node: {
           location: {
             id: string;
+            name?: string;
           };
           quantities: Array<{
             name: string;
@@ -94,10 +96,11 @@ const PRODUCT_BY_ID_QUERY = `#graphql
               selectedOptions { name value }
               inventoryItem {
                 id
+                unitCost { amount currencyCode }
                 inventoryLevels(first: 20) {
                   edges {
                     node {
-                      location { id }
+                      location { id name }
                       quantities(names: ["available", "committed", "on_hand", "incoming"]) {
                         name
                         quantity
@@ -143,10 +146,11 @@ const PRODUCT_BY_INVENTORY_ITEM_QUERY = `#graphql
                   selectedOptions { name value }
                   inventoryItem {
                     id
+                    unitCost { amount currencyCode }
                     inventoryLevels(first: 20) {
                       edges {
                         node {
-                          location { id }
+                          location { id name }
                           quantities(names: ["available", "committed", "on_hand", "incoming"]) {
                             name
                             quantity
@@ -394,6 +398,7 @@ export class ShopifyWebhookProcessor extends WorkerHost {
 
   private async upsertVariant(productId: string, variant: ShopifyVariant): Promise<string> {
     const sku = this.getVariantSku(variant);
+    const costCents = this.parseUnitCostCents(variant.inventoryItem?.unitCost?.amount);
     const values = {
       productId,
       sku,
@@ -403,6 +408,7 @@ export class ShopifyWebhookProcessor extends WorkerHost {
         shopifyInventoryItemId: variant.inventoryItem?.id ?? null,
         selectedOptions: variant.selectedOptions ?? [],
       },
+      ...(costCents !== null ? { costCents } : {}),
       updatedAt: new Date(),
     };
 
@@ -473,6 +479,7 @@ export class ShopifyWebhookProcessor extends WorkerHost {
             variantId,
             integrationAccountId: integration.id,
             locationKey: inventoryLevel.node.location.id,
+            locationName: inventoryLevel.node.location.name ?? null,
             quantityName: quantity.name,
             quantityValue: quantity.quantity,
             authoritativeSource: 'shopify',
@@ -486,6 +493,7 @@ export class ShopifyWebhookProcessor extends WorkerHost {
               inventoryPositions.quantityName,
             ],
             set: {
+              locationName: inventoryLevel.node.location.name ?? null,
               quantityValue: quantity.quantity,
               authoritativeSource: 'shopify',
               updatedAt: new Date(),
@@ -513,6 +521,12 @@ export class ShopifyWebhookProcessor extends WorkerHost {
   private getVariantSku(variant: ShopifyVariant): string {
     const sku = variant.sku?.trim();
     return sku || variant.id;
+  }
+
+  private parseUnitCostCents(amount: string | null | undefined): number | null {
+    if (!amount) return null;
+    const parsed = Number.parseFloat(amount);
+    return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
   }
 
   private getListingStatus(product: ShopifyProduct): string {

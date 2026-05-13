@@ -81,7 +81,8 @@ type ShopifyVariant = {
   }>;
   inventoryItem: {
     id: string;
-    inventoryLevels: {
+    unitCost?: { amount: string; currencyCode?: string | null } | null;
+    inventoryLevels?: {
       edges: Array<{
         node: {
           location: {
@@ -129,10 +130,11 @@ const PRODUCT_SYNC_WITH_INVENTORY_QUERY = `#graphql
                 selectedOptions { name value }
                 inventoryItem {
                   id
+                  unitCost { amount currencyCode }
                   inventoryLevels(first: 20) {
                     edges {
                       node {
-                        location { id }
+                        location { id name }
                         quantities(names: ["available", "committed", "on_hand", "incoming"]) {
                           name
                           quantity
@@ -177,7 +179,7 @@ const PRODUCT_SYNC_WITHOUT_INVENTORY_QUERY = `#graphql
                 sku
                 barcode
                 selectedOptions { name value }
-                inventoryItem { id }
+                inventoryItem { id unitCost { amount currencyCode } }
               }
             }
           }
@@ -432,6 +434,7 @@ export class ShopifyInitialSyncService {
 
   private async upsertVariant(productId: string, variant: ShopifyVariant): Promise<string> {
     const sku = this.getVariantSku(variant);
+    const costCents = this.parseUnitCostCents(variant.inventoryItem?.unitCost?.amount);
     const values = {
       productId,
       sku,
@@ -440,6 +443,7 @@ export class ShopifyInitialSyncService {
         shopifyVariantId: variant.id,
         selectedOptions: variant.selectedOptions ?? [],
       },
+      ...(costCents !== null ? { costCents } : {}),
       updatedAt: new Date(),
     };
 
@@ -512,6 +516,7 @@ export class ShopifyInitialSyncService {
             variantId,
             integrationAccountId: integration.id,
             locationKey: inventoryLevel.node.location.id,
+            locationName: inventoryLevel.node.location.name ?? null,
             quantityName: quantity.name,
             quantityValue: quantity.quantity,
             authoritativeSource: 'shopify',
@@ -614,6 +619,12 @@ export class ShopifyInitialSyncService {
   private getVariantSku(variant: ShopifyVariant): string {
     const sku = variant.sku?.trim();
     return sku || variant.id;
+  }
+
+  private parseUnitCostCents(amount: string | null | undefined): number | null {
+    if (!amount) return null;
+    const parsed = Number.parseFloat(amount);
+    return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
   }
 
   private getListingStatus(product: ShopifyProduct): string {

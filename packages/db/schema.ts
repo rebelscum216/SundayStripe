@@ -74,6 +74,7 @@ export const variants = pgTable("variants", {
   barcode: text("barcode"),
   optionValuesJson: jsonb("option_values_json"),
   weightGrams: integer("weight_grams"),
+  costCents: integer("cost_cents"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
@@ -108,6 +109,7 @@ export const inventoryPositions = pgTable(
       .notNull()
       .references(() => integrationAccounts.id, { onDelete: "cascade" }),
     locationKey: text("location_key").notNull(),
+    locationName: text("location_name"),
     quantityName: text("quantity_name").notNull(),
     quantityValue: integer("quantity_value").notNull().default(0),
     authoritativeSource: text("authoritative_source"),
@@ -204,6 +206,7 @@ export const searchPerformance = pgTable(
     impressions: integer("impressions").notNull().default(0),
     ctr: integer("ctr_millipct").notNull().default(0),
     position: integer("position_tenths").notNull().default(0),
+    isBranded: boolean("is_branded").notNull().default(false),
     periodDays: integer("period_days").notNull().default(90),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow()
   },

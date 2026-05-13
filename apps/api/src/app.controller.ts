@@ -922,9 +922,6 @@ export class AppController {
             .orderBy(desc(alerts.createdAt))
         : [];
 
-    const locationNameMap = await this.buildLocationNameMap();
-    const resolveLocationName = (key: string) => this.resolveLocationName(key, locationNameMap);
-
     const listingsByVariant = new Map<string, typeof listingRows>();
     for (const row of listingRows) {
       const bucket = listingsByVariant.get(row.variantId) ?? [];
@@ -932,15 +929,16 @@ export class AppController {
       listingsByVariant.set(row.variantId, bucket);
     }
 
-    const inventoryByVariant = new Map<string, Map<string, { name: string; value: number }[]>>();
+    const inventoryByVariant = new Map<string, Map<string, { locationName: string | null; quantities: { name: string; value: number }[] }>>();
     for (const row of inventoryRows) {
       if (!inventoryByVariant.has(row.variantId)) {
         inventoryByVariant.set(row.variantId, new Map());
       }
       const locMap = inventoryByVariant.get(row.variantId)!;
-      const bucket = locMap.get(row.locationKey) ?? [];
-      bucket.push({ name: row.quantityName, value: row.quantityValue });
-      locMap.set(row.locationKey, bucket);
+      if (!locMap.has(row.locationKey)) {
+        locMap.set(row.locationKey, { locationName: row.locationName ?? null, quantities: [] });
+      }
+      locMap.get(row.locationKey)!.quantities.push({ name: row.quantityName, value: row.quantityValue });
     }
 
     return {
@@ -969,7 +967,11 @@ export class AppController {
         optionValuesJson: v.optionValuesJson,
         listings: listingsByVariant.get(v.id) ?? [],
         inventory: Array.from((inventoryByVariant.get(v.id) ?? new Map()).entries()).map(
-          ([locationKey, quantities]) => ({ locationKey, name: resolveLocationName(locationKey), quantities }),
+          ([locationKey, { locationName, quantities }]) => ({
+            locationKey,
+            name: locationName ?? this.resolveLocationName(locationKey, {}),
+            quantities,
+          }),
         ),
       })),
       alerts: alertRows,
@@ -1020,6 +1022,7 @@ export class AppController {
         .select({
           variantId: inventoryPositions.variantId,
           locationKey: inventoryPositions.locationKey,
+          locationName: inventoryPositions.locationName,
           quantityName: inventoryPositions.quantityName,
           quantityValue: inventoryPositions.quantityValue,
           updatedAt: inventoryPositions.updatedAt,
@@ -1051,7 +1054,7 @@ export class AppController {
         .map((row) => [row.variantId, row]),
     );
 
-    const quantityByVariant = new Map<string, Map<string, Map<string, number>>>();
+    const quantityByVariant = new Map<string, Map<string, { name: string | null; quantities: Map<string, number> }>>();
     const updatedByVariant = new Map<string, Date>();
     for (const row of inventoryRows) {
       if (!quantityByVariant.has(row.variantId)) {
@@ -1059,9 +1062,9 @@ export class AppController {
       }
       const byLocation = quantityByVariant.get(row.variantId)!;
       if (!byLocation.has(row.locationKey)) {
-        byLocation.set(row.locationKey, new Map());
+        byLocation.set(row.locationKey, { name: row.locationName ?? null, quantities: new Map() });
       }
-      byLocation.get(row.locationKey)!.set(row.quantityName, row.quantityValue);
+      byLocation.get(row.locationKey)!.quantities.set(row.quantityName, row.quantityValue);
       const current = updatedByVariant.get(row.variantId);
       if (!current || row.updatedAt > current) {
         updatedByVariant.set(row.variantId, row.updatedAt);
@@ -1085,7 +1088,7 @@ export class AppController {
 
     const variantsPayload = variantRows.map((row) => {
       const locationMap = quantityByVariant.get(row.variantId) ?? new Map();
-      const variantLocations = Array.from(locationMap.entries()).map(([locationKey, quantities]) => {
+      const variantLocations = Array.from(locationMap.entries()).map(([locationKey, { name: locName, quantities }]) => {
         const available = quantities.get("available") ?? 0;
         const onHand = quantities.get("on_hand") ?? 0;
         const committed = quantities.get("committed") ?? 0;
@@ -1096,7 +1099,7 @@ export class AppController {
         aggregate.committed += committed;
         aggregate.incoming += incoming;
         locations.set(locationKey, aggregate);
-        return { locationKey, available, onHand, committed, incoming };
+        return { locationKey, locationName: locName, available, onHand, committed, incoming };
       });
 
       const available = variantLocations.reduce((sum, location) => sum + location.available, 0);
@@ -1156,8 +1159,13 @@ export class AppController {
       ok: 3,
     };
 
-    const locationNameMap = await this.buildLocationNameMap();
-    const resolveLocationName = (key: string) => this.resolveLocationName(key, locationNameMap);
+    // Build a locationKey→name map from stored DB values (no live API call needed)
+    const storedLocationNames = new Map<string, string>();
+    for (const row of inventoryRows) {
+      if (row.locationName) storedLocationNames.set(row.locationKey, row.locationName);
+    }
+    const resolveLocationName = (key: string, stored?: string | null) =>
+      stored ?? storedLocationNames.get(key) ?? this.resolveLocationName(key, {});
 
     return {
       periodDays: 90,
@@ -1168,7 +1176,7 @@ export class AppController {
       variants: variantsPayload
         .map((v) => ({
           ...v,
-          locations: v.locations.map((loc) => ({ ...loc, name: resolveLocationName(loc.locationKey) })),
+          locations: v.locations.map((loc) => ({ ...loc, name: resolveLocationName(loc.locationKey, loc.locationName) })),
         }))
         .sort((a, b) => {
           const statusDelta = riskPriority[a.status] - riskPriority[b.status];
