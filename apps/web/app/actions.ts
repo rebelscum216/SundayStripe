@@ -27,6 +27,8 @@ export type OptimizePageResult = {
   productTitle: string | null;
   recommendationId: string | null;
   cached: boolean;
+  currentSeoTitle?: string | null;
+  currentSeoDescription?: string | null;
 };
 
 export type AiProductCopyResult = {

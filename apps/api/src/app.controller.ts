@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Inject, InternalServerErrorException, NotFoundException, Param, Patch, Post } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Inject, InternalServerErrorException, NotFoundException, Param, Patch, Post, Query } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
@@ -384,10 +384,20 @@ export class AppController {
   }
 
   @Get("products")
-  async listProducts() {
+  async listProducts(@Query("include") include?: string | string[]) {
+    const includeTokens = new Set(
+      (Array.isArray(include) ? include.join(",") : include ?? "")
+        .split(",")
+        .map((token) => token.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const includeRevenue = includeTokens.has("revenue");
+    const includeGsc = includeTokens.has("gsc");
+
     const productRows = await this.db
       .select({
         id: products.id,
+        workspaceId: products.workspaceId,
         title: products.title,
         canonicalSku: products.canonicalSku,
         brand: products.brand,
@@ -406,10 +416,11 @@ export class AppController {
       .limit(200);
 
     const listingRows = await this.db
-      .selectDistinct({
+      .select({
         productId: products.id,
         platform: integrationAccounts.platform,
         status: channelListings.status,
+        buyabilityStatus: channelListings.buyabilityStatus,
       })
       .from(channelListings)
       .innerJoin(variants, eq(channelListings.variantId, variants.id))
@@ -429,17 +440,84 @@ export class AppController {
       .groupBy(products.id);
 
     const amazonQualityByProduct = new Map(amazonQualityRows.map((r) => [r.productId, r.maxScore]));
+    const productIds = productRows.map((row) => row.id);
+    const workspaceIds = Array.from(new Set(productRows.map((row) => row.workspaceId)));
 
-    const channelsByProduct = new Map<string, Map<string, string>>();
+    const [revenueRows, gscRows] = await Promise.all([
+      includeRevenue && productIds.length > 0
+        ? this.db
+            .select({
+              productId: orderLineItems.productId,
+              revenueCents: sql<number>`coalesce(sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents}), 0)::int`,
+            })
+            .from(orderLineItems)
+            .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
+            .where(
+              and(
+                inArray(orderLineItems.productId, productIds),
+                sql`${orders.createdAt} > now() - interval '90 days'`,
+                sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
+              ),
+            )
+            .groupBy(orderLineItems.productId)
+        : Promise.resolve([]),
+      includeGsc && workspaceIds.length > 0
+        ? this.db
+            .select({
+              workspaceId: searchPerformance.workspaceId,
+              dimensionValue: searchPerformance.dimensionValue,
+              clicks: sql<number>`coalesce(sum(${searchPerformance.clicks}), 0)::int`,
+              impressions: sql<number>`coalesce(sum(${searchPerformance.impressions}), 0)::int`,
+            })
+            .from(searchPerformance)
+            .where(
+              and(
+                inArray(searchPerformance.workspaceId, workspaceIds),
+                eq(searchPerformance.dimension, "page"),
+                sql`${searchPerformance.dimensionValue} ilike '%/products/%'`,
+              ),
+            )
+            .groupBy(searchPerformance.workspaceId, searchPerformance.dimensionValue)
+        : Promise.resolve([]),
+    ]);
+
+    const revenueByProduct = new Map(
+      revenueRows
+        .filter((row): row is typeof row & { productId: string } => Boolean(row.productId))
+        .map((row) => [row.productId, row.revenueCents]),
+    );
+
+    const gscByProduct = new Map<string, { clicks: number; impressions: number }>();
+    if (includeGsc && gscRows.length > 0) {
+      for (const product of productRows) {
+        const handle = this.titleToHandle(product.title ?? product.canonicalSku);
+        if (!handle) continue;
+        const needle = `/products/${handle}`;
+        for (const row of gscRows) {
+          if (row.workspaceId !== product.workspaceId) continue;
+          if (!row.dimensionValue.toLowerCase().includes(needle)) continue;
+          const current = gscByProduct.get(product.id) ?? { clicks: 0, impressions: 0 };
+          current.clicks += row.clicks;
+          current.impressions += row.impressions;
+          gscByProduct.set(product.id, current);
+        }
+      }
+    }
+
+    const channelsByProduct = new Map<string, Map<string, { status: string; suppressed: boolean }>>();
     for (const row of listingRows) {
       if (!channelsByProduct.has(row.productId)) {
         channelsByProduct.set(row.productId, new Map());
       }
       const platformMap = channelsByProduct.get(row.productId)!;
       const incoming = STATUS_PRIORITY[row.status ?? ""] ?? 0;
-      const current = STATUS_PRIORITY[platformMap.get(row.platform) ?? ""] ?? 0;
+      const existing = platformMap.get(row.platform);
+      const current = STATUS_PRIORITY[existing?.status ?? ""] ?? 0;
+      const suppressed = row.buyabilityStatus === "not_buyable";
       if (incoming > current) {
-        platformMap.set(row.platform, row.status ?? "unlisted");
+        platformMap.set(row.platform, { status: row.status ?? "unlisted", suppressed });
+      } else if (existing && suppressed) {
+        platformMap.set(row.platform, { ...existing, suppressed: true });
       }
     }
 
@@ -450,7 +528,20 @@ export class AppController {
       if (!p.hasBarcode && !p.gtinExempt) missing.push("barcode");
       if (!p.hasDescription) missing.push("description");
 
-      return {
+      const payload: {
+        id: string;
+        title: string | null;
+        canonicalSku: string;
+        updatedAt: Date;
+        variantCount: number;
+        availableInventory: number;
+        missingAttributes: string[];
+        amazonQualityScore: number | null;
+        channels: Array<{ platform: string; status: string; suppressed: boolean }>;
+        revenueCents?: number;
+        gscClicks?: number;
+        gscImpressions?: number;
+      } = {
         id: p.id,
         title: p.title,
         canonicalSku: p.canonicalSku,
@@ -460,9 +551,21 @@ export class AppController {
         missingAttributes: missing,
         amazonQualityScore: amazonQualityByProduct.get(p.id) ?? null,
         channels: Array.from((channelsByProduct.get(p.id) ?? new Map()).entries()).map(
-          ([platform, status]) => ({ platform, status }),
+          ([platform, { status, suppressed }]) => ({ platform, status, suppressed }),
         ),
       };
+
+      if (includeRevenue) {
+        payload.revenueCents = revenueByProduct.get(p.id) ?? 0;
+      }
+
+      if (includeGsc) {
+        const gsc = gscByProduct.get(p.id);
+        payload.gscClicks = gsc?.clicks ?? 0;
+        payload.gscImpressions = gsc?.impressions ?? 0;
+      }
+
+      return payload;
     });
   }
 
@@ -635,6 +738,7 @@ export class AppController {
         and(
           eq(integrationAccounts.platform, "amazon_sp"),
           sql`${orders.createdAt} > now() - interval '90 days'`,
+          sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
         ),
       );
 
@@ -649,6 +753,7 @@ export class AppController {
         and(
           eq(integrationAccounts.platform, "amazon_sp"),
           sql`${orders.createdAt} > now() - interval '90 days'`,
+          sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
         ),
       );
 
@@ -779,6 +884,7 @@ export class AppController {
               issuesJson: channelListings.issuesJson,
               qualityScore: channelListings.qualityScore,
               platformListingId: channelListings.platformListingId,
+              lastSeenAt: channelListings.lastSeenAt,
             })
             .from(channelListings)
             .innerJoin(integrationAccounts, eq(channelListings.integrationAccountId, integrationAccounts.id))
@@ -856,6 +962,8 @@ export class AppController {
         sku: v.sku,
         title: getVariantTitle(v.optionValuesJson, v.sku),
         barcode: v.barcode,
+        weightGrams: v.weightGrams ?? null,
+        costCents: v.costCents ?? null,
         size: getVariantSize(v.optionValuesJson),
         color: getVariantColor(v.optionValuesJson),
         optionValuesJson: v.optionValuesJson,
@@ -931,6 +1039,7 @@ export class AppController {
           and(
             sql`${orders.createdAt} > now() - interval '90 days'`,
             sql`${orderLineItems.variantId} is not null`,
+            sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
           ),
         )
         .groupBy(orderLineItems.variantId),
@@ -1148,7 +1257,13 @@ export class AppController {
   }
 
   @Get("search-console/queries")
-  async gscQueries() {
+  async gscQueries(@Query("branded") branded: "true" | "false" | "all" = "all") {
+    const brandedFilter =
+      branded === "true"
+        ? eq(searchPerformance.isBranded, true)
+        : branded === "false"
+          ? eq(searchPerformance.isBranded, false)
+          : undefined;
     const rows = await this.db
       .select({
         query: searchPerformance.dimensionValue,
@@ -1156,9 +1271,10 @@ export class AppController {
         impressions: searchPerformance.impressions,
         ctr: searchPerformance.ctr,
         position: searchPerformance.position,
+        isBranded: searchPerformance.isBranded,
       })
       .from(searchPerformance)
-      .where(eq(searchPerformance.dimension, "query"))
+      .where(and(eq(searchPerformance.dimension, "query"), brandedFilter))
       .orderBy(desc(searchPerformance.impressions))
       .limit(100);
 
@@ -1168,6 +1284,7 @@ export class AppController {
       impressions: r.impressions,
       ctr: r.ctr / 1000,
       position: r.position / 10,
+      isBranded: r.isBranded,
     }));
   }
 
@@ -1196,7 +1313,13 @@ export class AppController {
   }
 
   @Get("search-console/almost-page-1")
-  async gscAlmostPage1() {
+  async gscAlmostPage1(@Query("branded") branded: "true" | "false" | "all" = "all") {
+    const brandedFilter =
+      branded === "true"
+        ? eq(searchPerformance.isBranded, true)
+        : branded === "false"
+          ? eq(searchPerformance.isBranded, false)
+          : undefined;
     // Queries at position 11-20 with meaningful impression volume
     const rows = await this.db
       .select({
@@ -1205,11 +1328,13 @@ export class AppController {
         impressions: searchPerformance.impressions,
         ctr: searchPerformance.ctr,
         position: searchPerformance.position,
+        isBranded: searchPerformance.isBranded,
       })
       .from(searchPerformance)
       .where(
         and(
           eq(searchPerformance.dimension, "query"),
+          brandedFilter,
           sql`${searchPerformance.position} > 100`,
           sql`${searchPerformance.position} <= 200`,
           sql`${searchPerformance.impressions} >= 10`,
@@ -1389,12 +1514,18 @@ export class AppController {
         .select({ total: sql<number>`coalesce(sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents}), 0)::int` })
         .from(orderLineItems)
         .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
-        .where(sql`${orders.createdAt} > now() - interval '45 days'`),
+        .where(and(
+          sql`${orders.createdAt} > now() - interval '45 days'`,
+          sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
+        )),
       this.db
         .select({ total: sql<number>`coalesce(sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents}), 0)::int` })
         .from(orderLineItems)
         .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
-        .where(sql`${orders.createdAt} > now() - interval '90 days' and ${orders.createdAt} <= now() - interval '45 days'`),
+        .where(and(
+          sql`${orders.createdAt} > now() - interval '90 days' and ${orders.createdAt} <= now() - interval '45 days'`,
+          sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
+        )),
     ]);
 
     const current = currentRows[0]?.total ?? 0;
@@ -1428,7 +1559,10 @@ export class AppController {
       .from(orderLineItems)
       .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
       .innerJoin(products, eq(orderLineItems.productId, products.id))
-      .where(sql`${orders.createdAt} > now() - interval '90 days'`)
+      .where(and(
+        sql`${orders.createdAt} > now() - interval '90 days'`,
+        sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
+      ))
       .groupBy(products.id, products.title, products.canonicalSku)
       .orderBy(desc(sql`coalesce(sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents}), 0)`))
       .limit(100);
@@ -1462,7 +1596,10 @@ export class AppController {
         })
         .from(orderLineItems)
         .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
-        .where(sql`${orders.createdAt} > now() - interval '90 days' and ${orderLineItems.productId} is not null`)
+        .where(and(
+          sql`${orders.createdAt} > now() - interval '90 days' and ${orderLineItems.productId} is not null`,
+          sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
+        ))
         .groupBy(orderLineItems.productId),
       this.db
         .selectDistinct({
@@ -1585,24 +1722,44 @@ export class AppController {
 
     if (!product) throw new NotFoundException(`Product ${id} not found`);
 
-    const variantRows = await this.db
-      .select({
-        variantId: orderLineItems.variantId,
-        sku: orderLineItems.sku,
-        unitsSold: sql<number>`sum(${orderLineItems.quantity})::int`,
-        revenueCents: sql<number>`sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents})::int`,
-      })
-      .from(orderLineItems)
-      .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
-      .where(
-        and(
-          eq(orderLineItems.productId, id),
-          sql`${orders.createdAt} > now() - interval '90 days'`,
-        ),
-      )
-      .groupBy(orderLineItems.variantId, orderLineItems.sku)
-      .orderBy(desc(sql`sum(${orderLineItems.quantity})`))
-      .limit(10);
+    const [variantRows, channelRows] = await Promise.all([
+      this.db
+        .select({
+          variantId: orderLineItems.variantId,
+          sku: orderLineItems.sku,
+          unitsSold: sql<number>`sum(${orderLineItems.quantity})::int`,
+          revenueCents: sql<number>`sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents})::int`,
+        })
+        .from(orderLineItems)
+        .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
+        .where(
+          and(
+            eq(orderLineItems.productId, id),
+            sql`${orders.createdAt} > now() - interval '90 days'`,
+            sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
+          ),
+        )
+        .groupBy(orderLineItems.variantId, orderLineItems.sku)
+        .orderBy(desc(sql`sum(${orderLineItems.quantity})`))
+        .limit(10),
+      this.db
+        .select({
+          platform: integrationAccounts.platform,
+          unitsSold: sql<number>`coalesce(sum(${orderLineItems.quantity}), 0)::int`,
+          revenueCents: sql<number>`coalesce(sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents}), 0)::int`,
+        })
+        .from(orderLineItems)
+        .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
+        .innerJoin(integrationAccounts, eq(orders.integrationAccountId, integrationAccounts.id))
+        .where(
+          and(
+            eq(orderLineItems.productId, id),
+            sql`${orders.createdAt} > now() - interval '90 days'`,
+            sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
+          ),
+        )
+        .groupBy(integrationAccounts.platform),
+    ]);
 
     const totalUnitsSold = variantRows.reduce((s, r) => s + r.unitsSold, 0);
     const totalRevenueCents = variantRows.reduce((s, r) => s + r.revenueCents, 0);
@@ -1618,6 +1775,11 @@ export class AppController {
       periodDays: 90,
       unitsSold: totalUnitsSold,
       revenueCents: totalRevenueCents,
+      byChannel: channelRows.map((r) => ({
+        platform: r.platform,
+        unitsSold: r.unitsSold,
+        revenueCents: r.revenueCents,
+      })),
       topVariants: variantRows.map((r) => ({
         sku: r.sku,
         size: r.variantId ? (sizeByVariantId.get(r.variantId) ?? null) : null,
@@ -2007,6 +2169,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
           and(
             eq(orderLineItems.productId, body.productId),
             sql`${orders.createdAt} > now() - interval '90 days'`,
+            sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
           ),
         ),
       this.db
@@ -2321,6 +2484,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
           and(
             eq(orderLineItems.productId, body.productId),
             sql`${orders.createdAt} > now() - interval '90 days'`,
+            sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
           ),
         ),
       variantIds.length > 0
@@ -2529,8 +2693,14 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     const cached = await this.getCachedRecommendation<{
       seoTitle: string; metaDescription: string; reasoning: string;
       productId: string | null; productTitle: string | null; recommendationId: string;
+      currentSeoTitle?: string | null; currentSeoDescription?: string | null;
     }>(workspaceId, "optimize_page", body.url, contextHash);
-    if (cached) return { ...cached, cached: true };
+    if (cached) return {
+      ...cached,
+      currentSeoTitle: cached.currentSeoTitle ?? matchedProduct?.seoTitle ?? null,
+      currentSeoDescription: cached.currentSeoDescription ?? matchedProduct?.seoDescription ?? null,
+      cached: true,
+    };
 
     const prompt = [
       `Page URL: ${body.url}`,
@@ -2567,6 +2737,8 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       ...aiResult,
       productId: matchedProduct?.id ?? null,
       productTitle: matchedProduct?.title ?? null,
+      currentSeoTitle: matchedProduct?.seoTitle ?? null,
+      currentSeoDescription: matchedProduct?.seoDescription ?? null,
     };
     const recommendationId = await this.saveRecommendation(workspaceId, "optimize_page", body.url, contextHash, "gpt-4o-mini", output);
     return { ...output, recommendationId, cached: false };
@@ -2656,6 +2828,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       .update(products)
       .set({ seoTitle: body.seoTitle, seoDescription: body.seoDescription, updatedAt: new Date() })
       .where(eq(products.id, id));
+    await this.merchantQueue.add("merchant_product_sync", { productId: id }, { attempts: 3 });
 
     return { ok: true, seoTitle: body.seoTitle, seoDescription: body.seoDescription };
   }
@@ -2702,6 +2875,10 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     } else {
       const html = value.startsWith("<") ? value : `<p>${value.replace(/\n\n+/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
       await this.db.update(products).set({ descriptionHtml: html, updatedAt: new Date() }).where(eq(products.id, id));
+    }
+
+    if (pushed.includes("shopify")) {
+      await this.merchantQueue.add("merchant_product_sync", { productId: id }, { attempts: 3 });
     }
 
     const downstreamPlatforms = (body.platforms ?? ["merchant", "amazon_sp"]).filter((platform) =>
@@ -2805,6 +2982,10 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       .update(variants)
       .set({ barcode, updatedAt: new Date() })
       .where(eq(variants.id, variant.id));
+
+    if (pushed.includes("shopify")) {
+      await this.merchantQueue.add("merchant_product_sync", { productId: id }, { attempts: 3 });
+    }
 
     const downstreamPlatforms = (body.platforms ?? ["merchant", "amazon_sp"]).filter((platform) =>
       platform === "merchant" || platform === "amazon_sp",

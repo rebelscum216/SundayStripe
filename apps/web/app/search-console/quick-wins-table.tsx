@@ -105,7 +105,9 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
               {state.result.productTitle ?? slug}
             </a>
           ) : (
-            <span className="truncate ss-num" style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>{slug}</span>
+            <span className="truncate ss-num" style={{ fontSize: 12, color: "var(--ss-ink-2)" }}>
+              {slug === "/" || slug === "" ? "Home page (sundaystripe.com/)" : slug}
+            </span>
           )}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
             <span>{fmt(row.impressions)} impr.</span>
@@ -134,36 +136,52 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
             )}
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {/* SEO Title */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>SEO Title</p>
                 <span style={{ fontSize: 12, color: state.editTitle.length > 60 ? "var(--ss-red-ink)" : "var(--ss-ink-3)" }}>
                   {state.editTitle.length}/60
                 </span>
               </div>
+              {state.result.currentSeoTitle && (
+                <div className="mb-1.5 px-3 py-2 rounded" style={{ background: "var(--ss-bg-card)", border: "1px solid var(--ss-line)", fontSize: 12, color: "var(--ss-ink-3)" }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 6, color: "var(--ss-ink-4)" }}>Current</span>
+                  {state.result.currentSeoTitle}
+                </div>
+              )}
               <input
                 type="text"
                 value={state.editTitle}
                 onChange={(e) => setState({ ...state, editTitle: e.target.value })}
                 className="w-full px-3 py-2 text-sm focus:outline-none"
-                style={fieldStyle}
+                style={{ ...fieldStyle, borderColor: "var(--ss-orange-soft)" }}
+                placeholder="AI-suggested title"
               />
             </div>
 
+            {/* Meta Description */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <p style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ss-ink-3)" }}>Meta Description</p>
                 <span style={{ fontSize: 12, color: state.editDescription.length > 160 ? "var(--ss-red-ink)" : "var(--ss-ink-3)" }}>
                   {state.editDescription.length}/160
                 </span>
               </div>
+              {state.result.currentSeoDescription && (
+                <div className="mb-1.5 px-3 py-2 rounded" style={{ background: "var(--ss-bg-card)", border: "1px solid var(--ss-line)", fontSize: 12, color: "var(--ss-ink-3)", lineHeight: 1.5 }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 6, color: "var(--ss-ink-4)" }}>Current</span>
+                  {state.result.currentSeoDescription}
+                </div>
+              )}
               <textarea
                 value={state.editDescription}
                 onChange={(e) => setState({ ...state, editDescription: e.target.value })}
                 rows={3}
                 className="w-full resize-none px-3 py-2 text-sm focus:outline-none"
-                style={fieldStyle}
+                style={{ ...fieldStyle, borderColor: "var(--ss-orange-soft)" }}
+                placeholder="AI-suggested description"
               />
             </div>
           </div>
@@ -173,16 +191,26 @@ function OptimizeRow({ row, topQueries }: { row: GscRow; topQueries: string[] })
               <button
                 onClick={handleApply}
                 disabled={state.applyState === "saving" || state.applyState === "saved"}
-                className={`ss-btn ss-btn-sm ${state.applyState === "saving" ? "ss-btn-primary cursor-wait" : ""} ${state.applyState === "saved" ? "cursor-default opacity-70" : ""}`}
+                className={`ss-btn ss-btn-sm ss-btn-primary ${state.applyState === "saving" ? "cursor-wait" : ""} ${state.applyState === "saved" ? "cursor-default opacity-70" : ""}`}
               >
                 {state.applyState === "saving"
                   ? "Saving..."
                   : state.applyState === "saved"
-                    ? "Saved to Shopify"
-                    : "Apply to Shopify"}
+                    ? "Saved to Shopify ✓"
+                    : "Push to Shopify"}
               </button>
             ) : (
-              <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>No matching product found. Copy fields manually.</p>
+              <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>
+                Home page SEO — update in{" "}
+                <a
+                  href="https://admin.shopify.com/store/sundaystripe/online_store/preferences"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--ss-orange-ink)", textDecoration: "underline" }}
+                >
+                  Shopify Admin → Online Store → Preferences
+                </a>
+              </p>
             )}
             {state.applyState === "error" && (
               <p style={{ fontSize: 12, color: "var(--ss-red-ink)" }}>{state.applyError}</p>
