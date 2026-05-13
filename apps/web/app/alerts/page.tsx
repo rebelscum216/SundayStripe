@@ -22,7 +22,9 @@ type Alert = {
     title?: string;
     merchant_product_name?: string;
     offer_id?: string;
-    issues?: { code?: string; description?: string; severity?: string; attribute?: string; resolution?: string }[];
+    asin?: string | null;
+    seller_sku?: string;
+    issues?: { code?: string; description?: string; message?: string; severity?: string; attribute?: string; attributeNames?: string[]; resolution?: string }[];
     topic?: string;
     error?: string;
   } | null;
@@ -96,14 +98,20 @@ function getEntityRef(alert: Alert): string | null {
 function getRuleName(alert: Alert) {
   const payload = getPayload(alert);
   const firstIssue = payload?.issues?.[0];
+  // Prefer human-readable description/message over raw numeric code
+  const humanReadable = firstIssue?.description ?? firstIssue?.message;
+  const raw = humanReadable
+    ? humanReadable.length > 60 ? humanReadable.slice(0, 57) + "…" : humanReadable
+    : null;
   return (
     alert.ruleName ??
     alert.rule_name ??
-    firstIssue?.code ??
+    raw ??
     firstIssue?.attribute ??
+    firstIssue?.attributeNames?.[0] ??
     payload?.topic ??
     alert.category ??
-    "Alert rule"
+    "Alert"
   );
 }
 
@@ -133,7 +141,7 @@ function buildResolveInfo(alert: Alert): ResolveAlertInfo {
   const payload = getPayload(alert);
   return {
     id: alert.id,
-    productTitle: getProductName(alert) || getEntityRef(alert) || "Unknown product",
+    productTitle: getProductName(alert) || `${platformLabels[getPlatform(alert)] ?? "Listing"} listing`,
     entityRef: getEntityRef(alert),
     platform: platformLabels[getPlatform(alert)] ?? getPlatform(alert),
     ruleName: getRuleName(alert),
@@ -260,14 +268,22 @@ export default async function AlertsPage() {
                       const platform = getPlatform(alert);
                       const productName = getProductName(alert);
                       const entityRef = getEntityRef(alert);
-                      const displayName = productName || entityRef || "Unknown product";
-                      const showRef = entityRef && entityRef !== displayName;
+                      const payload = getPayload(alert);
+                      // When no product title is resolved, show a channel-appropriate fallback
+                      // and push the raw ID to a secondary sub-label instead of using it as the headline
+                      const hasTitle = Boolean(productName);
+                      const platformFallback = platformLabels[getPlatform(alert)] ?? "Listing";
+                      const displayName = productName || `${platformFallback} listing`;
+                      // Show the most useful identifier below the title
+                      const subRef = !hasTitle
+                        ? (entityRef ?? payload?.seller_sku ?? payload?.asin ?? null)
+                        : (entityRef && entityRef !== productName ? entityRef : null);
                       return (
                         <tr key={alert.id}>
                           <td>
                             <div style={{ fontWeight: 500, color: "var(--ss-ink)", fontSize: 13 }}>{displayName}</div>
-                            {showRef && (
-                              <div className="ss-num" style={{ fontSize: 11, color: "var(--ss-ink-4)", marginTop: 2 }}>{entityRef}</div>
+                            {subRef && (
+                              <div className="ss-num" style={{ fontSize: 11, color: "var(--ss-ink-4)", marginTop: 2 }}>SKU: {subRef}</div>
                             )}
                           </td>
                           <td>
