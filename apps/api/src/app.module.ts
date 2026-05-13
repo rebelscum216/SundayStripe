@@ -6,6 +6,7 @@ import { AmazonModule } from "./amazon/amazon.module.js";
 import { AppController } from "./app.controller.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { GscModule } from "./gsc/gsc.module.js";
+import { InventoryModule } from "./inventory/inventory.module.js";
 import { MerchantModule } from "./merchant/merchant.module.js";
 import { ShopifyModule } from "./shopify/shopify.module.js";
 
@@ -38,6 +39,7 @@ import { ShopifyModule } from "./shopify/shopify.module.js";
     DatabaseModule,
     AmazonModule,
     GscModule,
+    InventoryModule,
     MerchantModule,
     ShopifyModule,
   ],
