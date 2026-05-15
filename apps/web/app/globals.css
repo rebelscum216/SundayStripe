@@ -451,7 +451,7 @@ body {
   background: var(--ss-orange); border-color: var(--ss-orange); color: #fff;
 }
 .ss-btn-primary:hover { background: #c4663f; border-color: #c4663f; }
-.ss-btn-sm { height: 24px; padding: 0 8px; font-size: 12px; border-radius: 5px; }
+.ss-btn-sm { height: 24px; padding: 0 10px; font-size: 12px; border-radius: 5px; white-space: nowrap; }
 
 /* ── Mono numbers ── */
 .ss-num { font-family: var(--ss-font-mono); font-variant-numeric: tabular-nums; }
