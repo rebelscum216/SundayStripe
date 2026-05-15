@@ -2920,6 +2920,61 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     };
   }
 
+  @Get("products/:id/amazon-attribute-suggestions")
+  async getAmazonAttributeSuggestions(
+    @Param("id") id: string,
+    @Query("attributeName") attributeName: string,
+  ) {
+    if (!attributeName?.trim()) throw new BadRequestException("attributeName is required");
+
+    const [product] = await this.db
+      .select({ title: products.title, brand: products.brand, descriptionHtml: products.descriptionHtml })
+      .from(products)
+      .where(eq(products.id, id))
+      .limit(1);
+
+    if (!product) throw new NotFoundException(`Product ${id} not found`);
+
+    const apiKey = this.config.get<string>("OPENAI_API_KEY");
+    if (!apiKey) throw new NotFoundException("OPENAI_API_KEY not configured");
+    const openai = new OpenAI({ apiKey });
+
+    const description = product.descriptionHtml
+      ? product.descriptionHtml.replace(/<[^>]+>/g, " ").trim().slice(0, 300)
+      : null;
+
+    const systemPrompt = `You are an Amazon catalog specialist. Given a product and an Amazon listing attribute name, return 3-5 valid Amazon attribute values that sellers commonly use. Return ONLY a JSON array of strings with no explanation. Values must match exactly what Amazon's SP-API accepts — use lowercase with underscores for enum values (e.g. "target_gender" → ["male","female","unisex"]).`;
+
+    const userPrompt = [
+      `Product: ${product.title ?? "unknown"}`,
+      product.brand ? `Brand: ${product.brand}` : null,
+      description ? `Description: ${description}` : null,
+      `Amazon attribute to fill: ${attributeName}`,
+      `Return 3-5 valid Amazon values for this attribute as a JSON array of strings.`,
+    ].filter(Boolean).join("\n");
+
+    const raw = await this.callAi(openai, {
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.2,
+      max_tokens: 150,
+    });
+
+    let suggestions: string[] = [];
+    try {
+      const text = raw.trim().replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) suggestions = parsed.filter((s): s is string => typeof s === "string").slice(0, 6);
+    } catch {
+      suggestions = [];
+    }
+
+    return { suggestions };
+  }
+
   @Patch("products/:id/amazon-attribute")
   async patchAmazonAttribute(
     @Param("id") id: string,
