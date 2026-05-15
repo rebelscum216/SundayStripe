@@ -76,7 +76,9 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
         if ("group" in item) {
           return (
             <div key={i} style={{
-              padding: "12px 16px 4px",
+              padding: i === 0 ? "10px 16px 4px" : "20px 16px 4px",
+              marginTop: i === 0 ? 0 : 4,
+              borderTop: i === 0 ? "none" : "1px solid var(--ss-side-line)",
               fontSize: 10,
               textTransform: "uppercase",
               letterSpacing: "0.08em",
