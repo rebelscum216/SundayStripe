@@ -24,15 +24,28 @@ export function AmazonAttributeFix({ productId, attributeName, skus }: Props) {
   const [value, setValue] = useState("");
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<string[] | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
 
   useEffect(() => {
-    fetch(`/api-proxy/products/${productId}/amazon-attribute-suggestions?attributeName=${encodeURIComponent(attributeName)}`)
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8_000);
+
+    fetch(
+      `/api-proxy/products/${productId}/amazon-attribute-suggestions?attributeName=${encodeURIComponent(attributeName)}`,
+      { signal: controller.signal },
+    )
       .then((r) => r.ok ? r.json() : null)
       .then((data: { suggestions?: string[] } | null) => {
         if (data?.suggestions?.length) setSuggestions(data.suggestions);
       })
-      .catch(() => null);
+      .catch(() => null)
+      .finally(() => {
+        clearTimeout(timer);
+        setLoadingSuggestions(false);
+      });
+
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [productId, attributeName]);
 
   async function save(overrideValue?: string) {
@@ -65,7 +78,7 @@ export function AmazonAttributeFix({ productId, attributeName, skus }: Props) {
 
   return (
     <div className="mt-2 flex flex-col gap-2">
-      {suggestions && suggestions.length > 0 && state !== "saved" && (
+      {suggestions.length > 0 && state !== "saved" && (
         <div className="flex flex-wrap gap-1.5">
           {suggestions.map((s) => (
             <button
@@ -89,7 +102,7 @@ export function AmazonAttributeFix({ productId, attributeName, skus }: Props) {
           ))}
         </div>
       )}
-      {suggestions === null && (
+      {loadingSuggestions && (
         <p style={{ fontSize: 11, color: "var(--ss-ink-4)" }}>Loading suggestions…</p>
       )}
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -97,7 +110,7 @@ export function AmazonAttributeFix({ productId, attributeName, skus }: Props) {
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={`Enter ${attributeName.replace(/_/g, " ")} or pick above`}
+          placeholder={suggestions.length > 0 ? `Enter ${attributeName.replace(/_/g, " ")} or pick above` : `Enter ${attributeName.replace(/_/g, " ")}`}
           disabled={state === "saved"}
           className="h-9 flex-1 px-3 text-sm disabled:opacity-50"
           style={fieldStyle}
