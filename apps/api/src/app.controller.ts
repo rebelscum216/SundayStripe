@@ -2961,6 +2961,46 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     }
 
     await this.amazonApi.patchListingAttribute(sellerSku, detail.productType, attributeName, value.trim());
+
+    // Remove the fixed attribute from the stored alert so the UI clears immediately
+    // without waiting for the next sync to confirm.
+    if (productRow) {
+      const alertRows = await this.db
+        .select({ id: alerts.id, payloadJson: alerts.payloadJson })
+        .from(alerts)
+        .where(
+          and(
+            eq(alerts.workspaceId, productRow.workspaceId),
+            eq(alerts.sourcePlatform, "amazon_sp"),
+            eq(alerts.status, "open"),
+          ),
+        );
+
+      for (const alertRow of alertRows) {
+        const payload = alertRow.payloadJson as { issues?: Array<{ attributeNames?: string[] }> } | null;
+        if (!payload?.issues) continue;
+
+        const updatedIssues = payload.issues
+          .map((issue) => ({
+            ...issue,
+            attributeNames: (issue.attributeNames ?? []).filter((a) => a !== attributeName),
+          }))
+          .filter((issue) => (issue.attributeNames?.length ?? 0) > 0 || !issue.attributeNames);
+
+        const allResolved = updatedIssues.every(
+          (issue) => (issue.attributeNames?.length ?? 1) === 0,
+        );
+
+        await this.db
+          .update(alerts)
+          .set({
+            payloadJson: { ...payload, issues: updatedIssues },
+            status: allResolved ? "resolved" : "open",
+          })
+          .where(eq(alerts.id, alertRow.id));
+      }
+    }
+
     return { ok: true, sku: sellerSku, attributeName, value: value.trim() };
   }
 
