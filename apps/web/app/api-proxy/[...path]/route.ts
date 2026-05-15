@@ -14,6 +14,9 @@ const hopByHopHeaders = new Set([
   "upgrade",
 ]);
 
+// Vercel hobby functions time out at 10s — abort upstream at 9s to return a proper error
+const UPSTREAM_TIMEOUT_MS = 9_000;
+
 export const dynamic = "force-dynamic";
 
 type RouteContext = {
@@ -41,7 +44,6 @@ async function proxy(request: Request, context: RouteContext) {
 
     if (request.method !== "GET" && request.method !== "HEAD") {
       body = await request.arrayBuffer();
-      // Re-add content-length so the upstream server knows the exact body size
       outHeaders.set("content-length", String(body.byteLength));
     }
 
@@ -53,14 +55,16 @@ async function proxy(request: Request, context: RouteContext) {
         body,
         cache: "no-store",
         redirect: "manual",
-        // @ts-expect-error Node-specific option — prevents connection reuse issues
-        duplex: "half",
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const isTimeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+      const message = isTimeout
+        ? `API did not respond within ${UPSTREAM_TIMEOUT_MS / 1000}s — it may be starting up, try again`
+        : (error instanceof Error ? error.message : String(error));
       return Response.json(
         { error: "API proxy request failed", detail: message, target: targetUrl.origin },
-        { status: 502 },
+        { status: isTimeout ? 504 : 502 },
       );
     }
 
