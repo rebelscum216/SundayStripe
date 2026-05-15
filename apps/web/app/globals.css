@@ -80,6 +80,11 @@ body {
 /* Sidebar scrollbar */
 .ss-side::-webkit-scrollbar-thumb { background: var(--ss-side-line); }
 
+/* ── Sidebar nav section headers ── */
+.ss-nav-group { padding: 10px 16px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; color: var(--ss-side-ink-3); }
+.ss-nav-group + .ss-nav-group,
+.ss-nav-link-wrap + .ss-nav-group { margin-top: 4px; padding-top: 20px; border-top: 1px solid var(--ss-side-line); }
+
 /* ── Sidebar shell ── */
 .ss-side {
   background: var(--ss-side-bg);

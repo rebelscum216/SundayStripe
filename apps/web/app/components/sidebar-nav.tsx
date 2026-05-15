@@ -75,23 +75,14 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
       {navItems.map((item, i) => {
         if ("group" in item) {
           return (
-            <div key={i} style={{
-              padding: i === 0 ? "10px 16px 4px" : "20px 16px 4px",
-              marginTop: i === 0 ? 0 : 4,
-              borderTop: i === 0 ? "none" : "1px solid var(--ss-side-line)",
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "var(--ss-side-ink-3)",
-              fontWeight: 500,
-            }}>
+            <div key={i} className="ss-nav-group">
               {item.group}
             </div>
           );
         }
         const active = isActive(pathname, item.href);
         return (
-          <div key={item.href} style={{ padding: "0 8px" }}>
+          <div key={item.href} className="ss-nav-link-wrap" style={{ padding: "0 8px" }}>
             <Link
               href={item.href}
               onClick={onNavigate}
