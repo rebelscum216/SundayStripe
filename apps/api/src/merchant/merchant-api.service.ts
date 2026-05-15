@@ -51,6 +51,7 @@ type MerchantProductsResponse = {
 };
 
 const MERCHANT_API_BASE_URL = 'https://merchantapi.googleapis.com';
+const CONTENT_API_BASE_URL = 'https://shoppingcontent.googleapis.com';
 const MERCHANT_API_SCOPE = 'https://www.googleapis.com/auth/content';
 
 @Injectable()
@@ -85,11 +86,46 @@ export class MerchantApiService {
     return this.get<MerchantProduct>(`/products/v1/${resourceName}`);
   }
 
+  async getContentProduct(accountId: string, productId: string): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>({
+      baseUrl: CONTENT_API_BASE_URL,
+      path: `/content/v2.1/${accountId}/products/${encodeURIComponent(productId)}`,
+      method: 'GET',
+    });
+  }
+
+  async insertContentProduct(
+    accountId: string,
+    product: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>({
+      baseUrl: CONTENT_API_BASE_URL,
+      path: `/content/v2.1/${accountId}/products`,
+      method: 'POST',
+      data: product,
+    });
+  }
+
   private async get<T>(path: string): Promise<T> {
+    return this.request<T>({ baseUrl: MERCHANT_API_BASE_URL, path, method: 'GET' });
+  }
+
+  private async request<T>({
+    baseUrl,
+    path,
+    method,
+    data,
+  }: {
+    baseUrl: string;
+    path: string;
+    method: 'GET' | 'POST';
+    data?: unknown;
+  }): Promise<T> {
     const client = await this.getAuthClient();
     const response = await client.request<T>({
-      url: `${MERCHANT_API_BASE_URL}${path}`,
-      method: 'GET',
+      url: `${baseUrl}${path}`,
+      method,
+      data,
     });
 
     return response.data;

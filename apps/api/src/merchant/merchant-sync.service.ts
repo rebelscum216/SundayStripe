@@ -81,6 +81,58 @@ export class MerchantSyncService {
     }
   }
 
+  async syncProduct(productId: string): Promise<{ resubmitted: number }> {
+    const listingRows = await this.db
+      .select({
+        listingId: channelListings.id,
+        platformListingId: channelListings.platformListingId,
+        integrationAccountId: integrationAccounts.id,
+        merchantAccountId: integrationAccounts.externalAccountId,
+        productId: products.id,
+        productTitle: products.title,
+        productDescriptionHtml: products.descriptionHtml,
+        productBrand: products.brand,
+        variantId: variants.id,
+        variantSku: variants.sku,
+        variantBarcode: variants.barcode,
+      })
+      .from(products)
+      .innerJoin(variants, eq(variants.productId, products.id))
+      .innerJoin(channelListings, eq(channelListings.variantId, variants.id))
+      .innerJoin(integrationAccounts, eq(channelListings.integrationAccountId, integrationAccounts.id))
+      .where(
+        and(
+          eq(products.id, productId),
+          eq(integrationAccounts.platform, 'merchant'),
+          eq(integrationAccounts.status, 'active'),
+        ),
+      );
+
+    let resubmitted = 0;
+    const seenListingIds = new Set<string>();
+
+    for (const row of listingRows) {
+      if (!row.platformListingId || !row.merchantAccountId || seenListingIds.has(row.platformListingId)) {
+        continue;
+      }
+
+      const contentProductId = this.toContentProductId(row.platformListingId);
+      const merchantProduct = await this.merchantApi.getContentProduct(row.merchantAccountId, contentProductId);
+      const resubmission = this.buildContentResubmissionProduct(merchantProduct, row);
+
+      await this.merchantApi.insertContentProduct(row.merchantAccountId, resubmission);
+      await this.db
+        .update(channelListings)
+        .set({ lastSeenAt: new Date(), updatedAt: new Date() })
+        .where(eq(channelListings.id, row.listingId));
+
+      seenListingIds.add(row.platformListingId);
+      resubmitted += 1;
+    }
+
+    return { resubmitted };
+  }
+
   private async getSyncJob(syncJobId: string) {
     const [syncJob] = await this.db
       .select()
@@ -265,6 +317,64 @@ export class MerchantSyncService {
     ]
       .map((value) => value?.trim())
       .filter((value): value is string => Boolean(value));
+  }
+
+  private toContentProductId(platformListingId: string): string {
+    const marker = '/products/';
+    const markerIndex = platformListingId.indexOf(marker);
+    if (markerIndex >= 0) {
+      return platformListingId.slice(markerIndex + marker.length);
+    }
+
+    return platformListingId;
+  }
+
+  private buildContentResubmissionProduct(
+    merchantProduct: Record<string, unknown>,
+    local: {
+      productTitle: string | null;
+      productDescriptionHtml: string | null;
+      productBrand: string | null;
+      variantSku: string;
+      variantBarcode: string | null;
+    },
+  ): Record<string, unknown> {
+    const product: Record<string, unknown> = { ...merchantProduct };
+    delete product.kind;
+
+    if (local.productTitle?.trim()) {
+      product.title = local.productTitle.trim();
+    }
+
+    const description = this.toPlainText(local.productDescriptionHtml);
+    if (description) {
+      product.description = description;
+    }
+
+    if (local.productBrand?.trim()) {
+      product.brand = local.productBrand.trim();
+    }
+
+    if (local.variantBarcode?.trim()) {
+      product.gtin = local.variantBarcode.trim();
+    }
+
+    if (!product.offerId && local.variantSku.trim()) {
+      product.offerId = local.variantSku.trim();
+    }
+
+    return product;
+  }
+
+  private toPlainText(html: string | null): string | null {
+    const text = html
+      ?.replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return text || null;
   }
 
   private getCustomAttribute(merchantProduct: MerchantProduct, name: string): string | undefined {

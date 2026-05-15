@@ -51,7 +51,8 @@ export class GscSyncService {
       let upserted = 0;
 
       for (const row of queryRows) {
-        await this.upsertRow(integration.id, integration.workspaceId, 'query', row.keys[0], row);
+        const query = row.keys[0];
+        await this.upsertRow(integration.id, integration.workspaceId, 'query', query, row, this.isBrandedQuery(query));
         upserted++;
       }
 
@@ -101,6 +102,7 @@ export class GscSyncService {
     dimension: string,
     dimensionValue: string,
     row: { clicks: number; impressions: number; ctr: number; position: number },
+    isBranded = false,
   ): Promise<void> {
     await this.db
       .insert(searchPerformance)
@@ -114,6 +116,7 @@ export class GscSyncService {
         // store as integers to avoid float precision issues
         ctr: Math.round(row.ctr * 100_000),
         position: Math.round(row.position * 10),
+        isBranded,
         periodDays: PERIOD_DAYS,
         fetchedAt: new Date(),
       })
@@ -129,9 +132,22 @@ export class GscSyncService {
           impressions: Math.round(row.impressions),
           ctr: Math.round(row.ctr * 100_000),
           position: Math.round(row.position * 10),
+          isBranded,
           fetchedAt: new Date(),
         },
       });
+  }
+
+  private getBrandTerms(): string[] {
+    return (process.env.BRAND_TERMS ?? '')
+      .split(',')
+      .map((term) => term.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  private isBrandedQuery(query: string): boolean {
+    const normalized = query.toLowerCase();
+    return this.getBrandTerms().some((term) => normalized.includes(term));
   }
 
   private dateRange(days: number): { startDate: string; endDate: string } {
