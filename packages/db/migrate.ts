@@ -19,6 +19,7 @@ const migrations = [
   "drizzle/0009_branded_queries.sql",
   "drizzle/0010_location_name.sql",
   "drizzle/0011_channel_listing_asin.sql",
+  "drizzle/0012_gsc_daily.sql",
 ];
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const dbUrl = new URL(databaseUrl);

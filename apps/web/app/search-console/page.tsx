@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TopbarSearch } from "../components/topbar-search";
 import { AlmostPage1Table, type AlmostPage1Row } from "./almost-page-1-table";
 import { QuickWinsTable } from "./quick-wins-table";
+import { GscTrendChart } from "./gsc-trend-chart";
 
 type GscSummary = { clicks: number; impressions: number; ctr: number; position: number; row_count: number };
 type GscRow = { query?: string; url?: string; clicks: number; impressions: number; ctr: number; position: number };
@@ -38,6 +39,12 @@ async function getByProductPage(): Promise<ProductPageGroup[]> {
   try {
     const res = await fetch(`${apiBaseUrl}/api/search-console/by-product-page`, { cache: "no-store" });
     return res.ok ? (await res.json()) as ProductPageGroup[] : [];
+  } catch { return []; }
+}
+async function getTrend(days = 90): Promise<Array<{ date: string; clicks: number; impressions: number }>> {
+  try {
+    const res = await fetch(`${apiBaseUrl}/api/search-console/trend?days=${days}`, { cache: "no-store" });
+    return res.ok ? (await res.json()) as Array<{ date: string; clicks: number; impressions: number }> : [];
   } catch { return []; }
 }
 
@@ -115,8 +122,8 @@ function QueryTable({ rows, keyLabel, keyField }: {
 }
 
 export default async function SearchConsolePage() {
-  const [summary, queries, pages, almostPage1, byProductPage] = await Promise.all([
-    getSummary(), getQueries(), getPages(), getAlmostPage1(), getByProductPage(),
+  const [summary, queries, pages, almostPage1, byProductPage, trend] = await Promise.all([
+    getSummary(), getQueries(), getPages(), getAlmostPage1(), getByProductPage(), getTrend(90),
   ]);
 
   const quickWins = pages.filter((p) => p.position >= 5 && p.position <= 20 && p.impressions >= 50);
@@ -196,6 +203,11 @@ export default async function SearchConsolePage() {
                 </div>
               </div>
             )}
+
+            {/* Trend chart */}
+            <div className="ss-card" style={{ padding: 0, overflow: "hidden" }}>
+              <GscTrendChart initialDays={90} initialData={trend} />
+            </div>
 
             {/* KPI strip */}
             <div className="ss-kpi-grid">

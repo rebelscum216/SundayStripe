@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   integer,
   jsonb,
   pgTable,
@@ -250,3 +251,19 @@ export const alerts = pgTable("alerts", {
   status: text("status").notNull().default("open"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
+
+export const gscDailySummary = pgTable(
+  'gsc_daily_summary',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+    integrationAccountId: uuid('integration_account_id').notNull().references(() => integrationAccounts.id, { onDelete: 'cascade' }),
+    date: date('date').notNull(),
+    clicks: integer('clicks').notNull().default(0),
+    impressions: integer('impressions').notNull().default(0),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    gscDailyUnique: uniqueIndex('gsc_daily_unique').on(table.integrationAccountId, table.date),
+  })
+);

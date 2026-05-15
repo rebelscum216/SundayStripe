@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { eq } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import {
+  gscDailySummary,
   integrationAccounts,
   searchPerformance,
   syncJobs,
@@ -39,10 +40,11 @@ export class GscSyncService {
       const { startDate, endDate } = this.dateRange(PERIOD_DAYS);
       this.logger.log(`GSC sync ${startDate} → ${endDate} site=${siteUrl}`);
 
-      const [queryRows, pageRows, queryPageRows] = await Promise.all([
+      const [queryRows, pageRows, queryPageRows, dailyRows] = await Promise.all([
         this.gscApi.querySearchAnalytics(siteUrl, ['query'], startDate, endDate),
         this.gscApi.querySearchAnalytics(siteUrl, ['page'], startDate, endDate),
         this.gscApi.querySearchAnalytics(siteUrl, ['query', 'page'], startDate, endDate, 5000),
+        this.gscApi.querySearchAnalytics(siteUrl, ['date'], startDate, endDate, 1000),
       ]);
 
       const domain = siteUrl.replace('sc-domain:', '');
@@ -74,11 +76,33 @@ export class GscSyncService {
         upserted++;
       }
 
+      for (const row of dailyRows) {
+        const dateStr = row.keys[0]; // 'YYYY-MM-DD'
+        await this.db
+          .insert(gscDailySummary)
+          .values({
+            integrationAccountId: integration.id,
+            workspaceId: integration.workspaceId,
+            date: dateStr,
+            clicks: Math.round(row.clicks),
+            impressions: Math.round(row.impressions),
+            fetchedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [gscDailySummary.integrationAccountId, gscDailySummary.date],
+            set: {
+              clicks: Math.round(row.clicks),
+              impressions: Math.round(row.impressions),
+              fetchedAt: new Date(),
+            },
+          });
+      }
+
       await this.db
         .update(syncJobs)
         .set({
           state: 'done',
-          payloadJson: { query_count: queryRows.length, page_count: pageRows.length, query_page_count: queryPageRows.length, upserted },
+          payloadJson: { query_count: queryRows.length, page_count: pageRows.length, query_page_count: queryPageRows.length, daily_count: dailyRows.length, upserted },
           finishedAt: new Date(),
           errorJson: null,
         })

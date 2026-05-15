@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { ConfigService } from "@nestjs/config";
 import { InjectQueue } from "@nestjs/bullmq";
 import OpenAI from "openai";
-import { aiRecommendations, alerts, channelListings, integrationAccounts, inventoryPositions, orderLineItems, orders, products, searchPerformance, syncJobs, variants } from "@sunday-stripe/db";
+import { aiRecommendations, alerts, channelListings, gscDailySummary, integrationAccounts, inventoryPositions, orderLineItems, orders, products, searchPerformance, syncJobs, variants } from "@sunday-stripe/db";
 import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { Queue } from "bullmq";
@@ -1523,6 +1523,35 @@ export class AppController {
         ...p,
         queries: p.queries.sort((a, b) => b.impressions - a.impressions).slice(0, 10),
       }));
+  }
+
+  @Get("search-console/trend")
+  async gscTrend(@Query("days") daysStr = "90") {
+    const days = Math.min(Math.max(parseInt(daysStr, 10) || 90, 7), 90);
+    const [integration] = await this.db
+      .select({ id: integrationAccounts.id, workspaceId: integrationAccounts.workspaceId })
+      .from(integrationAccounts)
+      .where(eq(integrationAccounts.platform, "search_console"))
+      .limit(1);
+
+    if (!integration) return [];
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+    const rows = await this.db
+      .select({ date: gscDailySummary.date, clicks: gscDailySummary.clicks, impressions: gscDailySummary.impressions })
+      .from(gscDailySummary)
+      .where(
+        and(
+          eq(gscDailySummary.integrationAccountId, integration.id),
+          sql`${gscDailySummary.date} >= ${cutoffStr}`,
+        )
+      )
+      .orderBy(gscDailySummary.date);
+
+    return rows;
   }
 
   @Get("revenue-trend")
