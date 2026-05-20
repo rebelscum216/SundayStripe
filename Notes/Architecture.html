@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sunday Stripe Architecture</title>
+  <style>
+    :root {
+      --bg: #f7f3ed;
+      --paper: #fffaf2;
+      --ink: #1f1b16;
+      --muted: #6f6559;
+      --line: #ded2c1;
+      --line-strong: #b89d75;
+      --accent: #b45f2a;
+      --accent-dark: #843f1e;
+      --side: #17120d;
+      --side-ink: #f5eadb;
+      --side-muted: #b7aa98;
+      --code: #2a2119;
+      --ok: #357a51;
+      --warn: #a45d1e;
+      --danger: #9f3030;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    a { color: inherit; }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      background: var(--side);
+      color: var(--side-ink);
+      border-right: 1px solid #000;
+      padding: 24px 18px;
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.13);
+      margin-bottom: 18px;
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--accent);
+      font-weight: 800;
+    }
+
+    .brand strong { display: block; font-size: 15px; }
+    .brand span { color: var(--side-muted); font-size: 12px; }
+
+    nav { display: grid; gap: 4px; }
+    nav .group {
+      margin-top: 16px;
+      padding: 0 8px 4px;
+      color: var(--side-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    nav a {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 7px;
+      text-decoration: none;
+      color: var(--side-muted);
+      font-size: 13px;
+    }
+
+    nav a:hover,
+    nav a:focus {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--side-ink);
+      outline: none;
+    }
+
+    main {
+      max-width: 1180px;
+      padding: 48px 56px 80px;
+    }
+
+    header {
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(34px, 6vw, 64px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    section {
+      padding: 32px 0;
+      border-bottom: 1px solid var(--line);
+      scroll-margin-top: 24px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 26px 0 8px;
+      font-size: 18px;
+    }
+
+    p { max-width: 920px; }
+    ul { padding-left: 20px; }
+    li { margin: 7px 0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: var(--accent-dark);
+      font-size: 12px;
+      font-weight: 700;
+      margin: 0 4px 4px 0;
+      background: #fff4e6;
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .step {
+      border-left: 4px solid var(--accent);
+      background: var(--paper);
+      padding: 12px 14px;
+      border-radius: 0 8px 8px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      margin: 16px 0;
+      font-size: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: #efe3d2;
+      color: #342920;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    pre {
+      overflow: auto;
+      background: var(--code);
+      color: #f8eddf;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+    }
+
+    .callout {
+      border: 1px solid var(--line-strong);
+      border-left: 5px solid var(--accent);
+      background: #fff4e6;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 18px 0;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      aside {
+        position: relative;
+        height: auto;
+        max-height: 420px;
+      }
+      main { padding: 32px 22px 64px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <div class="mark">S</div>
+        <div>
+          <strong>Sunday Stripe</strong>
+          <span>Architecture notes</span>
+        </div>
+      </div>
+      <nav aria-label="Architecture topics">
+        <div class="group">System</div>
+        <a href="#overview">Overview</a>
+        <a href="#repository">Repository Map</a>
+        <a href="#runtime">Runtime Topology</a>
+        <a href="#data-flow">Data Flow</a>
+        <div class="group">Frontend</div>
+        <a href="#web-app">Next.js Web App</a>
+        <a href="#ui-components">UI Components</a>
+        <a href="#web-routes">Web Routes</a>
+        <a href="#client-proxy">Client API Proxy</a>
+        <div class="group">Backend</div>
+        <a href="#api-app">Nest API</a>
+        <a href="#api-endpoints">API Endpoints</a>
+        <a href="#queues">Queues and Schedulers</a>
+        <a href="#database">Database</a>
+        <div class="group">Integrations</div>
+        <a href="#shopify">Shopify</a>
+        <a href="#google">Google Search and Merchant</a>
+        <a href="#amazon">Amazon SP-API</a>
+        <a href="#openai">OpenAI</a>
+        <div class="group">Deployment</div>
+        <a href="#vercel">Vercel</a>
+        <a href="#render">Render</a>
+        <a href="#railway">Railway</a>
+        <a href="#local-dev">Local Development</a>
+        <div class="group">Operations</div>
+        <a href="#security">Security Boundaries</a>
+        <a href="#observability">Observability</a>
+        <a href="#risks">Risks and Gaps</a>
+        <a href="#appendix">Appendix</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header>
+        <h1>Sunday Stripe Architecture</h1>
+        <p class="subtitle">
+          A working map of the Sunday Stripe commerce operations hub: Shopify theme, Next.js dashboard,
+          Nest API, BullMQ workers, Postgres schema, Redis queues, external channel integrations,
+          and deployment surfaces on Vercel, Render, Railway, and local Docker.
+        </p>
+      </header>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>
+          Sunday Stripe is a multi-channel commerce operations system. The repository contains both the
+          customer-facing Shopify theme and an internal hub that pulls data from Shopify, Google Search
+          Console, Google Merchant Center, and Amazon SP-API. The hub normalizes channel data into Postgres,
+          surfaces operational views in a Next.js app, and uses AI endpoints to explain issues, draft fixes,
+          and produce channel-specific recommendations.
+        </p>
+        <div class="grid">
+          <div class="card">
+            <h3>Primary Apps</h3>
+            <p><span class="tag">apps/web</span> Next.js 14 dashboard with React server components, server actions, and a dark sidebar shell.</p>
+            <p><span class="tag">apps/api</span> NestJS API and worker host using BullMQ, Drizzle, and channel-specific services.</p>
+            <p><span class="tag">packages/db</span> Shared Drizzle schema and migration package.</p>
+          </div>
+          <div class="card">
+            <h3>Commerce Surface</h3>
+            <p><span class="tag">Shopify theme</span> Root-level Liquid sections, snippets, assets, config, templates, and locales.</p>
+            <p><span class="tag">content</span> Static article HTML used by publishing scripts.</p>
+            <p><span class="tag">dashboard</span> Earlier Python dashboard prototype backed by data access modules.</p>
+          </div>
+        </div>
+        <div class="callout">
+          The system is structured as a monorepo. The dashboard and API are the operational product,
+          while the root Shopify theme is the storefront product.
+        </div>
+      </section>
+
+      <section id="repository">
+        <h2>Repository Map</h2>
+        <table>
+          <thead><tr><th>Path</th><th>Role</th><th>Important files</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>apps/web</code></td>
+              <td>Internal operations dashboard deployed as a web app.</td>
+              <td><code>app/layout.tsx</code>, <code>app/components/sidebar-nav.tsx</code>, <code>app/actions.ts</code>, <code>app/api-proxy/[...path]/route.ts</code></td>
+            </tr>
+            <tr>
+              <td><code>apps/api</code></td>
+              <td>NestJS API, schedulers, queue processors, and channel clients.</td>
+              <td><code>src/app.controller.ts</code>, <code>src/app.module.ts</code>, <code>src/main.ts</code>, channel modules under <code>src/shopify</code>, <code>src/amazon</code>, <code>src/gsc</code>, <code>src/merchant</code></td>
+            </tr>
+            <tr>
+              <td><code>packages/db</code></td>
+              <td>Shared Drizzle schema, migrations, and database exports.</td>
+              <td><code>schema.ts</code>, <code>migrate.ts</code>, <code>drizzle/*.sql</code></td>
+            </tr>
+            <tr>
+              <td><code>sections</code>, <code>snippets</code>, <code>assets</code>, <code>templates</code>, <code>layout</code>, <code>config</code>, <code>locales</code></td>
+              <td>Shopify theme implementation.</td>
+              <td>Product, cart, search, localization, media, collection, article, and theme editor files.</td>
+            </tr>
+            <tr>
+              <td><code>dashboard</code></td>
+              <td>Python/Streamlit-style analytics prototype.</td>
+              <td><code>app.py</code>, <code>ui.py</code>, <code>views/*</code>, <code>data/*</code></td>
+            </tr>
+            <tr>
+              <td><code>scripts</code></td>
+              <td>Operational scripts and publishing helpers.</td>
+              <td>Shopify scope checks, Merchant registration, GSC analysis, Amazon analysis, local server.</td>
+            </tr>
+            <tr>
+              <td><code>Notes</code></td>
+              <td>Planning, handoff, research, reports, and this architecture document.</td>
+              <td><code>Architecture.html</code> plus moved markdown and report notes.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="runtime">
+        <h2>Runtime Topology</h2>
+        <pre>Browser
+  |
+  | HTTPS
+  v
+Next.js app on Vercel (apps/web)
+  |                 |
+  | server fetch    | /api-proxy/* client fetch
+  v                 v
+Nest API on Render or Railway (apps/api, global prefix /api)
+  |
+  | Drizzle over postgres-js
+  v
+Postgres database, commonly Neon in production
+  ^
+  |
+BullMQ workers in the API process
+  |
+  v
+Redis, commonly Upstash in production
+
+External systems:
+  Shopify Admin GraphQL + webhooks
+  Google Search Console API
+  Google Merchant Center API
+  Amazon Selling Partner API
+  OpenAI API</pre>
+        <p>
+          The API process currently hosts both HTTP routes and queue processors. That means the deployed
+          API container is not only a request server; it also runs scheduled jobs and background work when
+          Redis is reachable.
+        </p>
+      </section>
+
+      <section id="data-flow">
+        <h2>Data Flow</h2>
+        <div class="flow">
+          <div class="step"><strong>1. Connection setup.</strong> Integration credentials are supplied through environment variables or OAuth flows and stored in <code>integration_accounts</code> when applicable.</div>
+          <div class="step"><strong>2. Sync orchestration.</strong> Manual API calls, schedulers, OAuth callbacks, scripts, or webhooks enqueue BullMQ jobs.</div>
+          <div class="step"><strong>3. Channel ingestion.</strong> Channel services call external APIs, normalize payloads, and upsert shared entities such as products, variants, listings, inventory, search performance, orders, and alerts.</div>
+          <div class="step"><strong>4. Dashboard reads.</strong> Next.js server components fetch API endpoints with <code>cache: "no-store"</code> so pages reflect live operational data.</div>
+          <div class="step"><strong>5. Actions and AI.</strong> Server actions and client proxy calls post mutations or AI requests to the Nest API. Some mutations update Postgres and enqueue follow-up sync jobs.</div>
+          <div class="step"><strong>6. External writeback.</strong> Shopify SEO, product attributes, GTIN/barcodes, Merchant syncs, and Amazon import/listing operations are pushed back through the relevant channel API paths.</div>
+        </div>
+      </section>
+
+      <section id="web-app">
+        <h2>Next.js Web App</h2>
+        <p>
+          The web app lives in <code>apps/web</code> and uses Next.js App Router. The root layout builds
+          a fixed application shell: <code>DrawerProvider</code>, <code>SidebarNav</code>, a scrollable main
+          content region, and the global <code>AiDrawer</code>. Most pages are server-rendered and fetch
+          the Nest API directly through <code>API_BASE_URL</code>.
+        </p>
+        <h3>Frontend responsibilities</h3>
+        <ul>
+          <li>Dashboard navigation and page composition.</li>
+          <li>Operational views for products, alerts, inventory, Search Console, Shopify, Merchant Center, Amazon, cross-channel opportunities, operations, and settings.</li>
+          <li>Server actions for AI generation, alert handling, sync triggers, failed job cleanup, SEO updates, and Amazon import flows.</li>
+          <li>Client-side proxy calls from interactive components that need browser-triggered API access without exposing the API origin in component code.</li>
+        </ul>
+        <h3>Configuration</h3>
+        <table>
+          <thead><tr><th>Variable</th><th>Used by</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>API_BASE_URL</code></td><td>Next.js server components, server actions, and proxy route.</td><td>Base URL for the Nest API. Defaults to <code>http://localhost:3001</code>.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="ui-components">
+        <h2>UI Components</h2>
+        <p>
+          Shared UI components live under <code>apps/web/app/components</code>. The design language is a
+          compact operations hub: dark left navigation, light content surface, small status controls, metric
+          cards, tables, drawers, badges, and empty states.
+        </p>
+        <table>
+          <thead><tr><th>Component</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code>sidebar-nav.tsx</code></td><td>Defines the primary navigation groups: Workspace, Channels, Insights, and System.</td></tr>
+            <tr><td><code>drawer-context.tsx</code></td><td>Shared state for opening contextual drawers.</td></tr>
+            <tr><td><code>ai-drawer.tsx</code></td><td>Global AI drawer mounted at the layout level.</td></tr>
+            <tr><td><code>topbar-search.tsx</code></td><td>Global search across products, alerts, queries, and pages through <code>/api-proxy</code>.</td></tr>
+            <tr><td><code>metric-card.tsx</code></td><td>Compact KPI display used on dashboard pages.</td></tr>
+            <tr><td><code>priority-badge.tsx</code>, <code>status-pill.tsx</code>, <code>channel-badge.tsx</code></td><td>Small semantic badges for severity, status, and channel identity.</td></tr>
+            <tr><td><code>skeleton.tsx</code>, loading pages</td><td>Loading affordances for route-level data fetches.</td></tr>
+            <tr><td><code>empty-state.tsx</code></td><td>Empty operational states.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="web-routes">
+        <h2>Web Routes</h2>
+        <table>
+          <thead><tr><th>Route</th><th>Page file</th><th>Main API dependencies</th></tr></thead>
+          <tbody>
+            <tr><td><code>/</code></td><td><code>app/page.tsx</code></td><td>Status, alerts, cross-channel, Search Console summary, inventory, revenue, Amazon sales, almost page 1, low CTR.</td></tr>
+            <tr><td><code>/products</code></td><td><code>app/products/page.tsx</code></td><td><code>GET /api/products</code></td></tr>
+            <tr><td><code>/products/[id]</code></td><td><code>app/products/[id]/page.tsx</code></td><td>Product detail, GSC by product, revenue, SEO and attribute mutations.</td></tr>
+            <tr><td><code>/alerts</code></td><td><code>app/alerts/page.tsx</code></td><td>Alerts, AI explanations, triage, resolve actions.</td></tr>
+            <tr><td><code>/search-console</code></td><td><code>app/search-console/page.tsx</code></td><td>GSC summary, queries, pages, almost page 1, low CTR, trend data.</td></tr>
+            <tr><td><code>/inventory</code></td><td><code>app/inventory/page.tsx</code></td><td>Inventory positions and stock-risk queue.</td></tr>
+            <tr><td><code>/cross-channel</code></td><td><code>app/cross-channel/page.tsx</code></td><td>Cross-channel board and Amazon import.</td></tr>
+            <tr><td><code>/shopify</code>, <code>/merchant</code>, <code>/amazon</code></td><td>Channel pages.</td><td>Channel workspace data and channel-specific summaries.</td></tr>
+            <tr><td><code>/ai</code></td><td><code>app/ai/page.tsx</code></td><td>AI workspace surface.</td></tr>
+            <tr><td><code>/operations</code></td><td><code>app/operations/page.tsx</code></td><td>Status, failed jobs, cleanup actions.</td></tr>
+            <tr><td><code>/settings</code></td><td><code>app/settings/page.tsx</code></td><td>Connections, integrations, manual sync triggers.</td></tr>
+            <tr><td><code>/login</code></td><td><code>app/login/page.tsx</code></td><td>Local login form/actions.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="client-proxy">
+        <h2>Client API Proxy</h2>
+        <p>
+          <code>apps/web/app/api-proxy/[...path]/route.ts</code> forwards browser-originated requests to
+          the Nest API. It reconstructs the upstream URL as <code>${API_BASE_URL}/api/{path}</code>, strips
+          hop-by-hop headers, buffers non-GET bodies to set content length, disables caching, follows no
+          redirects, and aborts upstream calls after 9 seconds.
+        </p>
+        <p>
+          This proxy is used by interactive components such as Search Console trend charts, product attribute
+          fixes, Amazon import actions, and topbar search. It keeps the client code simple while letting
+          Vercel host a same-origin route.
+        </p>
+      </section>
+
+      <section id="api-app">
+        <h2>Nest API</h2>
+        <p>
+          The API lives in <code>apps/api</code>. <code>main.ts</code> creates a Nest app with raw body
+          support, sets the global prefix to <code>/api</code>, enables CORS for <code>WEB_APP_URL</code>,
+          and listens on <code>PORT</code> with a default of <code>3001</code>.
+        </p>
+        <h3>Module graph</h3>
+        <ul>
+          <li><code>AppModule</code> wires config, BullMQ Redis connection, scheduled jobs, shared queues, database, and channel modules.</li>
+          <li><code>DatabaseModule</code> provides a postgres-js client and Drizzle database instance using <code>DATABASE_URL</code>.</li>
+          <li><code>ShopifyModule</code> owns OAuth, webhooks, initial sync, order sync, and webhook processing.</li>
+          <li><code>MerchantModule</code> owns Google Merchant Center API access, sync services, processor, and scheduler.</li>
+          <li><code>GscModule</code> owns Google Search Console API access, sync services, processor, and scheduler.</li>
+          <li><code>AmazonModule</code> owns Amazon SP-API access, listing sync, order sync, processor, and scheduler.</li>
+          <li><code>InventoryModule</code> owns inventory alert generation and scheduled checks.</li>
+        </ul>
+      </section>
+
+      <section id="api-endpoints">
+        <h2>API Endpoints</h2>
+        <p>
+          Most hub endpoints are implemented in <code>apps/api/src/app.controller.ts</code> under the
+          global <code>/api</code> prefix. Shopify OAuth and webhooks are implemented in dedicated
+          controllers under <code>/api/shopify</code>.
+        </p>
+        <table>
+          <thead><tr><th>Endpoint family</th><th>Methods</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>/api/status</code></td><td>GET</td><td>Health and dashboard status checks.</td></tr>
+            <tr><td><code>/api/connections</code>, <code>/api/integrations</code></td><td>GET, POST sync actions</td><td>Connection state and manual integration sync triggers.</td></tr>
+            <tr><td><code>/api/products</code></td><td>GET</td><td>Product list with channel, quality, and operational metadata.</td></tr>
+            <tr><td><code>/api/products/:id</code></td><td>GET, PATCH family</td><td>Product detail, SEO updates, attributes, GTIN exemption, barcode fixes, Amazon suggestions.</td></tr>
+            <tr><td><code>/api/inventory</code>, <code>/api/locations</code></td><td>GET</td><td>Inventory positions, risk summaries, location metadata.</td></tr>
+            <tr><td><code>/api/alerts</code></td><td>GET, PATCH</td><td>Alert list and resolution.</td></tr>
+            <tr><td><code>/api/search-console/*</code></td><td>GET</td><td>Summary, queries, pages, almost page 1, low CTR, by-product-page, and trends.</td></tr>
+            <tr><td><code>/api/revenue</code>, <code>/api/revenue-trend</code>, <code>/api/products/:id/revenue</code></td><td>GET</td><td>Order-derived revenue views.</td></tr>
+            <tr><td><code>/api/cross-channel</code></td><td>GET</td><td>Cross-channel opportunity board.</td></tr>
+            <tr><td><code>/api/amazon/unmatched</code>, <code>/api/amazon/sales</code>, <code>/api/amazon/import-listing</code></td><td>GET, POST</td><td>Amazon listing gaps, sales summary, and import workflow.</td></tr>
+            <tr><td><code>/api/ai/*</code></td><td>POST, PATCH</td><td>AI product descriptions, alert explanations, triage, actions, product fix plans, listing rewrites, SEO optimization, cross-channel opportunity explanations, recommendation acceptance.</td></tr>
+            <tr><td><code>/api/operations/jobs/failed</code>, <code>/api/jobs/failed</code>, <code>/api/jobs/pending</code></td><td>GET, DELETE</td><td>Queue inspection and cleanup for operational recovery.</td></tr>
+            <tr><td><code>/api/admin/register-webhooks</code></td><td>POST</td><td>Administrative Shopify webhook registration.</td></tr>
+            <tr><td><code>/api/shopify/auth</code>, <code>/api/shopify/callback</code></td><td>GET</td><td>Shopify OAuth install flow.</td></tr>
+            <tr><td><code>/api/shopify/webhooks</code></td><td>POST</td><td>Signed Shopify webhook intake, verification, and async queue enqueue.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="queues">
+        <h2>Queues and Schedulers</h2>
+        <p>
+          BullMQ is configured globally with <code>REDIS_URL</code>. The connection disables offline queueing,
+          sets <code>maxRetriesPerRequest</code> to null, uses a 5 second connect timeout, and does not
+          retry connection failures through BullMQ's retry strategy. This favors fast failure over hanging
+          when Redis is unavailable.
+        </p>
+        <table>
+          <thead><tr><th>Queue</th><th>Processor</th><th>Typical jobs</th><th>Sources</th></tr></thead>
+          <tbody>
+            <tr><td><code>shopify-sync</code></td><td><code>ShopifyInitialSyncProcessor</code></td><td>Initial product/catalog sync.</td><td>OAuth callback, scripts, manual sync.</td></tr>
+            <tr><td><code>shopify-orders-sync</code></td><td><code>ShopifyOrdersSyncProcessor</code></td><td>Shopify order ingestion.</td><td>Scripts, manual sync, internal follow-ups.</td></tr>
+            <tr><td><code>shopify-webhook</code></td><td><code>ShopifyWebhookProcessor</code></td><td>Product, inventory, and order webhook processing.</td><td>Signed Shopify webhook controller.</td></tr>
+            <tr><td><code>merchant-sync</code></td><td><code>MerchantSyncProcessor</code></td><td>Merchant Center product/listing sync.</td><td>Daily scheduler, product mutations, manual sync.</td></tr>
+            <tr><td><code>gsc-sync</code></td><td><code>GscSyncProcessor</code></td><td>Search Console query/page/performance sync.</td><td>Daily scheduler, scripts, manual sync.</td></tr>
+            <tr><td><code>amazon-sync</code></td><td><code>AmazonSyncProcessor</code></td><td>Amazon listing and order sync.</td><td>Daily scheduler, scripts, manual sync.</td></tr>
+          </tbody>
+        </table>
+        <h3>Scheduled jobs</h3>
+        <ul>
+          <li><code>MerchantSchedulerService</code>: daily at 02:00, queues Merchant initial sync jobs.</li>
+          <li><code>GscSchedulerService</code>: daily at 03:00, queues GSC initial sync jobs.</li>
+          <li><code>AmazonSchedulerService</code>: daily at 06:00, queues Amazon sync jobs.</li>
+          <li><code>InventoryAlertSchedulerService</code>: daily at 02:00, generates inventory alerts.</li>
+        </ul>
+      </section>
+
+      <section id="database">
+        <h2>Database</h2>
+        <p>
+          The database package uses Drizzle ORM with Postgres. Local development defaults to
+          <code>postgresql://postgres:postgres@localhost:5432/hub</code>. Production is expected to use a
+          managed Postgres URL such as Neon with SSL required for non-local hosts.
+        </p>
+        <table>
+          <thead><tr><th>Table</th><th>Purpose</th><th>Key relationships</th></tr></thead>
+          <tbody>
+            <tr><td><code>workspaces</code></td><td>Tenant/account root with plan, currency, timezone.</td><td>Parent for integrations, products, orders, alerts, AI recommendations, GSC summaries.</td></tr>
+            <tr><td><code>integration_accounts</code></td><td>Connected channel account metadata, tokens, scopes, sync state.</td><td>Belongs to workspace. Referenced by listings, inventory, orders, search performance, sync jobs.</td></tr>
+            <tr><td><code>products</code></td><td>Canonical product record by workspace and SKU.</td><td>Has variants. Unique on workspace and canonical SKU.</td></tr>
+            <tr><td><code>variants</code></td><td>SKU/barcode/options/cost records under products.</td><td>Parent for listings and inventory positions.</td></tr>
+            <tr><td><code>channel_listings</code></td><td>Per-channel listing state, ASIN, buyability, issues, quality score.</td><td>Connects variants to integration accounts.</td></tr>
+            <tr><td><code>inventory_positions</code></td><td>Per-location inventory quantities by variant and integration.</td><td>Unique on variant, integration, location key, quantity name.</td></tr>
+            <tr><td><code>sync_jobs</code></td><td>Durable sync job records, cursors, retry state, payloads, errors.</td><td>Belongs to integration account.</td></tr>
+            <tr><td><code>orders</code></td><td>Shopify order headers with totals and currency.</td><td>Belongs to workspace and integration account. Unique Shopify order per integration.</td></tr>
+            <tr><td><code>order_line_items</code></td><td>Order lines, SKU, product, variant, quantity, unit price.</td><td>Belongs to order. Optional product and variant references.</td></tr>
+            <tr><td><code>search_performance</code></td><td>GSC query/page performance snapshots.</td><td>Unique on integration, dimension, value, and period.</td></tr>
+            <tr><td><code>gsc_daily_summary</code></td><td>Daily Search Console clicks and impressions.</td><td>Unique on integration and date.</td></tr>
+            <tr><td><code>alerts</code></td><td>Operational alerts with severity, category, entity, platform, payload, status.</td><td>Belongs to workspace.</td></tr>
+            <tr><td><code>ai_recommendations</code></td><td>Stored AI outputs and acceptance/dismissal state.</td><td>Belongs to workspace and can reference an entity by string id.</td></tr>
+          </tbody>
+        </table>
+        <h3>Migrations</h3>
+        <p>
+          SQL migrations live in <code>packages/db/drizzle</code>. The root <code>pnpm migrate</code> script
+          delegates to <code>@sunday-stripe/db</code>, which runs <code>tsx migrate.ts</code>.
+        </p>
+      </section>
+
+      <section id="shopify">
+        <h2>Shopify</h2>
+        <p>
+          Shopify appears in two forms: the storefront theme at the repository root and the API integration
+          inside <code>apps/api/src/shopify</code>.
+        </p>
+        <h3>Theme architecture</h3>
+        <ul>
+          <li><code>layout/theme.liquid</code> and <code>layout/password.liquid</code> define top-level storefront shells.</li>
+          <li><code>sections</code> contains product, collection, cart, article, search, banner, footer, header, and account sections.</li>
+          <li><code>snippets</code> contains reusable Liquid fragments for product cards, media, price, variant pickers, cart UI, icons, localization, pagination, and menus.</li>
+          <li><code>assets</code> contains CSS and JavaScript for cart, predictive search, product forms, galleries, localization, quick add, media, and base styling.</li>
+          <li><code>templates</code> maps Shopify page types and custom pages to JSON section compositions.</li>
+        </ul>
+        <h3>Admin integration</h3>
+        <ul>
+          <li>OAuth starts at <code>/api/shopify/auth?shop=...</code> and returns through <code>/api/shopify/callback</code>.</li>
+          <li>The OAuth service validates HMAC/state, exchanges the auth code, stores integration data, and enqueues initial sync.</li>
+          <li>Webhooks post to <code>/api/shopify/webhooks</code>. Raw body HMAC verification happens before JSON parsing.</li>
+          <li>Verified webhook jobs are enqueued with the Shopify webhook id as the BullMQ job id for idempotency.</li>
+          <li>Sync services call the Shopify Admin GraphQL API and upsert products, variants, inventory, orders, and channel metadata.</li>
+        </ul>
+        <h3>Environment</h3>
+        <p>
+          Key variables include <code>SHOPIFY_SHOP</code>, <code>SHOPIFY_API_KEY</code>,
+          <code>SHOPIFY_API_SECRET</code>, <code>SHOPIFY_SCOPES</code>, <code>SHOPIFY_API_VERSION</code>,
+          <code>SHOPIFY_APP_URL</code>, and <code>SHOPIFY_WEBHOOK_CALLBACK_URL</code>.
+        </p>
+      </section>
+
+      <section id="google">
+        <h2>Google Search and Merchant</h2>
+        <h3>Search Console</h3>
+        <p>
+          <code>GscModule</code> uses <code>GscApiService</code>, <code>GscSyncService</code>,
+          <code>GscSyncProcessor</code>, and <code>GscSchedulerService</code>. GSC data feeds Search Console
+          dashboard pages, almost-page-1 opportunities, low CTR tables, product page SEO opportunities,
+          daily trends, branded query segmentation, and AI page optimization.
+        </p>
+        <h3>Merchant Center</h3>
+        <p>
+          <code>MerchantModule</code> uses Merchant API, sync service, processor, and scheduler classes.
+          Merchant data feeds listing quality, buyability, product attributes, missing identifier flows,
+          Merchant Center channel status, and product resync after attribute or SEO fixes.
+        </p>
+        <h3>Environment</h3>
+        <p>
+          Search Console uses <code>GSC_SITE</code> and <code>GSC_TOKEN_JSON</code>. Merchant Center uses
+          <code>GOOGLE_MERCHANT_ID</code>, <code>GOOGLE_MERCHANT_CREDENTIALS_JSON</code>, and
+          <code>GOOGLE_MERCHANT_DEVELOPER_EMAIL</code>.
+        </p>
+      </section>
+
+      <section id="amazon">
+        <h2>Amazon SP-API</h2>
+        <p>
+          Amazon integration lives in <code>apps/api/src/amazon</code>. The API client handles Amazon auth
+          and SP-API requests. Sync services ingest listings and orders. Dashboard surfaces include Amazon
+          unmatched listings, sales, cross-channel opportunities, Amazon attribute suggestions, attribute
+          fixes, import listing, and AI listing rewrite.
+        </p>
+        <h3>Environment</h3>
+        <p>
+          Key variables include <code>AMAZON_SELLER_ID</code>, <code>AMAZON_CLIENT_ID</code>,
+          <code>AMAZON_CLIENT_SECRET</code>, <code>AMAZON_REFRESH_TOKEN</code>,
+          <code>AMAZON_MARKETPLACE_ID</code>, <code>AMAZON_REGION</code>, <code>AWS_ACCESS_KEY_ID</code>,
+          and <code>AWS_SECRET_ACCESS_KEY</code>. The default marketplace in <code>render.yaml</code> is
+          <code>ATVPDKIKX0DER</code> and the default region is <code>us-east-1</code>.
+        </p>
+      </section>
+
+      <section id="openai">
+        <h2>OpenAI</h2>
+        <p>
+          The API package depends on <code>openai</code> and exposes AI endpoints through
+          <code>/api/ai/*</code>. These endpoints enrich operational workflows rather than replacing the
+          core sync system.
+        </p>
+        <table>
+          <thead><tr><th>AI workflow</th><th>Endpoint</th><th>Output</th></tr></thead>
+          <tbody>
+            <tr><td>Product copy</td><td><code>POST /api/ai/describe-product</code></td><td>Description, SEO title, meta description.</td></tr>
+            <tr><td>SEO optimization</td><td><code>POST /api/ai/optimize-page</code></td><td>Page title/meta recommendation, reasoning, optional product mapping.</td></tr>
+            <tr><td>Alert explanation</td><td><code>POST /api/ai/explain-alert</code></td><td>Summary, fixes, links, live context, possible actions.</td></tr>
+            <tr><td>Alert triage</td><td><code>POST /api/ai/triage-alerts</code></td><td>Grouped root causes and recommended action plan.</td></tr>
+            <tr><td>Alert action</td><td><code>POST /api/ai/apply-alert-action</code></td><td>Applies or queues a recommended corrective action.</td></tr>
+            <tr><td>Product fix assistant</td><td><code>POST /api/ai/product-fix-assistant</code></td><td>Prioritized fix plan across channels.</td></tr>
+            <tr><td>Amazon listing rewrite</td><td><code>POST /api/ai/amazon-listing-rewrite</code></td><td>Title, bullets, description, search terms, quality fixes.</td></tr>
+            <tr><td>Cross-channel opportunity</td><td><code>POST /api/ai/cross-channel-opportunity</code></td><td>Likely cause, next best action, upside, fixes.</td></tr>
+          </tbody>
+        </table>
+        <p>
+          AI outputs that should be reusable can be persisted in <code>ai_recommendations</code> with a
+          context hash and accepted/dismissed state.
+        </p>
+      </section>
+
+      <section id="vercel">
+        <h2>Vercel</h2>
+        <p>
+          The Next.js dashboard is shaped for Vercel deployment. The web app has its own
+          <code>apps/web/vercel.json</code>, while the repository root <code>vercel.json</code> is currently
+          an empty object. The app uses App Router, route handlers, server components, and server actions,
+          all of which map naturally to Vercel functions.
+        </p>
+        <h3>Important Vercel behavior</h3>
+        <ul>
+          <li><code>/api-proxy/*</code> runs as a Vercel route handler and aborts upstream API calls after 9 seconds to fit short function limits.</li>
+          <li><code>/api/keep-alive</code> calls <code>${API_BASE_URL}/api/status</code>, likely to keep the API warm or provide a lightweight monitor.</li>
+          <li>The web app should set <code>API_BASE_URL</code> to the Render or Railway API origin.</li>
+          <li>The API should set <code>WEB_APP_URL</code> to the Vercel dashboard URL for CORS.</li>
+        </ul>
+      </section>
+
+      <section id="render">
+        <h2>Render</h2>
+        <p>
+          <code>render.yaml</code> defines a Docker-backed web service named <code>sunday-stripe-api</code>.
+          It uses <code>apps/api/Dockerfile</code> with repository root as the Docker context and checks
+          health at <code>/api/status</code>. The service listens on <code>PORT=3001</code>.
+        </p>
+        <h3>Render environment groups by role</h3>
+        <ul>
+          <li>Runtime: <code>NODE_ENV</code>, <code>PORT</code>, <code>WEB_APP_URL</code>.</li>
+          <li>Persistence: <code>DATABASE_URL</code> for Neon/Postgres, <code>REDIS_URL</code> for Upstash/Redis.</li>
+          <li>Secrets: <code>TOKEN_ENCRYPTION_KEY</code>, <code>OPENAI_API_KEY</code>.</li>
+          <li>Shopify: shop domain, API credentials, scopes, API version, app URL, webhook callback URL.</li>
+          <li>Google: GSC token/site and Merchant Center service account configuration.</li>
+          <li>Amazon: Seller, LWA client credentials, refresh token, marketplace, region, AWS keys.</li>
+        </ul>
+      </section>
+
+      <section id="railway">
+        <h2>Railway</h2>
+        <p>
+          <code>railway.json</code> is an alternate API deployment target. It builds from
+          <code>apps/api/Dockerfile</code>, uses <code>/api/status</code> for health checks, and restarts
+          on failure up to three times.
+        </p>
+      </section>
+
+      <section id="local-dev">
+        <h2>Local Development</h2>
+        <p>
+          Local development uses pnpm workspaces. The root <code>dev</code> script builds the shared DB
+          package and then runs the API and web app in parallel.
+        </p>
+        <pre>pnpm install
+docker compose up -d
+pnpm migrate
+pnpm dev</pre>
+        <table>
+          <thead><tr><th>Service</th><th>Local default</th><th>Source</th></tr></thead>
+          <tbody>
+            <tr><td>Web app</td><td><code>http://localhost:3000</code></td><td>Next.js dev server.</td></tr>
+            <tr><td>API</td><td><code>http://localhost:3001/api</code></td><td>Nest <code>PORT</code> default.</td></tr>
+            <tr><td>Postgres</td><td><code>localhost:5432/hub</code></td><td><code>docker-compose.yml</code>.</td></tr>
+            <tr><td>Redis</td><td><code>localhost:6379</code></td><td><code>docker-compose.yml</code>.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="security">
+        <h2>Security Boundaries</h2>
+        <ul>
+          <li>CORS is limited by <code>WEB_APP_URL</code>, defaulting locally to <code>http://localhost:3000</code>.</li>
+          <li>Shopify webhooks require raw body HMAC verification before parsing or enqueueing.</li>
+          <li>Shopify OAuth validates signed callback parameters and state before storing integration credentials.</li>
+          <li>Token encryption is represented by <code>TOKEN_ENCRYPTION_KEY</code> and encrypted token fields in <code>integration_accounts</code>.</li>
+          <li>Server actions keep many privileged API mutations server-side in Next.js.</li>
+          <li>The browser proxy is same-origin but should still be treated as a pass-through to privileged API routes; production hardening should add authentication and authorization checks.</li>
+        </ul>
+      </section>
+
+      <section id="observability">
+        <h2>Observability</h2>
+        <p>
+          Observability is currently operational rather than platform-deep. The API has a health endpoint,
+          queue failure listing, failed/pending cleanup endpoints, Nest loggers in processors/controllers,
+          BullMQ job state, and persisted <code>sync_jobs.error_json</code>. Render and Railway health checks
+          hit <code>/api/status</code>. Vercel can observe the web route handlers and server component fetches.
+        </p>
+        <h3>Useful operational paths</h3>
+        <ul>
+          <li><code>/operations</code> in the web app for API status and failed jobs.</li>
+          <li><code>GET /api/operations/jobs/failed</code> for queue failures.</li>
+          <li><code>DELETE /api/jobs/failed</code> and <code>DELETE /api/jobs/pending</code> for cleanup.</li>
+          <li><code>sync_jobs</code> table for durable sync state and error payloads.</li>
+        </ul>
+      </section>
+
+      <section id="risks">
+        <h2>Risks and Gaps</h2>
+        <ul>
+          <li>Authentication/authorization is not obvious in the current web/API boundary; production should require user identity and workspace-scoped authorization on API mutations.</li>
+          <li>The API process runs HTTP, schedulers, and workers together. This is simple, but heavy sync jobs can compete with request latency unless separated later.</li>
+          <li><code>/api-proxy</code> forwards many methods to the API. It should be protected by the same auth model as the dashboard.</li>
+          <li>Queue connection settings favor fast failure when Redis is unreachable. That is good for avoiding hangs, but sync availability depends directly on Redis health.</li>
+          <li>Environment variable naming uses both <code>WEB_APP_URL</code> and <code>FRONTEND_URL</code> in Shopify callback code. These should be aligned or deliberately documented.</li>
+          <li>The root <code>vercel.json</code> is empty while <code>apps/web/vercel.json</code> exists. Deployment ownership should be explicit in Vercel project settings.</li>
+          <li>There are two dashboard generations: current Next.js app and earlier Python dashboard. The Python path should be marked prototype, archived, or maintained intentionally.</li>
+        </ul>
+      </section>
+
+      <section id="appendix">
+        <h2>Appendix</h2>
+        <h3>Moved notes</h3>
+        <p>
+          Planning and report files have been moved into <code>Notes/</code>: build plan, bug sweep,
+          handoff, connection capabilities, dashboard spec, insight report, mockup implementation plan,
+          phase notes, sessions, and deep research report.
+        </p>
+        <h3>Root commands</h3>
+        <pre>pnpm dev
+pnpm build
+pnpm migrate</pre>
+        <h3>Architecture update rule</h3>
+        <p>
+          Update this file when a new page, API route, queue, database table, deployment target,
+          external integration, or privileged action is added.
+        </p>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

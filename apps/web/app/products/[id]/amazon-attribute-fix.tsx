@@ -56,18 +56,14 @@ export function AmazonAttributeFix({ productId, attributeName, skus }: Props) {
     if (overrideValue) setValue(overrideValue);
 
     try {
-      await Promise.all(
-        skus.map((s) =>
-          fetch(`/api-proxy/products/${productId}/amazon-attribute`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sku: s.sku, attributeName, value: trimmed }),
-          }).then(async (res) => {
-            if (!res.ok) throw new Error(await res.text());
-          }),
-        ),
-      );
-      setMessage(`Updated ${attributeName} on Amazon.`);
+      const response = await fetch(`/api-proxy/products/${productId}/amazon-attributes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [attributeName]: trimmed }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const result = (await response.json()) as { updatedListings?: number; message?: string };
+      setMessage(result.message ?? `Applied ${attributeName} to ${result.updatedListings ?? skus.length} Amazon listing${(result.updatedListings ?? skus.length) === 1 ? "" : "s"}.`);
       setState("saved");
       router.refresh();
     } catch (err) {
@@ -121,7 +117,7 @@ export function AmazonAttributeFix({ productId, attributeName, skus }: Props) {
           disabled={state === "saving" || state === "saved" || !value.trim()}
           className="ss-btn ss-btn-sm ss-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {state === "saving" ? "Saving…" : state === "saved" ? "Saved ✓" : "Push to Amazon"}
+          {state === "saving" ? "Saving..." : state === "saved" ? "Saved ✓" : "Apply"}
         </button>
       </div>
       {message && (

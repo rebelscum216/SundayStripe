@@ -45,11 +45,12 @@ type NavLink = {
 };
 type NavItem = NavGroup | NavLink;
 
-const navItems: NavItem[] = [
+function buildNavItems(alertCount: number): NavItem[] {
+  return [
   { group: "Workspace" },
   { href: "/",               label: "Command Center",    icon: "home" },
   { href: "/products",       label: "Products",          icon: "box" },
-  { href: "/alerts",         label: "Alerts",            icon: "bell",   badge: "20", badgeWarn: true },
+  { href: "/alerts",         label: "Alerts",            icon: "bell",   badge: alertCount > 0 ? String(alertCount) : undefined, badgeWarn: true },
   { group: "Channels" },
   { href: "/shopify",        label: "Shopify",           icon: "shop" },
   { href: "/search-console", label: "Search Console",    icon: "search", badge: "32" },
@@ -62,14 +63,16 @@ const navItems: NavItem[] = [
   { group: "System" },
   { href: "/operations",     label: "Operations",        icon: "operations" },
   { href: "/settings",       label: "Connections",       icon: "settings" },
-];
+  ];
+}
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavLinks({ pathname, alertCount, onNavigate }: { pathname: string; alertCount: number; onNavigate?: () => void }) {
+  const navItems = buildNavItems(alertCount);
   return (
     <div className="flex-1 overflow-y-auto py-2">
       {navItems.map((item, i) => {
@@ -137,7 +140,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
   );
 }
 
-export function SidebarNav() {
+export function SidebarNav({ alertCount = 0 }: { alertCount?: number }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -176,7 +179,7 @@ export function SidebarNav() {
         </div>
       </div>
 
-      <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+      <NavLinks pathname={pathname} alertCount={alertCount} onNavigate={() => setMobileOpen(false)} />
 
       {/* Footer avatar */}
       <div style={{
@@ -266,7 +269,7 @@ export function SidebarNav() {
                 <Ic d={icons.x} size={16} />
               </button>
             </div>
-            <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            <NavLinks pathname={pathname} alertCount={alertCount} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}

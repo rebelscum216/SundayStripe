@@ -186,7 +186,7 @@ export class AmazonApiService {
   }
 
   async fetchOrdersPage(
-    createdAfter: string,
+    lastUpdatedAfter: string,
     nextToken?: string,
   ): Promise<{ orders: AmazonSalesOrder[]; nextToken?: string }> {
     const marketplaceId = this.config.getOrThrow<string>('AMAZON_MARKETPLACE_ID');
@@ -196,7 +196,7 @@ export class AmazonApiService {
       params.set('NextToken', nextToken);
     } else {
       params.set('MarketplaceIds', marketplaceId);
-      params.set('CreatedAfter', createdAfter);
+      params.set('LastUpdatedAfter', lastUpdatedAfter);
       params.set('OrderStatuses', 'Unshipped,PartiallyShipped,Shipped');
       params.set('MaxResultsPerPage', '100');
     }
@@ -212,6 +212,21 @@ export class AmazonApiService {
       })),
       nextToken: data.NextToken,
     };
+  }
+
+  async fetchOrders(days: number): Promise<AmazonSalesOrder[]> {
+    const lastUpdatedAfter = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const orders: AmazonSalesOrder[] = [];
+    let nextToken: string | undefined;
+
+    do {
+      const page = await this.fetchOrdersPage(lastUpdatedAfter, nextToken);
+      orders.push(...page.orders);
+      nextToken = page.nextToken;
+      if (nextToken) await new Promise((resolve) => setTimeout(resolve, 1000));
+    } while (nextToken);
+
+    return orders;
   }
 
   async fetchOrderItems(orderId: string): Promise<AmazonSalesOrderItem[]> {

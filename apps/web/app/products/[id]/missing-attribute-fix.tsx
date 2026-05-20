@@ -148,10 +148,12 @@ function GtinExemptToggle({ productId }: { productId: string }) {
 
 function SeoUpdateRow({
   productId,
+  attribute,
   currentSeoTitle,
   currentSeoDescription,
 }: {
   productId: string;
+  attribute: string;
   currentSeoTitle?: string | null;
   currentSeoDescription?: string | null;
 }) {
@@ -220,6 +222,11 @@ function SeoUpdateRow({
         {state === "saving" ? "Saving..." : state === "saved" ? "Saved ✓" : "Update & push"}
       </button>
       <p style={helperStyle}>Updates Shopify SEO metafields now.</p>
+      {attribute === "seo_description" && (
+        <p style={{ fontSize: 11, color: "var(--ss-ink-4)" }}>
+          Saving sends both SEO fields together so Shopify keeps the pair in sync.
+        </p>
+      )}
       {message && (
         <p style={messageStyle(state)}>{message}</p>
       )}
@@ -253,7 +260,7 @@ function DescriptionRow({
       const res = await fetch(`/api-proxy/products/${productId}/attributes`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attribute: "description", value: trimmed, platforms }),
+        body: JSON.stringify({ descriptionHtml: trimmed, platforms }),
       });
       if (!res.ok) throw new Error(await res.text());
       const result = (await res.json()) as UpdateResponse;
@@ -302,8 +309,15 @@ export function MissingAttributeFix({ productId, attribute, label, platforms, va
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
 
-  if (attribute === "seo_title") {
-    return <SeoUpdateRow productId={productId} currentSeoTitle={currentSeoTitle} currentSeoDescription={currentSeoDescription} />;
+  if (attribute === "seo_title" || attribute === "seo_description") {
+    return (
+      <SeoUpdateRow
+        productId={productId}
+        attribute={attribute}
+        currentSeoTitle={currentSeoTitle}
+        currentSeoDescription={currentSeoDescription}
+      />
+    );
   }
 
   if (attribute === "description") {

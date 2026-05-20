@@ -6,6 +6,7 @@ import { AiDescribeButton } from "./ai-describe";
 import { MissingAttributeFix } from "./missing-attribute-fix";
 import { ProductFixAssistant } from "./product-fix-assistant";
 import { ProductSeoOpportunity } from "./product-seo-opportunity";
+import { ProductDescriptionEditor } from "./product-description-editor";
 import { QualityScoreBadge } from "../quality-score-badge";
 import { AmazonAttributeFix } from "./amazon-attribute-fix";
 
@@ -287,6 +288,10 @@ export default async function ProductDetailPage({
     missingAttributes.push({ attr: "barcode", label: "Barcode / GTIN", detail: "Required for Merchant Center and Amazon catalog matching.", platforms: ["shopify", "merchant", "amazon_sp"], variants: variantsMissingBarcode.map((v) => ({ id: v.id, sku: v.sku, title: v.title })) });
   if (!product.descriptionHtml || product.descriptionHtml.trim().length < 10)
     missingAttributes.push({ attr: "description", label: "Description", detail: "Improves search ranking and listing quality.", platforms: ["shopify", "merchant", "amazon_sp"], currentDescription: product.descriptionHtml ?? null });
+  if (!product.seoTitle?.trim())
+    missingAttributes.push({ attr: "seo_title", label: "SEO Title", detail: "Shown in search results and used by Shopify.", platforms: ["shopify"], currentSeoTitle: product.seoTitle, currentSeoDescription: product.seoDescription });
+  if (!product.seoDescription?.trim())
+    missingAttributes.push({ attr: "seo_description", label: "SEO Meta Description", detail: "Improves click-through from organic search.", platforms: ["shopify"], currentSeoTitle: product.seoTitle, currentSeoDescription: product.seoDescription });
 
   const amazonSkus = variants.flatMap((v) =>
     v.listings
@@ -415,6 +420,8 @@ export default async function ProductDetailPage({
           </div>
         </div>
       </div>
+
+      <ProductDescriptionEditor productId={product.id} descriptionHtml={product.descriptionHtml} />
 
       {/* Missing attributes */}
       {totalMissing > 0 && (

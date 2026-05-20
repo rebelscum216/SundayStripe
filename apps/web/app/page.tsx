@@ -7,6 +7,7 @@ import { StatusPill } from "./components/status-pill";
 import { AiFeed } from "./components/ai-feed";
 import { AlmostPage1Table, type AlmostPage1Row } from "./search-console/almost-page-1-table";
 import { LowCtrTable } from "./search-console/low-ctr-table";
+import { RevenueChannelChart } from "./revenue-channel-chart";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:3001";
 
@@ -49,6 +50,7 @@ type InventoryResponse = {
 
 type RevenueTrend = { current: number; prior: number; trend: "up" | "down" | "flat"; deltaPercent: number };
 type AmazonSales = { orderCount: number; unitsSold: number; revenueCents: number };
+type RevenueByChannelRow = { month: string; shopifyCents: number; amazonCents: number };
 
 export type AiAction = {
   id: string;
@@ -84,6 +86,9 @@ async function getRevenueTrend(): Promise<RevenueTrend | null> {
 }
 async function getAmazonSales(): Promise<AmazonSales | null> {
   try { const r = await fetch(`${apiBaseUrl}/api/amazon/sales`, { cache: "no-store" }); return r.ok ? r.json() : null; } catch { return null; }
+}
+async function getRevenueByChannel(): Promise<RevenueByChannelRow[]> {
+  try { const r = await fetch(`${apiBaseUrl}/api/revenue/by-channel`, { cache: "no-store" }); return r.ok ? r.json() : []; } catch { return []; }
 }
 async function getAlmostPage1(): Promise<AlmostPage1Row[]> {
   try { const r = await fetch(`${apiBaseUrl}/api/search-console/almost-page-1`, { cache: "no-store" }); return r.ok ? r.json() : []; } catch { return []; }
@@ -299,6 +304,11 @@ async function KpiStrip() {
   );
 }
 
+async function RevenueByChannelSection() {
+  const data = await getRevenueByChannel();
+  return <RevenueChannelChart data={data} />;
+}
+
 async function AiFeedSection() {
   const [almostPage1, alerts, crossChannel, inventory, status] = await Promise.all([
     getAlmostPage1(), getAlerts(), getCrossChannel(), getInventory(), getStatus(),
@@ -417,6 +427,10 @@ export default function CommandCenterPage() {
           </div>
         }>
           <KpiStrip />
+        </Suspense>
+
+        <Suspense fallback={<CardSkeleton />}>
+          <RevenueByChannelSection />
         </Suspense>
 
         <Suspense fallback={<SectionSkeleton rows={5} />}>

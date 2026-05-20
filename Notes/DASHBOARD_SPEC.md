@@ -1,5 +1,23 @@
 # Shopify + Amazon Analytics Dashboard — Technical Specification
 
+## Current Implementation Note
+
+This project has moved from the original local Streamlit concept to the active pnpm monorepo:
+
+- `apps/api` — NestJS API with Drizzle/Postgres and BullMQ/Redis
+- `apps/web` — Next.js 14 dashboard
+- `packages/db` — shared Drizzle schema and migrations
+
+Current implemented integrations:
+
+- **Shopify** — product/variant/inventory sync, channel listings, webhooks (PRODUCTS_UPDATE, PRODUCTS_DELETE, INVENTORY_LEVELS_UPDATE), order sync, price-update actions via API
+- **Google Merchant Center** — listing/disapproval sync, item-level alerts, daily scheduled re-sync
+- **Google Search Console** — 90-day query + page performance sync, almost-page-1 detection, daily 3am scheduled re-sync
+- **Amazon SP-API** — listings sync via Listings API, quality score computation (title/bullets/description/images), title-based product matching fallback, 20 open listing-quality alerts, daily scheduled re-sync
+- **OpenAI** — AI product descriptions, alert explanations, bulk alert triage, Amazon listing rewrites, cross-channel opportunity analysis, page SEO optimization, product fix assistant
+
+This document remains useful for data-source goals and dashboard ideas, but implementation should follow the Nest/Next architecture above rather than adding new Streamlit code.
+
 ## Overview
 
 A local Streamlit dashboard that pulls live data from Google Search Console, Shopify Admin API, and Amazon SP-API and presents it in a unified view. Runs on `localhost:8501`. No deployment required.

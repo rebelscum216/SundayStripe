@@ -32,37 +32,21 @@ export class AmazonOrdersSyncService {
       .where(eq(syncJobs.id, syncJobId));
 
     try {
-      const createdAfter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-      let nextToken: string | undefined = syncJob.cursor ?? undefined;
       let orderCount = 0;
       let lineItemCount = 0;
+      const amazonOrders = await this.amazonApi.fetchOrders(90);
 
-      do {
-        const { orders: amazonOrders, nextToken: pageNextToken } = await this.amazonApi.fetchOrdersPage(
-          createdAfter,
-          nextToken,
-        );
-        nextToken = pageNextToken;
+      for (const amazonOrder of amazonOrders) {
+        const storedOrderId = await this.upsertOrder(integration, amazonOrder);
+        orderCount += 1;
 
-        await this.db
-          .update(syncJobs)
-          .set({ cursor: nextToken ?? null })
-          .where(eq(syncJobs.id, syncJobId));
-
-        for (const amazonOrder of amazonOrders) {
-          const storedOrderId = await this.upsertOrder(integration, amazonOrder);
-          orderCount += 1;
-
-          const items = await this.amazonApi.fetchOrderItems(amazonOrder.id);
-          for (const item of items) {
-            await this.insertLineItem(storedOrderId, item);
-            lineItemCount += 1;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        const items = await this.amazonApi.fetchOrderItems(amazonOrder.id);
+        for (const item of items) {
+          await this.insertLineItem(storedOrderId, item);
+          lineItemCount += 1;
         }
-
-        if (nextToken) await new Promise((resolve) => setTimeout(resolve, 1000));
-      } while (nextToken);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
 
       await this.db
         .update(syncJobs)
@@ -166,8 +150,18 @@ export class AmazonOrdersSyncService {
         quantity,
         unitPriceCents: Math.round(totalCents / quantity),
       })
-      .onConflictDoNothing({
+      .onConflictDoUpdate({
         target: [orderLineItems.orderId, orderLineItems.shopifyLineItemId],
+        set: {
+          productId: variantMatch?.productId ?? null,
+          variantId: variantMatch?.id ?? null,
+          shopifyProductId: item.asin,
+          shopifyVariantId: item.sku,
+          sku: item.sku,
+          title: item.title,
+          quantity,
+          unitPriceCents: Math.round(totalCents / quantity),
+        },
       });
   }
 

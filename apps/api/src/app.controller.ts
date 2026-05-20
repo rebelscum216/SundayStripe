@@ -23,6 +23,7 @@ import { ShopifyOrdersSyncService } from "./shopify/sync/shopify-orders-sync.ser
 import { GscSyncService } from "./gsc/gsc-sync.service.js";
 
 type Db = PostgresJsDatabase<typeof schema>;
+type CachedRecommendation<T> = { id: string; outputJson: T };
 
 type AlertAction = {
   id: string;
@@ -1615,6 +1616,35 @@ export class AppController {
       .limit(100);
   }
 
+  @Get("revenue/by-channel")
+  async getRevenueByChannel() {
+    const rows = await this.db
+      .select({
+        month: sql<string>`to_char(date_trunc('month', ${orders.createdAt}), 'YYYY-MM')`,
+        platform: integrationAccounts.platform,
+        revenueCents: sql<number>`coalesce(sum(${orderLineItems.quantity} * ${orderLineItems.unitPriceCents}), 0)::int`,
+      })
+      .from(orderLineItems)
+      .innerJoin(orders, eq(orderLineItems.orderId, orders.id))
+      .innerJoin(integrationAccounts, eq(orders.integrationAccountId, integrationAccounts.id))
+      .where(and(
+        sql`${orders.createdAt} >= date_trunc('month', now()) - interval '11 months'`,
+        sql`coalesce(${orders.financialStatus}, 'paid') not in ('refunded', 'voided')`,
+      ))
+      .groupBy(sql`date_trunc('month', ${orders.createdAt})`, integrationAccounts.platform)
+      .orderBy(sql`date_trunc('month', ${orders.createdAt})`);
+
+    const byMonth = new Map<string, { month: string; shopifyCents: number; amazonCents: number }>();
+    for (const row of rows) {
+      const entry = byMonth.get(row.month) ?? { month: row.month, shopifyCents: 0, amazonCents: 0 };
+      if (row.platform === "amazon_sp") entry.amazonCents += row.revenueCents;
+      if (row.platform === "shopify") entry.shopifyCents += row.revenueCents;
+      byMonth.set(row.month, entry);
+    }
+
+    return Array.from(byMonth.values());
+  }
+
   @Get("cross-channel")
   async getCrossChannel() {
     const productRows = await this.db
@@ -1881,6 +1911,22 @@ export class AppController {
       product.seoDescription ? `Current SEO meta description: ${product.seoDescription}` : null,
       gscQueries.length > 0 ? `Top search queries driving traffic to this product: ${gscQueries.map((q) => q.query).join(", ")}` : null,
     ].filter(Boolean).join("\n");
+    const contextHash = this.hashContext({
+      productId: body.productId,
+      title: product.title,
+      brand: product.brand,
+      canonicalSku: product.canonicalSku,
+      descriptionHtml: product.descriptionHtml,
+      seoTitle: product.seoTitle,
+      seoDescription: product.seoDescription,
+      gscQueries,
+    });
+    const cached = await this.getCachedRecommendation<{
+      description: string;
+      seoTitle: string;
+      seoMetaDescription: string;
+    }>(product.workspaceId, "describe_product", body.productId, contextHash);
+    if (cached) return { ...cached.outputJson, recommendationId: cached.id, cached: true, status: "cached" };
 
     const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
@@ -1894,7 +1940,9 @@ export class AppController {
       response_format: { type: "json_object" },
       max_tokens: 600,
     });
-    return this.parseAiJson<{ description: string; seoTitle: string; seoMetaDescription: string }>(raw);
+    const output = this.parseAiJson<{ description: string; seoTitle: string; seoMetaDescription: string }>(raw);
+    const recommendationId = await this.saveRecommendation(product.workspaceId, "describe_product", body.productId, contextHash, "gpt-4o-mini", output);
+    return { ...output, recommendationId, cached: false, status: "generated" };
   }
 
   @Post("ai/explain-alert")
@@ -2060,7 +2108,7 @@ export class AppController {
 
     const contextHash = this.hashContext({ serialized });
     const cached = await this.getCachedRecommendation<object>(workspaceId, "triage_alerts", null, contextHash);
-    if (cached) return { ...cached, cached: true };
+    if (cached) return { ...cached.outputJson, recommendationId: cached.id, cached: true, status: "cached" };
 
     const openai = new OpenAI({ apiKey });
     const raw = await this.callAi(openai, {
@@ -2108,8 +2156,8 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       }>;
     }>(raw);
 
-    await this.saveRecommendation(workspaceId, "triage_alerts", null, contextHash, "gpt-4o-mini", result);
-    return { ...result, cached: false };
+    const recommendationId = await this.saveRecommendation(workspaceId, "triage_alerts", null, contextHash, "gpt-4o-mini", result);
+    return { ...result, recommendationId, cached: false, status: "generated" };
   }
 
   @Post("ai/apply-alert-action")
@@ -2321,6 +2369,21 @@ Sort groups by priority (critical first). Be specific about root causes.`,
           })).slice(0, 12))}`
         : "Listings: none",
     ].join("\n");
+    const contextHash = this.hashContext({
+      product,
+      variants: variantRows,
+      listings: listingRows,
+      inventory: inventoryRows,
+      revenue: revenueRows[0] ?? null,
+      gscQueries,
+      alerts: alertRows,
+    });
+    const cached = await this.getCachedRecommendation<{
+      summary: string;
+      priority: "high" | "medium" | "low";
+      fixes: Array<{ title: string; why: string; action: string; channel: string; impact: string }>;
+    }>(product.workspaceId, "product_fix_assistant", body.productId, contextHash);
+    if (cached) return { ...cached.outputJson, recommendationId: cached.id, cached: true, status: "cached" };
 
     const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
@@ -2334,7 +2397,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       response_format: { type: "json_object" },
       max_tokens: 800,
     });
-    return this.parseAiJson<{
+    const output = this.parseAiJson<{
       summary: string;
       priority: "high" | "medium" | "low";
       fixes: Array<{
@@ -2345,6 +2408,8 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         impact: string;
       }>;
     }>(raw);
+    const recommendationId = await this.saveRecommendation(product.workspaceId, "product_fix_assistant", body.productId, contextHash, "gpt-4o-mini", output);
+    return { ...output, recommendationId, cached: false, status: "generated" };
   }
 
   @Post("ai/amazon-listing-rewrite")
@@ -2467,6 +2532,22 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         ? `Search demand: ${gscQueries.map((row) => `${row.query} (${row.impressions} impressions, ${row.clicks} clicks)`).join("; ")}`
         : "Search demand: none",
     ].join("\n");
+    const contextHash = this.hashContext({
+      product,
+      variants: variantSummaries,
+      amazonListings: amazonListingRows,
+      amazonIssues,
+      gscQueries,
+    });
+    const cached = await this.getCachedRecommendation<{
+      summary: string;
+      title: string;
+      bullets: string[];
+      description: string;
+      searchTerms: string[];
+      qualityFixes: Array<{ field: string; issue: string; recommendation: string }>;
+    }>(product.workspaceId, "amazon_listing_rewrite", body.productId, contextHash);
+    if (cached) return { ...cached.outputJson, recommendationId: cached.id, cached: true, status: "cached" };
 
     const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
@@ -2480,7 +2561,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       response_format: { type: "json_object" },
       max_tokens: 1000,
     });
-    return this.parseAiJson<{
+    const output = this.parseAiJson<{
       summary: string;
       title: string;
       bullets: string[];
@@ -2492,6 +2573,8 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         recommendation: string;
       }>;
     }>(raw);
+    const recommendationId = await this.saveRecommendation(product.workspaceId, "amazon_listing_rewrite", body.productId, contextHash, "gpt-4o-mini", output);
+    return { ...output, recommendationId, cached: false, status: "generated" };
   }
 
   @Post("ai/cross-channel-opportunity")
@@ -2667,6 +2750,24 @@ Sort groups by priority (critical first). Be specific about root causes.`,
           })))}`
         : "Open alerts: none",
     ].join("\n");
+    const contextHash = this.hashContext({
+      product,
+      variants: variantRows,
+      revenue: revenueRows[0] ?? null,
+      listings: listingRows,
+      pages: pageRows,
+      queries: queryRows,
+      alerts: alertRows,
+      flag,
+    });
+    const cached = await this.getCachedRecommendation<{
+      summary: string;
+      likelyCause: string;
+      nextBestAction: string;
+      expectedUpside: string;
+      fixes: Array<{ action: string; channel: string; reason: string }>;
+    }>(product.workspaceId, "cross_channel_opportunity", body.productId, contextHash);
+    if (cached) return { ...cached.outputJson, recommendationId: cached.id, cached: true, status: "cached" };
 
     const raw = await this.callAi(openai, {
       model: "gpt-4o-mini",
@@ -2680,13 +2781,15 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       response_format: { type: "json_object" },
       max_tokens: 700,
     });
-    return this.parseAiJson<{
+    const output = this.parseAiJson<{
       summary: string;
       likelyCause: string;
       nextBestAction: string;
       expectedUpside: string;
       fixes: Array<{ action: string; channel: string; reason: string }>;
     }>(raw);
+    const recommendationId = await this.saveRecommendation(product.workspaceId, "cross_channel_opportunity", body.productId, contextHash, "gpt-4o-mini", output);
+    return { ...output, recommendationId, cached: false, status: "generated" };
   }
 
   @Post("ai/optimize-page")
@@ -2743,10 +2846,12 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       currentSeoTitle?: string | null; currentSeoDescription?: string | null;
     }>(workspaceId, "optimize_page", body.url, contextHash);
     if (cached) return {
-      ...cached,
-      currentSeoTitle: cached.currentSeoTitle ?? matchedProduct?.seoTitle ?? null,
-      currentSeoDescription: cached.currentSeoDescription ?? matchedProduct?.seoDescription ?? null,
+      ...cached.outputJson,
+      recommendationId: cached.id,
+      currentSeoTitle: cached.outputJson.currentSeoTitle ?? matchedProduct?.seoTitle ?? null,
+      currentSeoDescription: cached.outputJson.currentSeoDescription ?? matchedProduct?.seoDescription ?? null,
       cached: true,
+      status: "cached",
     };
 
     const prompt = [
@@ -2788,7 +2893,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       currentSeoDescription: matchedProduct?.seoDescription ?? null,
     };
     const recommendationId = await this.saveRecommendation(workspaceId, "optimize_page", body.url, contextHash, "gpt-4o-mini", output);
-    return { ...output, recommendationId, cached: false };
+    return { ...output, recommendationId, cached: false, status: "generated" };
   }
 
   @Patch("ai/recommendations/:id/accept")
@@ -2796,6 +2901,17 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     const result = await this.db
       .update(aiRecommendations)
       .set({ status: "accepted", acceptedAt: new Date() })
+      .where(eq(aiRecommendations.id, id))
+      .returning({ id: aiRecommendations.id });
+    if (result.length === 0) throw new NotFoundException(`Recommendation ${id} not found`);
+    return { ok: true };
+  }
+
+  @Patch("ai/recommendations/:id/dismiss")
+  async dismissRecommendation(@Param("id") id: string) {
+    const result = await this.db
+      .update(aiRecommendations)
+      .set({ status: "dismissed", dismissedAt: new Date() })
       .where(eq(aiRecommendations.id, id))
       .returning({ id: aiRecommendations.id });
     if (result.length === 0) throw new NotFoundException(`Recommendation ${id} not found`);
@@ -2883,12 +2999,13 @@ Sort groups by priority (critical first). Be specific about root causes.`,
   @Patch("products/:id/attributes")
   async updateProductAttributes(
     @Param("id") id: string,
-    @Body() body: { attribute: string; value: string; platforms?: string[] },
+    @Body() body: { attribute?: string; value?: string; descriptionHtml?: string; platforms?: string[] },
   ) {
-    const value = body.value?.trim();
+    const attribute = body.descriptionHtml !== undefined ? "description" : body.attribute;
+    const value = (body.descriptionHtml ?? body.value)?.trim();
     if (!value) throw new BadRequestException("Attribute value is required");
-    if (body.attribute !== "brand" && body.attribute !== "description") {
-      throw new BadRequestException(`Unsupported product attribute: ${body.attribute}`);
+    if (attribute !== "brand" && attribute !== "description") {
+      throw new BadRequestException(`Unsupported product attribute: ${attribute ?? "unknown"}`);
     }
 
     const [product] = await this.db
@@ -2907,7 +3024,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     const queued: string[] = [];
 
     if (!body.platforms || body.platforms.includes("shopify")) {
-      if (body.attribute === "brand") {
+      if (attribute === "brand") {
         await this.updateShopifyProductFields(product.workspaceId, id, { vendor: value });
       } else {
         // Wrap plain text in <p> tags if it doesn't look like HTML already
@@ -2917,7 +3034,7 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       pushed.push("shopify");
     }
 
-    if (body.attribute === "brand") {
+    if (attribute === "brand") {
       await this.db.update(products).set({ brand: value, updatedAt: new Date() }).where(eq(products.id, id));
     } else {
       const html = value.startsWith("<") ? value : `<p>${value.replace(/\n\n+/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
@@ -2935,10 +3052,10 @@ Sort groups by priority (critical first). Be specific about root causes.`,
       queued.push(...(await this.enqueueWorkspaceSyncs(product.workspaceId, downstreamPlatforms)));
     }
 
-    const attrLabel = body.attribute === "brand" ? "Brand" : "Description";
+    const attrLabel = attribute === "brand" ? "Brand" : "Description";
     return {
       ok: true,
-      attribute: body.attribute,
+      attribute,
       value,
       pushed,
       queued,
@@ -3086,6 +3203,83 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     }
 
     return { ok: true, sku: sellerSku, attributeName, value: value.trim() };
+  }
+
+  @Patch("products/:id/amazon-attributes")
+  async patchAmazonAttributes(
+    @Param("id") id: string,
+    @Body() body: Record<string, string>,
+  ) {
+    const attrs = Object.fromEntries(
+      Object.entries(body ?? {})
+        .map(([key, value]) => [key.trim(), String(value ?? "").trim()])
+        .filter(([key, value]) => key.length > 0 && value.length > 0),
+    );
+    if (Object.keys(attrs).length === 0) {
+      throw new BadRequestException("At least one Amazon attribute is required");
+    }
+
+    const variantRows = await this.db
+      .select({ variantId: variants.id, workspaceId: products.workspaceId })
+      .from(variants)
+      .innerJoin(products, eq(variants.productId, products.id))
+      .where(eq(variants.productId, id));
+
+    if (variantRows.length === 0) throw new NotFoundException(`Product ${id} not found`);
+
+    const variantIds = variantRows.map((row) => row.variantId);
+    const listingRows = await this.db
+      .select({ id: channelListings.id, issuesJson: channelListings.issuesJson })
+      .from(channelListings)
+      .innerJoin(integrationAccounts, eq(channelListings.integrationAccountId, integrationAccounts.id))
+      .where(and(inArray(channelListings.variantId, variantIds), eq(integrationAccounts.platform, "amazon_sp")));
+
+    for (const listing of listingRows) {
+      const existing = this.toRecord(listing.issuesJson);
+      const currentAttributes = this.toStringRecord(existing.amazonAttributes);
+      const issues = this.removeResolvedAmazonAttributes(existing.issues, Object.keys(attrs));
+
+      await this.db
+        .update(channelListings)
+        .set({
+          issuesJson: {
+            ...existing,
+            issues,
+            amazonAttributes: { ...currentAttributes, ...attrs },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(channelListings.id, listing.id));
+    }
+
+    const workspaceId = variantRows[0].workspaceId;
+    const alertRows = await this.db
+      .select({ id: alerts.id, payloadJson: alerts.payloadJson })
+      .from(alerts)
+      .where(
+        and(
+          eq(alerts.workspaceId, workspaceId),
+          eq(alerts.sourcePlatform, "amazon_sp"),
+          eq(alerts.status, "open"),
+        ),
+      );
+
+    for (const alert of alertRows) {
+      const payload = this.toRecord(alert.payloadJson);
+      const issues = this.removeResolvedAmazonAttributes(payload.issues, Object.keys(attrs));
+      const resolved = Array.isArray(issues) && issues.length === 0;
+      await this.db
+        .update(alerts)
+        .set({ payloadJson: { ...payload, issues }, status: resolved ? "resolved" : "open" })
+        .where(eq(alerts.id, alert.id));
+    }
+
+    return {
+      ok: true,
+      attributes: attrs,
+      updatedListings: listingRows.length,
+      message: `Applied ${Object.keys(attrs).length} Amazon attribute${Object.keys(attrs).length === 1 ? "" : "s"}.`,
+    };
   }
 
   @Patch("products/:id/variants/:variantId/barcode")
@@ -3874,9 +4068,9 @@ Sort groups by priority (critical first). Be specific about root causes.`,
     sourceType: string,
     entityId: string | null,
     contextHash: string,
-  ): Promise<T | null> {
+  ): Promise<CachedRecommendation<T> | null> {
     const [row] = await this.db
-      .select({ outputJson: aiRecommendations.outputJson })
+      .select({ id: aiRecommendations.id, outputJson: aiRecommendations.outputJson })
       .from(aiRecommendations)
       .where(
         and(
@@ -3884,11 +4078,12 @@ Sort groups by priority (critical first). Be specific about root causes.`,
           eq(aiRecommendations.sourceType, sourceType),
           entityId ? eq(aiRecommendations.entityId, entityId) : sql`${aiRecommendations.entityId} is null`,
           eq(aiRecommendations.contextHash, contextHash),
+          sql`${aiRecommendations.dismissedAt} is null`,
         ),
       )
       .orderBy(desc(aiRecommendations.createdAt))
       .limit(1);
-    return row ? (row.outputJson as T) : null;
+    return row ? { id: row.id, outputJson: row.outputJson as T } : null;
   }
 
   private async saveRecommendation(
@@ -3908,9 +4103,41 @@ Sort groups by priority (critical first). Be specific about root causes.`,
         contextHash,
         model,
         outputJson: outputJson as Record<string, unknown>,
+        status: "generated",
       })
       .returning({ id: aiRecommendations.id });
     return row.id;
+  }
+
+  private toRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === "object" && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : {};
+  }
+
+  private toStringRecord(value: unknown): Record<string, string> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    );
+  }
+
+  private removeResolvedAmazonAttributes(issuesValue: unknown, resolvedNames: string[]) {
+    if (!Array.isArray(issuesValue)) return issuesValue ?? [];
+    const resolved = new Set(resolvedNames);
+    return issuesValue
+      .map((issue) => {
+        if (!issue || typeof issue !== "object") return issue;
+        const record = issue as Record<string, unknown>;
+        const attributeNames = Array.isArray(record.attributeNames)
+          ? record.attributeNames.filter((name) => typeof name !== "string" || !resolved.has(name))
+          : record.attributeNames;
+        return { ...record, attributeNames };
+      })
+      .filter((issue) => {
+        if (!issue || typeof issue !== "object") return true;
+        const names = (issue as { attributeNames?: unknown }).attributeNames;
+        return !Array.isArray(names) || names.length > 0;
+      });
   }
 
   private titleToHandle(title: string): string {

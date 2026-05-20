@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SundayStripe — Data & Insight Audit Report</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3e;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --orange: #f97316;
+    --claude: #7c3aed;
+    --codex: #0ea5e9;
+    --claude-bg: #1e1040;
+    --codex-bg: #0a2a3d;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  header {
+    background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 40px 36px;
+  }
+
+  header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  header .meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .meta-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .meta-pill strong { color: var(--text); }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .tag-claude { background: var(--claude-bg); color: #a78bfa; border: 1px solid #4c1d95; }
+  .tag-codex  { background: var(--codex-bg);  color: #38bdf8; border: 1px solid #0c4a6e; }
+
+  .tag-claude::before { content: "⬥ "; }
+  .tag-codex::before  { content: "◈ "; }
+
+  .tag-pri-high   { background: #2d0e0e; color: #fca5a5; border: 1px solid #7f1d1d; }
+  .tag-pri-medium { background: #1c1500; color: #fde68a; border: 1px solid #713f12; }
+  .tag-pri-low    { background: #0d1f0d; color: #86efac; border: 1px solid #14532d; }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 40px 80px;
+  }
+
+  .section {
+    margin-top: 56px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .section-header .section-count {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .section-desc {
+    color: var(--muted);
+    margin-bottom: 20px;
+    font-size: 13px;
+    max-width: 760px;
+    line-height: 1.7;
+  }
+
+  .proposal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+
+  .proposal:hover { border-color: var(--accent); }
+
+  .proposal-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px;
+    cursor: pointer;
+  }
+
+  .proposal-id {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    background: rgba(255,255,255,0.05);
+    border-radius: 5px;
+    padding: 2px 7px;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+
+  .proposal-title-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .proposal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+
+  .proposal-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .proposal-tags {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .proposal-body {
+    padding: 0 20px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .proposal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  @media (max-width: 700px) {
+    .proposal-grid { grid-template-columns: 1fr; }
+    .container { padding: 0 20px 60px; }
+    header { padding: 32px 20px 24px; }
+  }
+
+  .proposal-panel {
+    background: rgba(255,255,255,0.025);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .proposal-panel h4 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .proposal-panel p, .proposal-panel li {
+    font-size: 13px;
+    color: #cbd5e1;
+    line-height: 1.65;
+  }
+
+  .proposal-panel ul {
+    padding-left: 16px;
+  }
+
+  .proposal-panel li { margin-bottom: 4px; }
+
+  .fix-block {
+    background: rgba(99, 102, 241, 0.07);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin-top: 14px;
+  }
+
+  .fix-block h4 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--accent-light);
+    margin-bottom: 8px;
+  }
+
+  .fix-block p, .fix-block li {
+    font-size: 13px;
+    color: #c7d2fe;
+    line-height: 1.65;
+  }
+
+  .fix-block ul { padding-left: 16px; }
+  .fix-block li { margin-bottom: 4px; }
+
+  code {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 12px;
+    background: rgba(255,255,255,0.08);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #e2e8f0;
+  }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-top: 36px;
+  }
+
+  .toc h3 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .toc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 32px;
+  }
+
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    text-decoration: none;
+    color: var(--text);
+    padding: 4px 0;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s;
+  }
+
+  .toc-item:hover { color: var(--accent-light); }
+
+  .toc-item .toc-num {
+    font-size: 11px;
+    color: var(--muted);
+    width: 24px;
+    flex-shrink: 0;
+  }
+
+  .legend {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-top: 28px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .summary-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  @media (max-width: 700px) {
+    .summary-bar { grid-template-columns: repeat(2, 1fr); }
+    .toc-grid { grid-template-columns: 1fr; }
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .summary-card .num {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .summary-card .label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>SundayStripe — Data &amp; Insight Audit</h1>
+  <p>A comprehensive review of every data signal collected, how it is (and isn't) being used, and actionable proposals to close the gaps.</p>
+  <div class="meta">
+    <div class="meta-pill">Generated <strong>2026-05-12</strong></div>
+    <div class="meta-pill">Scope <strong>Full codebase + schema</strong></div>
+    <div class="meta-pill">Channels <strong>Shopify · Merchant Center · GSC · Amazon SP-API</strong></div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Summary -->
+  <div class="summary-bar">
+    <div class="summary-card">
+      <div class="num">27</div>
+      <div class="label">Total proposals</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#fca5a5">9</div>
+      <div class="label">High priority</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#a78bfa">15</div>
+      <div class="label">Tagged → Claude</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:#38bdf8">12</div>
+      <div class="label">Tagged → Codex</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="tag tag-claude">Claude</span> Changes I can implement now — UI additions, small API endpoints, surfacing existing DB data</div>
+    <div class="legend-item"><span class="tag tag-codex">Codex</span> Larger builds — new integrations, schema additions, forecasting models, new feature areas</div>
+    <div class="legend-item"><span class="tag tag-pri-high">High</span> Directly impacts daily decision-making</div>
+    <div class="legend-item"><span class="tag tag-pri-medium">Medium</span> Valuable, not blocking</div>
+    <div class="legend-item"><span class="tag tag-pri-low">Low</span> Nice to have / long-tail</div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h3>Contents</h3>
+    <div class="toc-grid">
+      <a class="toc-item" href="#s1"><span class="toc-num">01–06</span> Hidden data — already in DB, not shown</a>
+      <a class="toc-item" href="#s2"><span class="toc-num">07–11</span> Apply flow gaps — channels missing write-back</a>
+      <a class="toc-item" href="#s3"><span class="toc-num">12–16</span> Product catalog &amp; detail improvements</a>
+      <a class="toc-item" href="#s4"><span class="toc-num">17–20</span> Alert system upgrades</a>
+      <a class="toc-item" href="#s5"><span class="toc-num">21–23</span> Search Console / SEO enhancements</a>
+      <a class="toc-item" href="#s6"><span class="toc-num">24–27</span> Structural &amp; strategic gaps</a>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 1 — HIDDEN DATA
+  ═══════════════════════════════════════════ -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <h2>01–06 &nbsp;Hidden Data — Already in DB, Never Shown</h2>
+      <span class="section-count">6 proposals · All implementable now</span>
+    </div>
+    <p class="section-desc">
+      These columns are collected every sync cycle and sitting in Postgres. Zero new engineering required — just query and render. These are the fastest, cheapest insights to unlock.
+    </p>
+
+    <!-- P01 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P01</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Refund/void exclusion from revenue calculations</div>
+          <div class="proposal-subtitle">orders · financialStatus column · all revenue displays</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The <code>orders.financialStatus</code> column is populated with <code>refunded</code>, <code>voided</code>, <code>authorized</code>, and <code>paid</code> on every Shopify orders sync. However, all four statuses are summed equally into revenue totals. A refunded order inflates revenue figures. The revenue trend delta, the product detail revenue panel, the cross-channel table, and the inventory days-of-cover calculation all share this flaw.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Revenue numbers shown to the user are higher than actual net revenue</li>
+              <li>Days-of-cover calculations overstate sales velocity</li>
+              <li>Cross-channel opportunity flags may promote products that are being returned heavily</li>
+              <li>AI opportunity explainer receives inflated revenue context</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add <code>WHERE financial_status IN ('paid', 'partially_refunded')</code> to every revenue query in <code>app.controller.ts</code> — affects <code>/api/revenue</code>, <code>/api/revenue-trend</code>, <code>/api/products/:id/revenue</code>, <code>/api/inventory</code>, <code>/api/cross-channel</code>, and <code>/api/amazon/sales</code></li>
+            <li>Add a separate "Refunds (90d)" metric to the dashboard KPI strip sourced from <code>financialStatus = 'refunded'</code> rows</li>
+            <li>No schema change needed — data is already there</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P02 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P02</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Surface listing freshness — "Last seen" per channel listing</div>
+          <div class="proposal-subtitle">channelListings · lastSeenAt column · product detail page</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The <code>channelListings.lastSeenAt</code> timestamp is updated on every sync but never rendered anywhere in the UI. A listing that hasn't been seen in 7 days may indicate a sync failure or a delisted product, but the user has no way to detect this without checking the operations page manually.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Silent listing disappearances go unnoticed until a customer can't buy</li>
+              <li>Product detail shows "published" status even if data is stale</li>
+              <li>No early warning before a sync gap grows into a data quality issue</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add <code>lastSeenAt</code> to the <code>/api/products/:id</code> response (already joined, just not selected)</li>
+            <li>In the product detail page variant listing table, add a "Synced" column that shows relative time (e.g., "2 hours ago") with a yellow warning if &gt; 24 hours and red if &gt; 72 hours</li>
+            <li>Add <code>buyabilityStatus</code> to the same column — distinguish "published but not buyable" from "fully live"</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P03 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P03</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Show variant weight — unlock shipping cost estimates</div>
+          <div class="proposal-subtitle">variants · weightGrams column · product detail + inventory pages</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p><code>variants.weightGrams</code> is fetched from Shopify and stored on every product sync, but is never selected in any query or displayed in any page. It's invisible to the user. For products without weight set, <code>weightGrams</code> will be <code>null</code> — this itself is worth flagging since Merchant Center requires weight for some product types.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>No way to estimate shipping costs per SKU (blocks margin analysis)</li>
+              <li>Missing weight can cause Merchant Center disapprovals for certain product types — no UI alert exists for this</li>
+              <li>Amazon requires accurate weight for fulfillment — unverified in current flow</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add <code>weightGrams</code> to <code>/api/products/:id</code> variant rows (one-line select addition)</li>
+            <li>Display weight as "Xg / X lb" in the variant table on the product detail page</li>
+            <li>Add a <code>missing_weight</code> alert category to the <code>missing_attribute</code> checks — flag products where <code>weightGrams IS NULL</code> for Amazon/Merchant listings</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P04 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P04</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Display source freshness — when was this product last updated in Shopify?</div>
+          <div class="proposal-subtitle">products · sourceUpdatedAt column · product detail page</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p><code>products.sourceUpdatedAt</code> records when Shopify last reported an update to this product, but it's never shown. A product that hasn't been touched in Shopify for 2 years likely has stale copy, stale SEO, and stale images — but the user can't see this at a glance.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Users can't triage which products need attention most urgently</li>
+              <li>AI copy generation is more valuable when the product data is known to be stale</li>
+              <li>No way to sort or filter the product catalog by "most stale"</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Expose <code>sourceUpdatedAt</code> on <code>/api/products/:id</code> and <code>/api/products</code> list endpoint</li>
+            <li>Show "Source last updated: X days ago" in the product detail header, styled yellow if &gt; 180 days, red if &gt; 365 days</li>
+            <li>Add "Last updated" as a sortable column option in the product list table</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P05 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P05</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">AI recommendation accept/dismiss rate — measure what's working</div>
+          <div class="proposal-subtitle">aiRecommendations · acceptedAt, dismissedAt · new insights panel</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p><code>aiRecommendations.acceptedAt</code> and <code>dismissedAt</code> are set when the user takes action, but there's no UI that aggregates this into an acceptance rate. The system has no feedback loop — it can't self-improve or show the user which AI features are delivering value.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>No signal on whether AI suggestions are helpful or being ignored</li>
+              <li>Can't compare acceptance rate by <code>sourceType</code> (SEO vs. Amazon vs. product copy)</li>
+              <li>User can't see what they've previously accepted without scrolling through history</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add <code>GET /api/ai/stats</code> endpoint: group by <code>sourceType</code>, count total/accepted/dismissed, compute acceptance rate</li>
+            <li>Add a small "AI Performance" card on the dashboard status page showing overall acceptance rate and top-performing suggestion type</li>
+            <li>Add a "Previously accepted" panel on product detail page that lists all accepted recommendations for that product with timestamps</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P06 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P06</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Non-buyable listing alert — separate "published but can't sell" from healthy</div>
+          <div class="proposal-subtitle">channelListings · buyabilityStatus column · alerts + product list</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p><code>channelListings.buyabilityStatus</code> stores <code>"not_buyable"</code> for listings that appear published but can't actually be purchased (Merchant Center disapprovals that still show in search, Amazon suppressed offers). The product list and cross-channel table treat <code>status = "published"</code> as fully healthy without checking buyability.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>A product can appear "live" on all channels while generating zero revenue — silently</li>
+              <li>Cross-channel table may flag "no_revenue" without explaining the root cause (unbuyable listing)</li>
+              <li>No alert is auto-generated for <code>not_buyable</code> listings that slip through</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add <code>buyabilityStatus</code> to <code>/api/products</code> list query — show a distinct "Suppressed" status badge (orange) separate from "Issue" (red) in the channel coverage columns</li>
+            <li>In <code>merchant-sync.service.ts</code> and <code>amazon-sync.service.ts</code>, auto-create a <code>listing_issue</code> alert when <code>buyabilityStatus</code> flips to <code>not_buyable</code></li>
+            <li>In cross-channel table, add a <code>suppressed</code> flag alongside <code>no_listing</code> so users can filter and act on it</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 2 — APPLY FLOW GAPS
+  ═══════════════════════════════════════════ -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <h2>07–11 &nbsp;Apply Flow Gaps — Channels Missing Write-Back</h2>
+      <span class="section-count">5 proposals</span>
+    </div>
+    <p class="section-desc">
+      Shopify has full two-way coverage. Amazon has partial attribute write-back. Merchant Center and GSC are read-only. These proposals extend the "view → fix → push" loop across the remaining gaps.
+    </p>
+
+    <!-- P07 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P07</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">One-click "Create Amazon Listing" from cross-channel table</div>
+          <div class="proposal-subtitle">cross-channel page · POST /api/amazon/import-listing · already exists</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>When a product shows the <code>no_listing</code> flag in the cross-channel table (meaning it's on Shopify/Merchant but not Amazon), the user must navigate away to the product detail page to create a listing. <code>POST /api/amazon/import-listing</code> already exists. The cross-channel table's AI explainer fires but doesn't surface a direct action button.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Key revenue opportunity: products not on Amazon represent unaddressed demand</li>
+              <li>Current UX requires 3 clicks + manual navigation where 1 click should suffice</li>
+              <li>The AI explainer identifies the opportunity but can't close the loop</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>In <code>cross-channel-table.tsx</code>, add a "List on Amazon →" button in the expanded AI panel when <code>flag === 'no_listing'</code> and Amazon integration is connected</li>
+            <li>Button calls <code>POST /api-proxy/amazon/import-listing</code> with the product's SKU as the candidate; show a loading state then success/error toast</li>
+            <li>After success, refresh the row to show the new listing status</li>
+            <li>Include current inventory count in the expanded panel so user knows if there's stock to sell before creating the listing</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P08 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P08</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Merchant Center — push product data updates via Shopify feed sync signal</div>
+          <div class="proposal-subtitle">Merchant Center apply flow · currently read-only</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>There is no PATCH endpoint for Merchant Center. All Merchant data is read-only. When a user fixes a missing attribute alert (e.g., missing brand, missing description) via the Shopify write-back, the Merchant Center listing won't reflect the fix until the next GMC feed crawl (up to 24 hours). The user has no way to force-trigger a re-crawl or verify the fix propagated.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Fixes applied to Shopify sit in limbo until Google re-crawls — no confirmation</li>
+              <li>Listing may remain disapproved for 24+ hours after the root cause is resolved</li>
+              <li>No "re-submit for review" action means users can't accelerate fix verification</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>After any <code>PATCH /api/products/:id/attributes</code> or <code>/seo</code> call, enqueue a <code>merchant-sync</code> job scoped to that product's listing ID using <code>products.requestReview()</code> from the Content API v2.1</li>
+            <li>Display a "Resubmitting to Merchant Center…" status badge on the product detail channel listing row after a fix is applied</li>
+            <li>Implement <code>POST /api/merchant/listings/:listingId/resubmit</code> endpoint in <code>app.controller.ts</code> that calls <code>Content.products.insert()</code> with the updated product data (requires products write scope)</li>
+            <li>Add <code>write_products</code> scope request to the Merchant OAuth setup flow</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P09 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P09</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Amazon price visibility + price update endpoint</div>
+          <div class="proposal-subtitle">Amazon apply flow · no price read or write currently</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The Amazon sync fetches listing attributes but does not fetch or store the current Amazon sale price. There is no <code>amazonPrice</code> field in the schema. The cross-channel table and product detail page show no Amazon price — making it impossible to detect price disparity between Shopify and Amazon without leaving the app. Price mismatch is a top source of Amazon suppressed listings.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Suppressed listings from price parity violations are invisible in the current alert system</li>
+              <li>No way to manage Amazon pricing strategy from the hub</li>
+              <li>A common seller pain: "why is my Amazon listing suppressed?" — often price-related but our system can't diagnose it</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add <code>listingPrice</code> (integer cents) and <code>currency</code> columns to <code>channelListings</code> (new migration)</li>
+            <li>Pull price from the Amazon Listings Items API <code>summaries[].buyingPrice.listingPrice</code> during sync and upsert into the new column</li>
+            <li>Add <code>PATCH /api/products/:id/amazon-price</code> endpoint using <code>Listings.patchListingsItem()</code> with attribute <code>purchasable_offer</code></li>
+            <li>Surface current Amazon price vs. Shopify price in the product detail variant table — highlight in yellow if delta &gt; 5%</li>
+            <li>Auto-generate a <code>price_mismatch</code> alert when the two prices diverge by more than a configurable threshold</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P10 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P10</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Bulk attribute apply — fix missing fields across multiple products at once</div>
+          <div class="proposal-subtitle">products list page · bulk PATCH flow · currently one-at-a-time only</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>All apply flows are single-product. If 30 products are missing a brand name, the user must navigate to each product detail page individually, enter the brand, and click Apply. The product list page shows which products have gaps but provides no way to act on multiple at once.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Fixing common attribute gaps (brand, weight, GTIN) for 50+ products takes hours of manual work</li>
+              <li>Merchant Center and Amazon listings remain disapproved during this window</li>
+              <li>High-friction UX discourages users from maintaining data quality</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add a checkbox column to the products list table for multi-select</li>
+            <li>Add a <code>POST /api/products/bulk-update</code> endpoint that accepts an array of <code>{id, brand, ...}</code> objects and calls the individual PATCH handlers in sequence (or in parallel with rate limiting)</li>
+            <li>Show a floating action bar at the bottom of the screen when &gt;1 product is selected: "Set brand for X products", "Mark GTIN exempt for X products"</li>
+            <li>Apply each change to Shopify and queue downstream sync jobs, returning a summary of successes/failures</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P11 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P11</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Alert auto-resolve — when a fix is applied, close the linked alert automatically</div>
+          <div class="proposal-subtitle">alerts system · PATCH /api/alerts/:id/resolve · currently manual</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>When a user applies a fix for a missing attribute (e.g., adds a barcode via the variant fix UI), the underlying alert remains <code>open</code>. The user must manually navigate to the alerts page and resolve it. The two workflows (apply fix vs. resolve alert) are completely disconnected.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Alert count stays artificially high even after work is done — discourages users</li>
+              <li>Alert triage may re-surface already-fixed issues in AI groupings</li>
+              <li>No audit trail linking "alert X was resolved by applying fix Y on date Z"</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>In each PATCH endpoint that applies a fix (<code>/seo</code>, <code>/attributes</code>, <code>/variants/:id/barcode</code>, <code>/gtin-exempt</code>, <code>/amazon-attribute</code>), after a successful push, query for open alerts matching the product ID and the relevant <code>category</code>/<code>entityRef</code> and mark them <code>resolved</code></li>
+            <li>Add an optional <code>resolvedBy</code> text column to alerts (new migration) so the resolution method is recorded: <code>"user_apply_barcode"</code>, <code>"user_apply_seo"</code>, etc.</li>
+            <li>Show a green "1 alert auto-resolved" toast after a successful fix application</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 3 — PRODUCT CATALOG IMPROVEMENTS
+  ═══════════════════════════════════════════ -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <h2>12–16 &nbsp;Product Catalog &amp; Detail Improvements</h2>
+      <span class="section-count">5 proposals</span>
+    </div>
+    <p class="section-desc">
+      The product catalog is the operational core of the hub. These proposals add missing context columns, revenue-informed sorting, and richer product detail interactions.
+    </p>
+
+    <!-- P12 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P12</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Revenue + GSC columns in product list — show which products matter most</div>
+          <div class="proposal-subtitle">products/page.tsx · /api/products endpoint · join orders + searchPerformance</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The products list shows inventory, barcode, and description status but has no revenue or traffic column. The user cannot sort by "highest revenue" or "most organic traffic" to prioritize which products to fix first. Every product row looks equally important even if some drive 80% of revenue.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Users spend time fixing low-revenue products while high-revenue products have issues that go unaddressed</li>
+              <li>The products list is a triage surface but provides no triage signals</li>
+              <li>The cross-channel page has revenue data but isn't designed as a fix-action surface</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add a <code>?include=revenue,gsc</code> query param to <code>GET /api/products</code> that performs a LEFT JOIN to <code>order_line_items</code> (sum <code>unitPriceCents * quantity</code> per product, 90d, paid/partially_refunded only) and a second JOIN to <code>search_performance</code> (sum clicks by product URL, 90d)</li>
+            <li>Add "Revenue (90d)" and "GSC Clicks (90d)" as optional columns with a column picker in the product list UI — hidden by default for speed, enabled by toggle</li>
+            <li>Add "Sort by Revenue ↓", "Sort by Alerts ↓", "Sort by Quality Score ↓" to the existing sort controls</li>
+            <li>For stores &gt; 200 products, implement cursor-based pagination in place of the current hardcoded LIMIT 200</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P13 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P13</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">"Best seller" variant badge on product detail</div>
+          <div class="proposal-subtitle">products/[id]/page.tsx · /api/products/:id/revenue · already have the data</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-low">Low</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The product detail page fetches revenue by variant from <code>/api/products/:id/revenue</code> and displays it, but doesn't highlight which variant is the top seller. All variants appear equal in the listing table above. The user has to mentally cross-reference the revenue panel with the variant table.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>When fixing variants (barcode, attributes, Amazon rewrite), users should prioritize the best-selling size/color first</li>
+              <li>A missing barcode on a top-selling variant is more urgent than on a slow-moving one</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>In <code>products/[id]/page.tsx</code>, after loading both product and revenue data, identify the variant with the highest <code>totalRevenue</code></li>
+            <li>Add a small "⭐ Top seller" badge next to that variant's SKU in the variant listing table</li>
+            <li>Sort variants by revenue descending by default when revenue data is available</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P14 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P14</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Inline description editor with direct Shopify push</div>
+          <div class="proposal-subtitle">products/[id]/page.tsx · PATCH /api/products/:id/attributes · descriptionHtml not editable</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p><code>PATCH /api/products/:id/attributes</code> already accepts and pushes <code>descriptionHtml</code> to Shopify, but there is no UI to edit it. Users can only view the current description. The "describe product" AI action generates a description but the user can't see a diff or paste it in — they have to copy the AI output and go to Shopify admin manually.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>The AI description generator is the most frequently-used AI action but the apply step requires leaving the hub</li>
+              <li>Missing or thin descriptions are a top Merchant Center disapproval reason — there's no in-app fix path</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add an "Edit" button next to the description display on product detail that converts the rendered HTML to a plain <code>&lt;textarea&gt;</code> with a character counter</li>
+            <li>Add "Apply AI description" button when an <code>aiRecommendations</code> record of <code>sourceType='product'</code> exists for this product — pre-populates the textarea with the AI text</li>
+            <li>On save, call <code>PATCH /api-proxy/products/:id/attributes</code> with <code>{descriptionHtml: value}</code> — the endpoint already handles the Shopify push</li>
+            <li>Show a diff view (old vs. new) before confirming</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P15 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P15</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Inventory days-of-cover alert — auto-flag stockout risk</div>
+          <div class="proposal-subtitle">/api/inventory endpoint · inventoryPositions · currently informational only</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The inventory page calculates days-of-cover per variant (available qty ÷ daily sales velocity) and shows status flags (<code>out_of_stock</code>, <code>stock_risk</code>, <code>low_stock</code>). However, this calculation is only visible on the inventory page — it never generates an alert, never surfaces in the dashboard AI actions, and never appears on the product detail page for affected variants.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Stockouts are the single most damaging event for a Shopify/Amazon seller — lost sales, ranking drops, listing suppression</li>
+              <li>The system already has all the data to predict stockouts 7–14 days out but doesn't act on it</li>
+              <li>High-revenue variants going out of stock undetected is a major revenue risk</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add a nightly BullMQ job (<code>inventory-alert</code> queue) that runs the days-of-cover calculation and creates <code>severity: 'high'</code> alerts of <code>category: 'stock_risk'</code> for any variant where <code>daysOfCover &lt; 14</code> and revenue &gt; $0 in last 90d</li>
+            <li>Add <code>category: 'out_of_stock'</code> alerts for variants at zero qty with recent sales</li>
+            <li>Surface these alerts in the dashboard AI action feed with a "Reorder now" CTA (external link to supplier or Shopify purchase orders)</li>
+            <li>De-duplicate: only create a new alert if no open alert for the same variant already exists</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P16 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P16</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Product search by title/SKU on catalog page</div>
+          <div class="proposal-subtitle">products/page.tsx · /api/products already supports ilike · UI doesn't expose it</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The NestJS products endpoint supports an <code>ilike</code> search filter, but the product list UI has no search input. For catalogs with 100+ products, the user must visually scan the table to find a specific item. The table defaults to alphabetical order by title with no ability to filter.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Finding a specific product to investigate is slow and error-prone at scale</li>
+              <li>A 200-product limit compounds this — important products may be hidden beyond the cut-off</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add a search input to the product list page header that debounces (300ms) and appends <code>?search=</code> to the <code>/api/products</code> request</li>
+            <li>In <code>app.controller.ts</code>, confirm the existing <code>ilike</code> filter covers both <code>title</code> and <code>canonicalSku</code> fields</li>
+            <li>Show a result count ("Showing 12 of 184 products") below the search input</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 4 — ALERT SYSTEM UPGRADES
+  ═══════════════════════════════════════════ -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <h2>17–20 &nbsp;Alert System Upgrades</h2>
+      <span class="section-count">4 proposals</span>
+    </div>
+    <p class="section-desc">
+      The alert system is functional but reactive. These proposals add bulk actions, alert snoozing, SLA tracking, and a richer payload parser to make alert triage faster and more actionable.
+    </p>
+
+    <!-- P17 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P17</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Bulk alert resolve — dismiss entire categories at once</div>
+          <div class="proposal-subtitle">alerts/page.tsx · PATCH /api/alerts/:id/resolve · one-at-a-time only</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>Alerts can only be resolved one at a time via individual PATCH calls. After a sync that generates 50 <code>missing_attribute</code> alerts for the same issue (e.g., brand missing), the user must click resolve 50 times. There is no "resolve all in this category" or "select multiple + resolve" action.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Discourages users from keeping alerts clean — leads to alert fatigue</li>
+              <li>The AI triage panel groups by root cause but can't resolve the group</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add <code>POST /api/alerts/bulk-resolve</code> accepting an array of alert IDs — sets all to <code>resolved</code> in a single transaction</li>
+            <li>In the alerts page, add checkboxes to each alert row and a "Resolve selected (N)" button in the table header</li>
+            <li>Add a "Resolve all in group" button to each severity/category group header</li>
+            <li>In the AI triage panel, after a priority group is shown, add a "Resolve all N alerts in this group" action that calls the bulk endpoint</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P18 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P18</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Alert snooze / suppression — silence recurring noise</div>
+          <div class="proposal-subtitle">alerts schema · new snoozedUntil column + snooze UI</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>Recurring alerts that can't be immediately fixed (e.g., a supplier hasn't provided GTINs yet) resurface every sync cycle. There is no snooze or suppression mechanism. The only option is to resolve the alert knowing it will re-open the next day, degrading the alert system's signal-to-noise ratio.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Users stop checking alerts because they're full of known, unfixable issues</li>
+              <li>Critical new alerts get buried under chronic recurring noise</li>
+              <li>No way to "park" an alert while waiting for a vendor response</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add <code>snoozedUntil</code> (timestamp, nullable) to the alerts table (new migration)</li>
+            <li>Update sync services to skip creating a duplicate alert if an existing alert with the same <code>entityRef</code> + <code>category</code> is snoozed and <code>snoozedUntil &gt; NOW()</code></li>
+            <li>Add a "Snooze" dropdown button on each alert row: "1 day", "7 days", "30 days", "Until I resolve"</li>
+            <li>Add a "Snoozed" tab to the alerts page (alongside Open/Resolved) so snoozed alerts remain visible but separate</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P19 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P19</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Alert age display — show how long each issue has been open</div>
+          <div class="proposal-subtitle">alerts/page.tsx · alerts.createdAt · not currently displayed</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-low">Low</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p><code>alerts.createdAt</code> is stored but never rendered in the alerts table. The user cannot tell if an alert is 2 hours old or 6 months old. A "listing issue" that's been open for 90 days is far more urgent than one from this morning, but both appear the same.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Chronic issues look the same as fresh ones — no urgency signal from age</li>
+              <li>SLA-conscious operators can't track mean-time-to-resolve without this data</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add an "Age" column to the alert table (e.g., "3 days", "2 months") derived from <code>createdAt</code> — already returned by the API</li>
+            <li>Style age in yellow if &gt; 7 days, red if &gt; 30 days</li>
+            <li>Add "Sort by Age ↓" to make it easy to find the oldest chronic issues</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P20 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P20</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Rich alert payload parser — normalize Merchant vs. Amazon issue formats</div>
+          <div class="proposal-subtitle">alerts/page.tsx · alerts.payloadJson · inconsistent rendering</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p><code>alerts.payloadJson</code> structure varies by source platform. Merchant Center alerts include <code>servability</code>, <code>attributeName</code>, <code>description</code>. Amazon alerts include <code>severity</code>, <code>code</code>, <code>message</code>. The current UI tries to display these generically, producing inconsistent and sometimes unreadable alert descriptions. The AI explainer compensates, but it costs a GPT call every time.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Users can't understand alerts without clicking "Explain with AI" — which should be optional, not required for basic comprehension</li>
+              <li>Misrendered payloads erode trust in the alerts system</li>
+              <li>Every AI explain call has a cost; normalizing payloads would reduce unnecessary GPT usage by ~30%</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Create a server-side <code>normalizeAlertPayload(sourcePlatform, payloadJson)</code> utility in <code>app.controller.ts</code> that returns a consistent <code>{title, description, affectedAttribute, suggestedAction}</code> shape</li>
+            <li>Map known Merchant Center codes (<code>MISSING_ATTRIBUTE</code>, <code>INVALID_VALUE</code>, <code>IMAGE_TOO_SMALL</code>) and Amazon codes (<code>INVALID_ATTRIBUTE</code>, <code>MISSING_REQUIRED</code>) to human-readable templates</li>
+            <li>Return this normalized shape on <code>GET /api/alerts</code> alongside the raw <code>payloadJson</code></li>
+            <li>Replace the current fragile UI payload render with the normalized fields — reserve AI explainer for complex/unknown codes</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 5 — SEARCH CONSOLE / SEO
+  ═══════════════════════════════════════════ -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <h2>21–23 &nbsp;Search Console &amp; SEO Enhancements</h2>
+      <span class="section-count">3 proposals</span>
+    </div>
+    <p class="section-desc">
+      The GSC dashboard is the most data-rich page in the hub. These proposals add trend context, branded/non-branded segmentation, and CSV export — converting it from a snapshot into a decision engine.
+    </p>
+
+    <!-- P21 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P21</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Branded vs. non-branded query segmentation</div>
+          <div class="proposal-subtitle">search-console/page.tsx · searchPerformance table · no segmentation today</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The GSC query table mixes branded queries (e.g., "your brand name shoes") with non-branded discovery queries. Branded clicks are loyalty traffic; non-branded clicks are growth. The AI quick-wins optimizer and almost-page-1 table currently include branded queries, which inflate opportunity counts and dilute the actual SEO growth potential.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>SEO recommendations for branded terms are low-value (you already rank #1)</li>
+              <li>True growth opportunity is non-branded impressions at low CTR — currently mixed in</li>
+              <li>Investors/stakeholders want branded vs. non-branded split to evaluate brand equity vs. SEO performance</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add a <code>workspace.brandTerms</code> JSON array field to the workspaces table (or a separate <code>brand_terms</code> config table) that the user populates with their brand name variants</li>
+            <li>In the GSC sync service, tag each <code>searchPerformance</code> row with <code>isBranded: boolean</code> based on whether <code>dimensionValue</code> contains any brand term (case-insensitive)</li>
+            <li>Add a "Branded / Non-Branded / All" toggle above the quick-wins table and query explorer — defaults to Non-Branded</li>
+            <li>Show separate KPI cards for branded clicks vs. non-branded clicks in the GSC summary strip</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P22 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P22</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">GSC data window expansion + period-over-period trend</div>
+          <div class="proposal-subtitle">searchPerformance · periodDays hardcoded to 90 · no historical trend</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>Every GSC sync replaces the previous data with a fresh 90-day window (<code>periodDays = 90</code> always). There is no rolling history — the system can't answer "are clicks improving or declining month over month?" The <code>fetchedAt</code> timestamp exists but historical snapshots are overwritten each sync cycle.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>SEO progress is invisible — after implementing a meta title change, users can't measure the click improvement</li>
+              <li>Seasonal patterns can't be identified (e.g., holiday traffic spikes vs. normal baseline)</li>
+              <li>No way to validate that the "Apply to Shopify" quick-wins flow is actually improving CTR over time</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add a <code>snapshotDate</code> column to <code>searchPerformance</code> (date type, nullable, new migration) — when set, this row is a historical snapshot and is not overwritten by future syncs</li>
+            <li>Modify <code>gsc-sync.service.ts</code>: before upserting the new 90-day data, save a daily snapshot of total clicks/impressions/position aggregated at the workspace level into a new <code>gsc_daily_snapshots</code> table</li>
+            <li>Add a sparkline chart to the GSC summary KPI cards showing the last 30 daily snapshots for clicks and impressions</li>
+            <li>After a quick-win SEO change is applied, record the date on the <code>aiRecommendations</code> row so the trend chart can overlay "SEO change applied" markers</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P23 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P23</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">GSC data export to CSV</div>
+          <div class="proposal-subtitle">search-console/page.tsx · no export currently</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-low">Low</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The GSC query and page tables render up to 100 rows each but provide no way to export the data. Users who want to share SEO reports with clients or do deeper analysis in a spreadsheet must manually copy data. The search performance data is all in Postgres — export is a one-line query.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Agency users managing multiple brands need exportable reports for client deliverables</li>
+              <li>Power users who want to run pivot analysis (e.g., by page type or product category) are blocked</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Add <code>GET /api/search-console/export</code> endpoint that returns all <code>dimension = 'query'</code> rows as <code>Content-Type: text/csv</code> with headers: Query, Clicks, Impressions, CTR%, Position</li>
+            <li>Add an "Export CSV" button above the query explorer table in the GSC page</li>
+            <li>The button triggers a browser download via a link pointing to the API export route (no client-side CSV generation needed)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 6 — STRUCTURAL / STRATEGIC GAPS
+  ═══════════════════════════════════════════ -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <h2>24–27 &nbsp;Structural &amp; Strategic Gaps</h2>
+      <span class="section-count">4 proposals</span>
+    </div>
+    <p class="section-desc">
+      These are the largest missing dimensions — cost/margin data, COGS tracking, and a sync health dashboard. They require new schema and infrastructure but unlock an entirely new category of insight.
+    </p>
+
+    <!-- P24 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P24</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Cost / COGS per SKU — the single biggest missing data dimension</div>
+          <div class="proposal-subtitle">No cost table exists · blocks margin, ROI, and channel profitability analysis</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>There is no cost-of-goods column anywhere in the schema. The hub knows revenue but not profit. Every AI recommendation (cross-channel opportunities, Amazon expansion, SEO prioritization) is based on revenue only — which is misleading if low-margin products dominate revenue. A product doing $50k/year at 2% margin is less worth optimizing than one doing $20k at 40% margin.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>No margin calculation possible — the hub can't tell the user if their Amazon expansion will be profitable after fees</li>
+              <li>AI opportunity explainer recommends expanding listings that may actively lose money on Amazon FBA fees</li>
+              <li>Inventory days-of-cover is calculated by units, not by profit-at-risk — wrong prioritization</li>
+              <li>Cross-channel priority score has no profit weighting</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add a <code>product_costs</code> table: <code>(id, variantId, costCents, currency, effectiveFrom, source)</code> — supports historical cost tracking and multiple currencies</li>
+            <li>Add a simple COGS entry UI in product detail: "Cost per unit: $___" input that writes to <code>product_costs</code></li>
+            <li>Alternatively, pull <code>cost</code> from Shopify inventory items (<code>inventoryItem.unitCost</code>) — Shopify stores this if the merchant uses cost tracking; add to the Shopify sync GQL query</li>
+            <li>Compute <code>grossMarginCents = (unitPriceCents - costCents) * quantity</code> in all revenue queries and surface margin % alongside revenue in the product detail revenue panel, cross-channel table, and dashboard KPIs</li>
+            <li>Update AI context in <code>cross-channel-opportunity</code> and <code>amazon-listing-rewrite</code> endpoints to include margin data</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P25 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P25</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Sync health dashboard — per-integration job history, duration, and error log</div>
+          <div class="proposal-subtitle">operations/page.tsx · syncJobs table · currently shows failures only</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-medium">Medium</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The operations page shows failed sync jobs but no success history. The user can't see when the last successful Amazon sync ran, how long it took, or how many records were processed. <code>syncJobs.payloadJson</code> stores sync result summaries (e.g., <code>{productsProcessed: 45, listingsUpdated: 12}</code>) but this data is never displayed.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Users can't verify that their data is fresh — "Is my Merchant data from today or last week?"</li>
+              <li><code>retryCount</code> is incremented but never capped or displayed — jobs may retry indefinitely</li>
+              <li>No way to detect a sync that's consistently timing out before it officially fails</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add <code>GET /api/operations/job-history</code> endpoint returning the last 10 sync jobs per integration, ordered by <code>startedAt DESC</code>, including <code>state</code>, <code>duration</code> (finishedAt - startedAt), <code>payloadJson</code> summary, and <code>retryCount</code></li>
+            <li>Replace the operations page's failure-only view with a full job history table with status icons (✓ done, ⚠ failed, ↻ running, ⏸ pending)</li>
+            <li>Add a max retry cap: if <code>retryCount &gt;= 5</code>, mark job as <code>dead</code> and create a <code>connector_error</code> alert</li>
+            <li>Show per-integration "Last successful sync: X hours ago" on the main dashboard status cards</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P26 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P26</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Revenue attribution by channel — Shopify vs. Amazon revenue split</div>
+          <div class="proposal-subtitle">orders · integrationAccountId · split not surfaced in any dashboard</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-high">High</span>
+          <span class="tag tag-claude">Claude</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>Orders are tagged with <code>integrationAccountId</code> which links back to a specific platform (Shopify, Amazon). However, all revenue displays aggregate across all channels. There is no "Shopify revenue vs. Amazon revenue" breakdown on the dashboard or any product detail view. <code>GET /api/amazon/sales</code> exists but is not wired to any UI component.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>Sellers can't tell which channel is growing — they can't make informed decisions about where to invest marketing spend</li>
+              <li>Product detail revenue panel shows a single total with no channel context</li>
+              <li>The cross-channel opportunity score has no channel-specific revenue weighting</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Claude</h4>
+          <ul>
+            <li>Update <code>/api/products/:id/revenue</code> to group results by <code>integrationAccountId → platform</code> (join to <code>integrationAccounts</code>) and return a <code>byChannel</code> breakdown alongside the variant totals</li>
+            <li>On the product detail revenue panel, add a channel breakdown row: "Shopify: $X · Amazon: $Y" (or a small horizontal bar chart)</li>
+            <li>Wire the existing <code>/api/amazon/sales</code> endpoint to a new "Channel Split" KPI card on the dashboard that shows Shopify % vs. Amazon % of total revenue</li>
+            <li>No schema change needed — data is already attributed</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- P27 -->
+    <div class="proposal">
+      <div class="proposal-header">
+        <div class="proposal-id">P27</div>
+        <div class="proposal-title-wrap">
+          <div class="proposal-title">Workspace-level performance digest — weekly email/notification summary</div>
+          <div class="proposal-subtitle">New feature · BullMQ weekly job · digest email or in-app notification</div>
+        </div>
+        <div class="proposal-tags">
+          <span class="tag tag-pri-low">Low</span>
+          <span class="tag tag-codex">Codex</span>
+        </div>
+      </div>
+      <div class="proposal-body">
+        <div class="proposal-grid">
+          <div class="proposal-panel">
+            <h4>Current problem</h4>
+            <p>The hub is a pull-based tool — users must actively log in to discover new issues, new opportunities, and weekly performance trends. There is no push notification, webhook outbound, or email digest. A seller managing multiple platforms may not check the hub daily, meaning critical alerts and stock risks go unnoticed for days.</p>
+          </div>
+          <div class="proposal-panel">
+            <h4>Impact</h4>
+            <ul>
+              <li>High-severity alerts that need same-day action sit unread until the user happens to log in</li>
+              <li>No retention mechanism — inactive users have no reminder that the tool is monitoring their stores</li>
+              <li>Revenue trends and opportunity counts are a compelling engagement hook if delivered proactively</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fix-block">
+          <h4>Proposed fix — Codex</h4>
+          <ul>
+            <li>Add a weekly BullMQ cron job (<code>digest-email</code> queue, Monday 8am local timezone from <code>workspace.timezone</code>) that queries: new critical/high alerts count, revenue vs. prior week, top 3 SEO opportunities, top stockout risks</li>
+            <li>Send via SendGrid or Resend (add <code>SENDGRID_API_KEY</code> to env) to <code>workspace.ownerEmail</code> (add this field to workspaces table)</li>
+            <li>Alternatively, deliver as an in-app notification banner on next login: "You have 3 new critical alerts and 2 products approaching stockout since your last visit"</li>
+            <li>Include a one-click "Resolve all alerts" deep link in the email that auto-authenticates via a short-lived token</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Closing summary table -->
+  <div class="section" style="margin-top: 40px;">
+    <div class="section-header">
+      <h2>Implementation Priority Matrix</h2>
+    </div>
+    <p class="section-desc">Quick reference for sequencing work. Claude-tagged items are generally faster to ship; Codex items require schema changes or new integrations.</p>
+
+    <table style="width:100%; border-collapse:collapse; font-size:13px; margin-top:8px;">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);">
+          <th style="text-align:left; padding:10px 12px; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.7px;">ID</th>
+          <th style="text-align:left; padding:10px 12px; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.7px;">Proposal</th>
+          <th style="text-align:center; padding:10px 12px; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.7px;">Priority</th>
+          <th style="text-align:center; padding:10px 12px; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.7px;">Owner</th>
+          <th style="text-align:left; padding:10px 12px; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.7px;">Schema change?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P01</td>
+          <td style="padding:9px 12px;">Refund exclusion from revenue</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P06</td>
+          <td style="padding:9px 12px;">Non-buyable listing alert</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P26</td>
+          <td style="padding:9px 12px;">Revenue by channel split</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P02</td>
+          <td style="padding:9px 12px;">Listing freshness + buyability badge</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P11</td>
+          <td style="padding:9px 12px;">Alert auto-resolve on fix apply</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--yellow);">Optional (+resolvedBy)</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P07</td>
+          <td style="padding:9px 12px;">One-click "Create Amazon Listing"</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P14</td>
+          <td style="padding:9px 12px;">Inline description editor</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P16</td>
+          <td style="padding:9px 12px;">Product search input</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P17</td>
+          <td style="padding:9px 12px;">Bulk alert resolve</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P23</td>
+          <td style="padding:9px 12px;">GSC CSV export</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-low">Low</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P03</td>
+          <td style="padding:9px 12px;">Variant weight display</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P04</td>
+          <td style="padding:9px 12px;">Source freshness indicator</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P05</td>
+          <td style="padding:9px 12px;">AI recommendation accept/dismiss rate</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P13</td>
+          <td style="padding:9px 12px;">Best-seller variant badge</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-low">Low</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P19</td>
+          <td style="padding:9px 12px;">Alert age display</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-low">Low</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-claude">Claude</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P24</td>
+          <td style="padding:9px 12px;">COGS / margin tracking</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--red);">Yes — new table</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P15</td>
+          <td style="padding:9px 12px;">Inventory stockout alert engine</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P09</td>
+          <td style="padding:9px 12px;">Amazon price read + update</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--red);">Yes — listingPrice col</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P08</td>
+          <td style="padding:9px 12px;">Merchant Center write-back / resubmit</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P12</td>
+          <td style="padding:9px 12px;">Revenue + GSC columns in product list</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P21</td>
+          <td style="padding:9px 12px;">Branded vs. non-branded GSC segmentation</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-high">High</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--red);">Yes — brand_terms config</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P25</td>
+          <td style="padding:9px 12px;">Sync health / job history dashboard</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P10</td>
+          <td style="padding:9px 12px;">Bulk attribute apply across products</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P20</td>
+          <td style="padding:9px 12px;">Rich alert payload normalizer</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--green);">No</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+          <td style="padding:9px 12px; color:var(--muted);">P18</td>
+          <td style="padding:9px 12px;">Alert snooze / suppression</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--red);">Yes — snoozedUntil col</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:9px 12px; color:var(--muted);">P22</td>
+          <td style="padding:9px 12px;">GSC trend history + snapshots</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-medium">Medium</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--red);">Yes — daily snapshots table</td>
+        </tr>
+        <tr>
+          <td style="padding:9px 12px; color:var(--muted);">P27</td>
+          <td style="padding:9px 12px;">Weekly digest email / notification</td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-pri-low">Low</span></td>
+          <td style="padding:9px 12px; text-align:center;"><span class="tag tag-codex">Codex</span></td>
+          <td style="padding:9px 12px; color:var(--red);">Yes — ownerEmail on workspaces</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top: 48px; padding: 20px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); color: var(--muted); font-size: 12px; line-height: 1.7;">
+    <strong style="color: var(--text);">Key finding:</strong> 15 of 27 proposals require zero schema changes and can be implemented by reading data that's already collected in Postgres but never exposed in the UI. The most impactful single change is P01 (refund exclusion) — every revenue number in the product is currently overstated. P24 (COGS) is the most strategically valuable new data dimension; without it, the system can optimize for revenue but not profit.
+  </div>
+
+</div>
+
+</body>
+</html>
