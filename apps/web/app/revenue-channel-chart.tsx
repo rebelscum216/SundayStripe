@@ -1,15 +1,5 @@
 "use client";
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-
 type RevenueByChannelRow = {
   month: string;
   shopifyCents: number;
@@ -21,11 +11,7 @@ type Props = {
 };
 
 function currency(cents: number) {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
+  return new Intl.NumberFormat("en", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
 }
 
 function monthLabel(value: string) {
@@ -35,6 +21,22 @@ function monthLabel(value: string) {
 
 export function RevenueChannelChart({ data }: Props) {
   if (data.length === 0) return null;
+
+  const maxCents = Math.max(...data.map((r) => r.shopifyCents + r.amazonCents), 1);
+  const chartH = 160;
+  const barW = 20;
+  const gap = 12;
+  const padL = 64;
+  const padR = 8;
+  const padT = 8;
+  const padB = 24;
+  const totalW = padL + data.length * (barW + gap) - gap + padR;
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+    fraction: f,
+    y: padT + chartH - f * chartH,
+    label: currency(maxCents * f),
+  }));
 
   return (
     <div className="ss-card" style={{ padding: 16 }}>
@@ -50,39 +52,44 @@ export function RevenueChannelChart({ data }: Props) {
           <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: "var(--ss-orange)", marginRight: 5 }} />Amazon</span>
         </div>
       </div>
-      <div style={{ width: "100%", height: 280 }}>
-        <ResponsiveContainer>
-          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="var(--ss-line)" vertical={false} />
-            <XAxis
-              dataKey="month"
-              tickFormatter={monthLabel}
-              tick={{ fill: "var(--ss-ink-3)", fontSize: 12 }}
-              axisLine={{ stroke: "var(--ss-line)" }}
-              tickLine={false}
-            />
-            <YAxis
-              tickFormatter={(value) => currency(Number(value))}
-              tick={{ fill: "var(--ss-ink-3)", fontSize: 12 }}
-              axisLine={false}
-              tickLine={false}
-              width={72}
-            />
-            <Tooltip
-              formatter={(value, name) => [currency(Number(value)), name === "shopifyCents" ? "Shopify" : "Amazon"]}
-              labelFormatter={(label) => label}
-              contentStyle={{
-                background: "var(--ss-bg-card)",
-                border: "1px solid var(--ss-line)",
-                borderRadius: 8,
-                color: "var(--ss-ink)",
-                fontSize: 12,
-              }}
-            />
-            <Bar dataKey="shopifyCents" stackId="channel" fill="var(--ss-sage)" radius={[0, 0, 4, 4]} />
-            <Bar dataKey="amazonCents" stackId="channel" fill="var(--ss-orange)" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+      <div style={{ overflowX: "auto" }}>
+        <svg
+          viewBox={`0 0 ${totalW} ${padT + chartH + padB}`}
+          style={{ width: "100%", minWidth: totalW, display: "block" }}
+        >
+          {/* Grid lines + Y-axis labels */}
+          {yTicks.map((t) => (
+            <g key={t.fraction}>
+              <line x1={padL} x2={totalW - padR} y1={t.y} y2={t.y} stroke="var(--ss-line)" strokeWidth={1} />
+              <text x={padL - 6} y={t.y + 4} textAnchor="end" fontSize={10} fill="var(--ss-ink-3)">{t.label}</text>
+            </g>
+          ))}
+
+          {/* Bars */}
+          {data.map((row, i) => {
+            const x = padL + i * (barW + gap);
+            const shopifyH = (row.shopifyCents / maxCents) * chartH;
+            const amazonH = (row.amazonCents / maxCents) * chartH;
+            const totalH = shopifyH + amazonH;
+            const baseY = padT + chartH;
+            return (
+              <g key={row.month}>
+                {/* Shopify (bottom) */}
+                {shopifyH > 0 && (
+                  <rect x={x} y={baseY - shopifyH} width={barW} height={shopifyH} fill="var(--ss-sage)" rx={amazonH > 0 ? 0 : 3} />
+                )}
+                {/* Amazon (top) */}
+                {amazonH > 0 && (
+                  <rect x={x} y={baseY - totalH} width={barW} height={amazonH} fill="var(--ss-orange)" rx={3} />
+                )}
+                {/* X label */}
+                <text x={x + barW / 2} y={baseY + 14} textAnchor="middle" fontSize={10} fill="var(--ss-ink-3)">
+                  {monthLabel(row.month)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
       </div>
     </div>
   );
