@@ -48,6 +48,7 @@ type InventoryResponse = {
 };
 
 type RevenueTrend = { current: number; prior: number; trend: "up" | "down" | "flat"; deltaPercent: number };
+type AmazonSales = { orderCount: number; unitsSold: number; revenueCents: number };
 
 export type AiAction = {
   id: string;
@@ -80,6 +81,9 @@ async function getInventory(): Promise<InventoryResponse | null> {
 }
 async function getRevenueTrend(): Promise<RevenueTrend | null> {
   try { const r = await fetch(`${apiBaseUrl}/api/revenue-trend`, { cache: "no-store" }); return r.ok ? r.json() : null; } catch { return null; }
+}
+async function getAmazonSales(): Promise<AmazonSales | null> {
+  try { const r = await fetch(`${apiBaseUrl}/api/amazon/sales`, { cache: "no-store" }); return r.ok ? r.json() : null; } catch { return null; }
 }
 async function getAlmostPage1(): Promise<AlmostPage1Row[]> {
   try { const r = await fetch(`${apiBaseUrl}/api/search-console/almost-page-1`, { cache: "no-store" }); return r.ok ? r.json() : []; } catch { return []; }
@@ -273,17 +277,22 @@ async function SeoOpportunitiesSection() {
 }
 
 async function KpiStrip() {
-  const [gsc, inventory, revenueTrend] = await Promise.all([getGsc(), getInventory(), getRevenueTrend()]);
+  const [gsc, inventory, revenueTrend, amazonSales] = await Promise.all([getGsc(), getInventory(), getRevenueTrend(), getAmazonSales()]);
   const inv = inventory?.totals;
+  const totalRevenue = inv?.revenueCents ?? 0;
+  const amazonRevenue = amazonSales?.revenueCents ?? 0;
+  const channelSub = totalRevenue > 0 && amazonRevenue > 0
+    ? `Shopify ${Math.round(((totalRevenue - amazonRevenue) / totalRevenue) * 100)}% · Amazon ${Math.round((amazonRevenue / totalRevenue) * 100)}%`
+    : `${fmtNum(inv?.unitsSold ?? 0)} units sold`;
   return (
     <div className="ss-kpi-grid">
       <KpiCard label="GSC Clicks · 90d" value={fmtK(gsc?.clicks ?? 0)} sub={gsc ? `${(gsc.ctr * 100).toFixed(1)}% CTR` : "No data"} />
       <KpiCard label="GSC Impressions · 90d" value={fmtK(gsc?.impressions ?? 0)} sub={gsc ? `Avg pos ${gsc.position.toFixed(1)}` : "No data"} />
       <KpiCard
         label="Revenue tracked · 90d"
-        value={currency(inv?.revenueCents ?? 0)}
+        value={currency(totalRevenue)}
         delta={revenueTrend && revenueTrend.prior > 0 ? revenueTrend.deltaPercent / 100 : undefined}
-        sub={`${fmtNum(inv?.unitsSold ?? 0)} units sold`}
+        sub={channelSub}
       />
       <KpiCard label="Avg Position" value={gsc ? gsc.position.toFixed(1) : "—"} invert sub="Google Search Console" />
     </div>

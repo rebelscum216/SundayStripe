@@ -59,8 +59,12 @@ function QualityDot({ score }: { score: number }) {
   );
 }
 
-function ExpandedRow({ productId }: { productId: string }) {
+type AmazonListingState = "idle" | "loading" | "done" | "error";
+
+function ExpandedRow({ productId, flag, canonicalSku, title }: { productId: string; flag: CrossChannelRow["flag"]; canonicalSku: string; title: string | null }) {
   const [state, setState] = useState<RowExpansion>({ status: "idle" });
+  const [listingState, setListingState] = useState<AmazonListingState>("idle");
+  const [listingError, setListingError] = useState<string | null>(null);
 
   useEffect(() => {
     if (state.status !== "idle") return;
@@ -74,6 +78,26 @@ function ExpandedRow({ productId }: { productId: string }) {
       }
     })();
   }, [productId, state.status]);
+
+  async function handleListOnAmazon() {
+    setListingState("loading");
+    setListingError(null);
+    try {
+      const res = await fetch(`/api-proxy/amazon/import-listing`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sku: canonicalSku, title }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { message?: string };
+        throw new Error(body.message ?? `HTTP ${res.status}`);
+      }
+      setListingState("done");
+    } catch (err) {
+      setListingState("error");
+      setListingError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
 
   if (state.status === "loading") {
     return (
@@ -96,6 +120,26 @@ function ExpandedRow({ productId }: { productId: string }) {
           <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Likely cause:</span> {data.likelyCause}</p>
           <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Next action:</span> {data.nextBestAction}</p>
           <p style={{ fontSize: 12, color: "var(--ss-ink-3)" }}><span style={{ fontWeight: 600, color: "var(--ss-ink)" }}>Expected upside:</span> {data.expectedUpside}</p>
+          {flag === "opportunity" && (
+            <div className="flex items-center gap-2 pt-1">
+              {listingState === "done" ? (
+                <span style={{ fontSize: 12, color: "var(--ss-sage-ink)", fontWeight: 500 }}>✓ Amazon listing created</span>
+              ) : (
+                <button
+                  type="button"
+                  className="ss-btn ss-btn-sm"
+                  disabled={listingState === "loading"}
+                  onClick={handleListOnAmazon}
+                  style={{ borderColor: "var(--ss-orange-soft)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" }}
+                >
+                  {listingState === "loading" ? "Creating…" : "List on Amazon →"}
+                </button>
+              )}
+              {listingState === "error" && listingError && (
+                <span style={{ fontSize: 11, color: "var(--ss-red-ink)" }}>{listingError}</span>
+              )}
+            </div>
+          )}
         </div>
         {data.fixes.length > 0 && (
           <ol className="space-y-1.5">
@@ -283,7 +327,7 @@ export function CrossChannelTable({ rows }: { rows: CrossChannelRow[] }) {
                     {isExpanded && (
                       <tr style={{ background: "var(--ss-bg-elev)" }}>
                         <td colSpan={7} style={{ borderTop: "1px solid var(--ss-line)" }}>
-                          <ExpandedRow productId={row.productId} />
+                          <ExpandedRow productId={row.productId} flag={row.flag} canonicalSku={row.canonicalSku} title={row.title} />
                         </td>
                       </tr>
                     )}

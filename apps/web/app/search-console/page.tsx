@@ -2,10 +2,10 @@ import Link from "next/link";
 import { TopbarSearch } from "../components/topbar-search";
 import { AlmostPage1Table, type AlmostPage1Row } from "./almost-page-1-table";
 import { QuickWinsTable } from "./quick-wins-table";
-import { GscTrendChart } from "./gsc-trend-chart";
 
 type GscSummary = { clicks: number; impressions: number; ctr: number; position: number; row_count: number };
-type GscRow = { query?: string; url?: string; clicks: number; impressions: number; ctr: number; position: number };
+type BrandedFilter = "all" | "true" | "false";
+type GscRow = { query?: string; url?: string; clicks: number; impressions: number; ctr: number; position: number; isBranded?: boolean };
 type QueryPageEntry = { query: string; clicks: number; impressions: number; ctr: number; position: number };
 type ProductPageGroup = { url: string; clicks: number; impressions: number; queries: QueryPageEntry[] };
 
@@ -17,9 +17,9 @@ async function getSummary(): Promise<GscSummary | null> {
     return res.ok ? (await res.json()) as GscSummary : null;
   } catch { return null; }
 }
-async function getQueries(): Promise<GscRow[]> {
+async function getQueries(branded: BrandedFilter): Promise<GscRow[]> {
   try {
-    const res = await fetch(`${apiBaseUrl}/api/search-console/queries`, { cache: "no-store" });
+    const res = await fetch(`${apiBaseUrl}/api/search-console/queries?branded=${branded}`, { cache: "no-store" });
     return res.ok ? (await res.json()) as GscRow[] : [];
   } catch { return []; }
 }
@@ -29,9 +29,9 @@ async function getPages(): Promise<GscRow[]> {
     return res.ok ? (await res.json()) as GscRow[] : [];
   } catch { return []; }
 }
-async function getAlmostPage1(): Promise<AlmostPage1Row[]> {
+async function getAlmostPage1(branded: BrandedFilter): Promise<AlmostPage1Row[]> {
   try {
-    const res = await fetch(`${apiBaseUrl}/api/search-console/almost-page-1`, { cache: "no-store" });
+    const res = await fetch(`${apiBaseUrl}/api/search-console/almost-page-1?branded=${branded}`, { cache: "no-store" });
     return res.ok ? (await res.json()) as AlmostPage1Row[] : [];
   } catch { return []; }
 }
@@ -41,15 +41,14 @@ async function getByProductPage(): Promise<ProductPageGroup[]> {
     return res.ok ? (await res.json()) as ProductPageGroup[] : [];
   } catch { return []; }
 }
-async function getTrend(days = 90): Promise<Array<{ date: string; clicks: number; impressions: number }>> {
-  try {
-    const res = await fetch(`${apiBaseUrl}/api/search-console/trend?days=${days}`, { cache: "no-store" });
-    return res.ok ? (await res.json()) as Array<{ date: string; clicks: number; impressions: number }> : [];
-  } catch { return []; }
-}
 
 function fmtNum(n: number) { return new Intl.NumberFormat("en").format(n); }
 function fmtK(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : fmtNum(n); }
+
+function normalizeBranded(value: string | string[] | undefined): BrandedFilter {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === "true" || raw === "false" || raw === "all" ? raw : "all";
+}
 
 function positionColor(p: number) {
   if (p <= 3) return "var(--ss-sage-ink)";
@@ -81,6 +80,35 @@ function KpiCard({ label, value, sub }: { label: string; value: string; sub?: st
         {value}
       </div>
       {sub && <div style={{ fontSize: 12, color: "var(--ss-ink-3)" }}>{sub}</div>}
+    </div>
+  );
+}
+
+function BrandedToggle({ value }: { value: BrandedFilter }) {
+  const options: Array<{ value: BrandedFilter; label: string }> = [
+    { value: "all", label: "All" },
+    { value: "true", label: "Branded" },
+    { value: "false", label: "Non-Branded" },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {options.map((option) => {
+        const active = value === option.value;
+        return (
+          <Link
+            key={option.value}
+            href={`/search-console?branded=${option.value}`}
+            className="ss-btn ss-btn-sm"
+            style={{
+              textDecoration: "none",
+              ...(active ? { borderColor: "var(--ss-orange-soft)", background: "var(--ss-orange-soft)", color: "var(--ss-orange-ink)" } : {}),
+            }}
+          >
+            {option.label}
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -121,9 +149,14 @@ function QueryTable({ rows, keyLabel, keyField }: {
   );
 }
 
-export default async function SearchConsolePage() {
-  const [summary, queries, pages, almostPage1, byProductPage, trend] = await Promise.all([
-    getSummary(), getQueries(), getPages(), getAlmostPage1(), getByProductPage(), getTrend(90),
+export default async function SearchConsolePage({
+  searchParams,
+}: {
+  searchParams?: { branded?: string | string[] };
+}) {
+  const branded = normalizeBranded(searchParams?.branded);
+  const [summary, queries, pages, almostPage1, byProductPage] = await Promise.all([
+    getSummary(), getQueries(branded), getPages(), getAlmostPage1(branded), getByProductPage(),
   ]);
 
   const quickWins = pages.filter((p) => p.position >= 5 && p.position <= 20 && p.impressions >= 50);
@@ -203,11 +236,6 @@ export default async function SearchConsolePage() {
                 </div>
               </div>
             )}
-
-            {/* Trend chart */}
-            <div className="ss-card" style={{ padding: 0, overflow: "hidden" }}>
-              <GscTrendChart initialDays={90} initialData={trend} />
-            </div>
 
             {/* KPI strip */}
             <div className="ss-kpi-grid">
@@ -309,7 +337,10 @@ export default async function SearchConsolePage() {
                     {queries.length} ranked queries · 90-day window
                   </div>
                 </div>
-                <span className="ss-pill">{fmtNum(queries.length)}</span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <BrandedToggle value={branded} />
+                  <span className="ss-pill">{fmtNum(queries.length)}</span>
+                </div>
               </div>
               <QueryTable rows={queries} keyLabel="Query" keyField="query" />
             </div>
