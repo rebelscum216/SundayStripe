@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @sunday-stripe/db build && pnpm --filter @sunday-stripe/api build
+    buildCommand: NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @sunday-stripe/db build && pnpm --filter @sunday-stripe/api build
     startCommand: pnpm --filter @sunday-stripe/db migrate && node apps/api/dist/main.js
     healthCheckPath: /api/status
     envVars:

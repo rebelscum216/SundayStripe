@@ -18,15 +18,20 @@ import { ShopifyModule } from "./shopify/shopify.module.js";
     }),
     BullModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          url: config.get<string>("REDIS_URL", "redis://localhost:6379"),
-          enableOfflineQueue: false,
-          maxRetriesPerRequest: null,
-          connectTimeout: 5000,
-          retryStrategy: () => null,
-        }
-      })
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>("REDIS_URL", "redis://localhost:6379");
+        const tls = redisUrl.startsWith("rediss://") ? { rejectUnauthorized: false } : undefined;
+        return {
+          connection: {
+            url: redisUrl,
+            tls,
+            enableOfflineQueue: false,
+            maxRetriesPerRequest: null,
+            connectTimeout: 5000,
+            retryStrategy: () => null,
+          }
+        };
+      }
     }),
     ScheduleModule.forRoot(),
     BullModule.registerQueue(
