@@ -4157,7 +4157,10 @@ Sort groups by priority (critical first). Be specific about root causes.`,
   }
 
   private async isRedisReachable(): Promise<boolean> {
-    const redis = new Redis(this.config.get<string>("REDIS_URL", "redis://localhost:6379"), {
+    const redisUrl = this.config.get<string>("REDIS_URL", "redis://localhost:6379");
+    const tls = redisUrl.startsWith("rediss://") ? { rejectUnauthorized: false } : undefined;
+    const redis = new Redis(redisUrl, {
+      tls,
       maxRetriesPerRequest: 0,
       connectTimeout: 1500,
       retryStrategy: () => null,
