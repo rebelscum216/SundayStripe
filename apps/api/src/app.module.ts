@@ -20,7 +20,10 @@ import { ShopifyModule } from "./shopify/shopify.module.js";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const redisUrl = config.get<string>("REDIS_URL", "redis://localhost:6379");
-        const tls = redisUrl.startsWith("rediss://") ? { rejectUnauthorized: false } : undefined;
+        const tls = redisUrl.startsWith("rediss://") ? {
+          rejectUnauthorized: false,
+          servername: new URL(redisUrl.replace(/^rediss:\/\/[^@]+@/, "https://")).hostname,
+        } : undefined;
         return {
           connection: {
             url: redisUrl,

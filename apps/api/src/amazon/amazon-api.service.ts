@@ -279,17 +279,17 @@ export class AmazonApiService {
         cause.includes('ECONNRESET') ||
         cause.includes('ENOTFOUND') ||
         cause.includes('ECONNREFUSED');
-      if (attempt === 1 && isTransient) {
-        await new Promise((r) => setTimeout(r, 10_000));
-        return this.get<T>(path, 2);
+      if (attempt < 3 && isTransient) {
+        await new Promise((r) => setTimeout(r, attempt * 10_000));
+        return this.get<T>(path, attempt + 1);
       }
       throw new Error(`Amazon SP-API fetch error (${path}): ${cause}`);
     }
 
     if (response.status === 429) {
-      if (attempt === 1) {
-        await new Promise((r) => setTimeout(r, 10_000));
-        return this.get<T>(path, 2);
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, attempt * 10_000));
+        return this.get<T>(path, attempt + 1);
       }
       throw new Error(`Amazon SP-API rate limited request: ${path}`);
     }

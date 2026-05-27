@@ -8,6 +8,9 @@
     "build": "pnpm -r --filter @sunday-stripe/db --filter @sunday-stripe/api --filter @sunday-stripe/web build",
     "migrate": "pnpm --filter @sunday-stripe/db migrate"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "typescript": "^5.7.3"
   }
