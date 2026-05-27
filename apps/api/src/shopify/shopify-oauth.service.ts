@@ -1,7 +1,8 @@
-import { Injectable, Logger, UnauthorizedException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, BadRequestException, Inject, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
+import { Redis } from 'ioredis';
 import { encryptToken, generateStateNonce, verifyOAuthHmac } from './crypto.util.js';
 import { DRIZZLE_DATABASE } from '../database/database.constants.js';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -11,36 +12,41 @@ import { eq, and } from 'drizzle-orm';
 
 type Db = PostgresJsDatabase<typeof schema>;
 
-// In-memory nonce store with 10-minute TTL.
-// TODO: replace with Redis SET nx ex before multi-instance deployment.
-const NONCE_TTL_MS = 10 * 60 * 1000;
-const pendingNonces = new Map<string, number>();
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [nonce, expiresAt] of pendingNonces) {
-    if (now > expiresAt) pendingNonces.delete(nonce);
-  }
-}, 60_000);
+// OAuth CSRF nonces live in Redis so they survive restarts and work across
+// multiple instances. Each nonce is single-use and expires after 10 minutes.
+const NONCE_TTL_SECONDS = 10 * 60;
+const NONCE_KEY_PREFIX = 'shopify:oauth:nonce:';
 
 @Injectable()
-export class ShopifyOAuthService {
+export class ShopifyOAuthService implements OnModuleDestroy {
   private readonly logger = new Logger(ShopifyOAuthService.name);
+  private readonly redis: Redis;
 
   constructor(
     private readonly config: ConfigService,
     @Inject(DRIZZLE_DATABASE) private readonly db: Db,
     @InjectQueue('shopify-sync') private readonly shopifySyncQueue: Queue,
-  ) {}
+  ) {
+    const redisUrl = this.config.get<string>('REDIS_URL', 'redis://localhost:6379');
+    const tls = redisUrl.startsWith('rediss://') ? {
+      rejectUnauthorized: false,
+      servername: new URL(redisUrl.replace(/^rediss:\/\/[^@]+@/, 'https://')).hostname,
+    } : undefined;
+    this.redis = new Redis(redisUrl, { tls, connectTimeout: 5000, maxRetriesPerRequest: 3 });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.redis.quit();
+  }
 
   /**
    * Builds the Shopify OAuth authorization URL and registers a CSRF nonce.
    */
-  buildAuthUrl(shop: string): string {
+  async buildAuthUrl(shop: string): Promise<string> {
     this.validateShopDomain(shop);
 
     const nonce = generateStateNonce();
-    pendingNonces.set(nonce, Date.now() + NONCE_TTL_MS);
+    await this.redis.set(`${NONCE_KEY_PREFIX}${nonce}`, '1', 'EX', NONCE_TTL_SECONDS);
 
     const params = new URLSearchParams({
       client_id: this.config.getOrThrow('SHOPIFY_API_KEY'),
@@ -74,12 +80,11 @@ export class ShopifyOAuthService {
       throw new UnauthorizedException('Invalid OAuth HMAC');
     }
 
-    // 2. Verify and consume state nonce
-    const expiresAt = pendingNonces.get(state);
-    if (!expiresAt || Date.now() > expiresAt) {
+    // 2. Verify and consume state nonce — GETDEL makes the check single-use atomically
+    const consumed = await this.redis.getdel(`${NONCE_KEY_PREFIX}${state}`);
+    if (!consumed) {
       throw new UnauthorizedException('Invalid or expired OAuth state');
     }
-    pendingNonces.delete(state);
 
     // 3. Exchange code for access token
     const accessToken = await this.exchangeCodeForToken(shop, code);

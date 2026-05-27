@@ -18,13 +18,13 @@ export class ShopifyOAuthController {
    * We validate the shop, generate a state nonce, and redirect to Shopify.
    */
   @Get('auth')
-  beginAuth(@Query('shop') shop: string, @Res() res: Response): void {
+  async beginAuth(@Query('shop') shop: string, @Res() res: Response): Promise<void> {
     if (!shop) {
       res.status(400).json({ error: 'shop param is required' });
       return;
     }
 
-    const authUrl = this.oauthService.buildAuthUrl(shop);
+    const authUrl = await this.oauthService.buildAuthUrl(shop);
     res.redirect(authUrl);
   }
 
