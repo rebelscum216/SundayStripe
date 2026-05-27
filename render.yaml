@@ -19,7 +19,7 @@ services:
 
       # ── Redis (Upstash) ──────────────────────────────────────────────────────
       - key: REDIS_URL
-        sync: false          # rediss://default:password@your-endpoint.upstash.io:6380
+        sync: false          # rediss://default:password@your-endpoint.upstash.io:6379
 
       # ── Web app (Vercel) ─────────────────────────────────────────────────────
       - key: WEB_APP_URL
