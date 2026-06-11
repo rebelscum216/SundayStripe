@@ -381,10 +381,16 @@ export class ShopifyInitialSyncService {
     }
 
     const scopes = body.data?.currentAppInstallation.accessScopes.map((scope) => scope.handle) ?? [];
-    const canReadInventory = scopes.includes('read_inventory');
+    // The inventory query selects `location { name }`, which Shopify gates behind
+    // read_locations — a separate scope from read_inventory. Require both, otherwise
+    // the inventory query 401s on the `name` field and fails the entire sync.
+    const canReadInventory =
+      scopes.includes('read_inventory') && scopes.includes('read_locations');
 
     if (!canReadInventory) {
-      this.logger.warn('Shopify token is missing read_inventory; syncing products and variants only');
+      this.logger.warn(
+        'Shopify token is missing read_inventory and/or read_locations; syncing products and variants only',
+      );
     }
 
     return canReadInventory;
