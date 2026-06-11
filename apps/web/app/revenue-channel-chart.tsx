@@ -55,7 +55,9 @@ export function RevenueChannelChart({ data }: Props) {
       <div style={{ overflowX: "auto" }}>
         <svg
           viewBox={`0 0 ${totalW} ${padT + chartH + padB}`}
-          style={{ width: "100%", minWidth: totalW, display: "block" }}
+          width={totalW}
+          height={padT + chartH + padB}
+          style={{ display: "block" }}
         >
           {/* Grid lines + Y-axis labels */}
           {yTicks.map((t) => (
