@@ -18,6 +18,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname === "/api/keep-alive") {
+    return NextResponse.next();
+  }
+
   const expectedPassword = process.env.DASHBOARD_PASSWORD;
 
   if (!expectedPassword) {
